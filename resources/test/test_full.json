@@ -1,0 +1,26 @@
+[
+    {
+        "schedule": "0 0 0 0 0 0 0",
+        "monitor": {
+            "type": "tcp",
+            "ip": "192.168.1.1",
+            "port": 8080,
+            "server_certificate": "",
+            "private_key": "",
+            "private_key_password": ""
+        }
+    },
+    {
+        "schedule": "0 0 0 0 0 0 1",
+        "monitor": {
+            "type": "http",
+            "url": "https://test.com",
+            "method": "get",
+            "body": "",
+            "https_certificate": "",
+            "server_certificate": "",
+            "private_key": "",
+            "private_key_password": ""
+        }
+    }
+]

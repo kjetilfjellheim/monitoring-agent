@@ -1,0 +1,16 @@
+[
+    {
+        "schedule": "1 2 3 4 5 6 7",
+        "monitor": {
+            "type": "http",
+            "url": "https://post.com",
+            "method": "post",
+            "body": "body",
+            "headers": {},
+            "httpsCertificate": "httpscert2",
+            "serverCertificate": "server_cert2",
+            "privateKey": "privatekey2",
+            "privateKeyPassword": "privatekeypasswd2"
+        }
+    }
+]

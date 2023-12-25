@@ -1,0 +1,42 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'monitoring_agent'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=monitoring_agent",
+                    "--package=monitoring_agent"
+                ],
+                "filter": {
+                    "name": "monitoring_agent",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'monitoring_agent'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=monitoring_agent",
+                    "--package=monitoring_agent"
+                ],
+                "filter": {
+                    "name": "monitoring_agent",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
