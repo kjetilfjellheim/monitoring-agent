@@ -1,13 +1,11 @@
 [
     {
+        "name":"",
         "schedule": "0 0 0 0 0 0 0",
         "monitor": {
             "type": "tcp",
             "ip": "192.168.1.1",
-            "port": 8080,
-            "serverCertificate": "server_cert1",
-            "privateKey": "privatekey1",
-            "privateKeyPassword": "privatekeypasswd1"
+            "port": 8080
         }
     }
 ]

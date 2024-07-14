@@ -1,162 +1,154 @@
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::fs;
+mod common;
+mod config;
+
+use std::fs::OpenOptions;
+
+use clap::Parser;
+use common::ApplicationError;
+use daemonize::Daemonize;
 use tokio_cron_scheduler::{Job, JobScheduler};
-use std::error::Error;
 
-
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
-#[serde(tag = "type", rename_all = "camelCase")]
-pub enum MonitorType {
-    Tcp {
-        ip: String,
-        port: u32,
-        #[serde(skip_serializing_if = "Option::is_none", rename = "serverCertificate")]
-        server_certificate: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none", rename = "privateKey")]
-        private_key: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none", rename = "privateKeyPassword")]
-        private_key_password: Option<String>,
-    },
-    Http {
-        url: String,
-        method: HttpMethod,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        body: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        headers: Option<HashMap<String, String>>,
-        #[serde(skip_serializing_if = "Option::is_none", rename = "httpsCertificate")]
-        https_certificate: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none", rename = "serverCertificate")]
-        server_certificate: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none", rename = "privateKey")]
-        private_key: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none", rename = "privateKeyPassword")]
-        private_key_password: Option<String>,
-    },
-}
-
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub enum HttpMethod {
-    Get,
-    Post,
-    Put,
-    Delete,
-    Option,
-    Head,
-}
-
-#[derive(Debug, PartialEq, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Monitor {
-    schedule: String,
-    monitor: MonitorType,
-}
-
-#[derive(Debug, PartialEq)]
-pub struct MonitoringConfig {
-    input: String,
-    monitors: Vec<Monitor>,
-}
-
-impl MonitoringConfig {
-    pub fn new(input: &str) -> MonitoringConfig {
-        let monitor_data: String = MonitoringConfig::get_monitor_data(input);
-        let monitors: Vec<Monitor> = MonitoringConfig::get_monitor_config(monitor_data.as_str()).unwrap();
-        MonitoringConfig {
-            input: input.to_string(),
-            monitors,
-        }
-    }
-
-    fn get_monitor_data(path: &str) -> String {
-        fs::read_to_string(path).unwrap()
-    }
-
-    fn get_monitor_config(data: &str) -> Result<Vec<Monitor>, serde_json::Error> {
-        serde_json::from_str(data)
-    }
-}
+use crate::config::ApplicationArguments;
+use crate::config::{MonitoringConfig, Monitor};
 
 fn main() {
-    MonitoringConfig::new("resources/test/test_simple.json");
+    /*
+     * Parse command line arguments.
+     */
+    let args = ApplicationArguments::parse();
+
+    /*
+     * stdout out and stderr file descriptors. 
+     */
+    let stdout = OpenOptions::new().read(true).write(true).append(true).create(true).open("/var/log/monitoring_agent.out").unwrap();
+    let stderr = OpenOptions::new().read(true).write(true).append(true).create(true).open("/var/log/monitoring_agent.err").unwrap();
+
+    /*
+     * Daemonize the application.
+     */
+    let daemonize = Daemonize::new()
+        .pid_file("/tmp/monitoring_agent.pid")
+        .chown_pid_file(true)
+        .working_directory("/tmp")
+        .umask(0o770)
+        .stdout(stdout)
+        .stderr(stderr)
+        .privileged_action(move || { action(args);});
+
+    /* 
+     * Start the daemon.
+     */ 
+    match daemonize.start() {
+        Ok(_) => {
+            println!("Daemon started");
+        },
+        Err(e) => eprintln!("Error, {}", e),
+    }
+        
 }
 
-#[cfg(test)]
-mod tests {
+fn action(args: ApplicationArguments) {
+    /*
+    * Create a new monitoring configuration. Retrived from the configuration file.
+    */
+    println!("Getting monitoring configuration");
+    let monitoring_config = MonitoringConfig::new(&args.config);
+    /*
+    * Match the monitoring configuration.
+    */
+    let monitoring_config = match monitoring_config {
+        Ok(config) => config,
+        Err(err) => {
+            eprintln!("Error: {:?}", err.message);
+            std::process::exit(1);
+        }
+    };
+    /*
+     * Start the scheduling of the monitoring jobs.
+     */
+    println!("Starting scheduling");
+    let future_scheduling = schedule(&monitoring_config);
+    /*
+     * Block the main thread until the scheduling is done.
+     */
+    match tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(future_scheduling) {
+        Ok(_) => {
+            println!("Scheduling done");
+        },
+        Err(err) => {
+            eprintln!("Error: {:?}", err.message);
+            std::process::exit(1);
+        
+        }
+}
 
-    use super::*;
-
-    #[test]
-    fn test_simple_tcp_file() {
-        let monitoring: MonitoringConfig = MonitoringConfig::new("resources/test/test_simple_tcp.json");
-        assert_eq!("0 0 0 0 0 0 0".to_string(), monitoring.monitors[0].schedule);
-        assert_eq!(1, monitoring.monitors.len());
-        let monitor = monitoring.monitors[0].monitor.clone();
-        assert_eq!(
-            monitor,
-            MonitorType::Tcp {
-                ip: "192.168.1.1".to_string(),
-                port: 8080,
-                server_certificate: Some("server_cert1".to_string()),
-                private_key: Some("privatekey1".to_string()),
-                private_key_password: Some("privatekeypasswd1".to_string())
-            }
-        );
+/**
+ * Schedule the monitoring jobs.
+ * 
+ * @param monitoring_config: The monitoring configuration. 
+ * The configuration contains the monitors to be scheduled.
+ * 
+ * @return Result<(), ApplicationError>: The result of the scheduling.
+ * If the scheduling is successful, the result is Ok(()).
+ * If the scheduling fails, the result is an ApplicationError.
+ * 
+ * @throws ApplicationError: If the scheduling fails.
+ */
+async fn schedule(monitoring_config: &MonitoringConfig) -> Result<(), ApplicationError> {
+    let scheduler = JobScheduler::new().await.unwrap();
+    for monitor in monitoring_config.monitors.iter() {
+        let monitor = monitor.clone();
+        let job = get_job(monitor)?;
+        add_scheduler(&scheduler, job).await?;
     }
-
-    #[test]
-    fn test_simple_http_file() {
-        let monitoring: MonitoringConfig = MonitoringConfig::new("resources/test/test_simple_http.json");
-        assert_eq!("1 2 3 4 5 6 7".to_string(), monitoring.monitors[0].schedule);
-        assert_eq!(1, monitoring.monitors.len());
-        let monitor = monitoring.monitors[0].monitor.clone();
-        assert_eq!(
-            monitor,
-            MonitorType::Http {
-                url: "https://post.com".to_string(),
-                body: Some("body".to_string()),
-                method: HttpMethod::Post,
-                headers: Some(HashMap::new()),
-                https_certificate: Some("httpscert2".to_string()),
-                server_certificate: Some("server_cert2".to_string()),
-                private_key: Some("privatekey2".to_string()),
-                private_key_password: Some("privatekeypasswd2".to_string())
-            }
-        );
+    scheduler.start().await.unwrap();
+    loop {
+        print!("Daemon running");
+        tokio::time::sleep(tokio::time::Duration::from_secs(60 * 5)).await;
     }
+}
 
-    #[test]
-    fn test_multiple_file() {
-        let monitoring: MonitoringConfig = MonitoringConfig::new("resources/test/test_multiple.json");
-        assert_eq!("0 0 0 0 0 0 0".to_string(), monitoring.monitors[0].schedule);
-        assert_eq!("0 0 0 0 0 0 1".to_string(), monitoring.monitors[1].schedule);
-        assert_eq!(2, monitoring.monitors.len());
-        let monitor = monitoring.monitors[0].monitor.clone();
-        assert_eq!(
-            monitor,
-            MonitorType::Tcp {
-                ip: "192.168.1.1".to_string(),
-                port: 8080,
-                server_certificate: None,
-                private_key: None,
-                private_key_password: None
-            }
-        );
-        let monitor = monitoring.monitors[1].monitor.clone();
-        assert_eq!(
-            monitor,
-            MonitorType::Http {
-                url: "https://test.com".to_string(),
-                body: None,
-                method: HttpMethod::Get,
-                headers: None,
-                https_certificate: None,
-                server_certificate: None,
-                private_key: None,
-                private_key_password: None
-            }
-        );
+/**
+ * Add a job to the scheduler.
+ * 
+ * @param scheduler: The job scheduler.
+ * @param job: The job to be added to the scheduler.
+ * 
+ * @return Result<(), ApplicationError>: The result of adding the job to the scheduler.
+ * If the job is added successfully, the result is Ok(()).
+ * If the job fails to be added, the result is an ApplicationError.
+ * 
+ * @throws ApplicationError: If the job fails to be added.
+ */
+async fn add_scheduler(scheduler: &JobScheduler, job: Job) -> Result<(), ApplicationError> {
+    match scheduler.add(job).await {
+        Ok(_) => Ok(()),
+        Err(err) => Err(ApplicationError::new(1, format!("Could not add job: {}", err).as_str())),
+    }
+    
+}
+
+/**
+ * Get a job from a monitor configuration.
+ * 
+ * @param monitor: The monitor from which to get the job.
+ * 
+ * @return Result<Job, ApplicationError>: The result of getting the job.
+ * If the job is created successfully, the result is Ok(Job).
+ * If the job fails to be created, the result is an ApplicationError.
+ * 
+ * @throws ApplicationError: If the job fails to be created.
+ 
+ */
+fn get_job(monitor: Monitor) -> Result<Job, ApplicationError> {
+    match Job::new(monitor.schedule.as_str(), move |_a,b| {
+        println!("Running monitor: {:?}", monitor.name);
+    }) {
+        Ok(job) => Ok(job),
+        Err(err) => Err(ApplicationError::new(1, format!("Could not create job: {}", err).as_str())),
     }
 }
