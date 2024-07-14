@@ -4,11 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-serde = { version = "1.0.193", features = ["derive"] }  # For serializing/deserializing.
-serde_json = "1.0.108"                                  # For serializing/deserializing.
-tokio-cron-scheduler = "0.10.2"                          # For schduling jobs.
-tokio = { version = "1.35.1", features = ["time", "rt", "sync", "rt-multi-thread"] }
-clap = { version = "4.5.9", features = ["derive"] }
-daemonize = "0.5.0"
-chrono = "0.4.38"
+serde = { version = "1.0.193", features = ["derive"] }                                  # For serializing/deserializing.
+serde_json = "1.0.108"                                                                  # For serializing/deserializing.
+tokio-cron-scheduler = "0.10.2"                                                         # For schduling jobs.
+tokio = { version = "1.35.1", features = ["time", "rt", "sync", "rt-multi-thread"] }    # For schduling jobs.
+clap = { version = "4.5.9", features = ["derive"] }                                     # For parsing input arguments.
+daemonize = "0.5.0"                                                                     # For daemonizing the process.
 
