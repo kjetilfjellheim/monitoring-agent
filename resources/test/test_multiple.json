@@ -1,5 +1,6 @@
 [
     {
+        "name":"",
         "schedule": "0 0 0 0 0 0 0",
         "monitor": {
             "type": "tcp",
@@ -8,6 +9,7 @@
         }
     },
     {
+        "name":"",
         "schedule": "0 0 0 0 0 0 1",
         "monitor": {
             "type": "http",
