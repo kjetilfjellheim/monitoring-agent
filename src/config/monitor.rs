@@ -73,14 +73,14 @@ impl MonitoringConfig {
     fn get_monitor_data(path: &str) -> Result<String, ApplicationError> {
         match fs::read_to_string(path) {
             Ok(data) => Ok(data),
-            Err(err) => Err(ApplicationError::new(1, format!("Could not read config file {}, error: {}", path, err).as_str())),
+            Err(err) => Err(ApplicationError::new(format!("Could not read config file {}, error: {}", path, err).as_str())),
         }
     }
 
     fn get_monitor_config(data: &str) -> Result<Vec<Monitor>, ApplicationError> {
         match serde_json::from_str(data) {
             Ok(monitors) => Ok(monitors),
-            Err(err) => Err(ApplicationError::new(2, format!("Could not parse config file: Line {}", err.line().to_string()).as_str())),        
+            Err(err) => Err(ApplicationError::new(format!("Could not parse config file: Line {}", err.line().to_string()).as_str())),        
         }
     }
 }

@@ -1,7 +1,7 @@
 [
     {
-        "name":"First job",
-        "schedule": "* * * * * * *",
+        "name":"Every ten seconds",
+        "schedule": "*/10 * * * * *",
         "monitor": {
             "type": "tcp",
             "ip": "192.168.1.1",
@@ -9,8 +9,8 @@
         }
     },
     {
-        "name":"Second job",
-        "schedule": "* * * * * * *",
+        "name":"Every three seconds",
+        "schedule": "*/3 * * * * *",
         "monitor": {
             "type": "http",
             "url": "https://test.com",
