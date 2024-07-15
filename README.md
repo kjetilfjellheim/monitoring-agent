@@ -1,5 +1,11 @@
 # Monitoring agent
 
 **Goals**
-Simple agent to monitor availability of ports and access to servers in the network and report status through a rest api.
+The goals for the code is to develop a simple monitoring agent with the following functionality.
+- Open tcp connection.
+- Http request
+- ++++
+
+**Development**
+The codebase is most for learning more advanced rust code while trying to create something I can use in my home network.
 
