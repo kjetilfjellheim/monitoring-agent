@@ -8,8 +8,8 @@ use crate::common::ApplicationError;
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum MonitorType {
     Tcp {
-        ip: String,
-        port: u32,
+        host: String,
+        port: u16,
     },
     Http {
         url: String,
@@ -100,7 +100,7 @@ mod tests {
         assert_eq!(
             monitor,
             MonitorType::Tcp {
-                ip: "192.168.1.1".to_string(),
+                host: "192.168.1.1".to_string(),
                 port: 8080
             }
         );
@@ -137,7 +137,7 @@ mod tests {
         assert_eq!(
             monitor,
             MonitorType::Tcp {
-                ip: "192.168.1.1".to_string(),
+                host: "192.168.1.1".to_string(),
                 port: 8080,
             }
         );

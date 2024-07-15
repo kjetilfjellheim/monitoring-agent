@@ -1,0 +1,11 @@
+[
+    {
+        "name":"Every ten seconds",
+        "schedule": "*/10 * * * * *",
+        "monitor": {
+            "type": "tcp",
+            "host": "127.0.0.1",
+            "port": 80
+        }
+    }
+]

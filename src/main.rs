@@ -62,8 +62,8 @@ fn main() {
         Ok(_) => {
             println!("Started daemon!");
         },
-        Err(e) => { 
-            eprintln!("Error starting daemon: {:?}", e);
+        Err(err) => { 
+            eprintln!("Error starting daemon: {:?}", err);
         }
     }        
 }

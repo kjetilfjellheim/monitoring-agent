@@ -1,6 +1,9 @@
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+
 use tokio_cron_scheduler::{Job, JobScheduler};
 
-use crate::config::{ ApplicationArguments, MonitoringConfig, Monitor };
+use crate::config::{ ApplicationArguments, MonitoringConfig };
 use crate::common::ApplicationError;
 
 /**
@@ -11,6 +14,7 @@ use crate::common::ApplicationError;
  */
 pub struct MonitoringService {
     scheduler: Option<JobScheduler>,
+    status: Arc::<Mutex::<HashMap::<String, TcpMonitor>>>
 }
 
 impl MonitoringService {
@@ -19,7 +23,8 @@ impl MonitoringService {
      */
     pub fn new() -> MonitoringService {    
         MonitoringService {
-            scheduler: None
+            scheduler: None,
+            status: Arc::new(Mutex::new(HashMap::new()))
         }
     }
 
@@ -81,9 +86,20 @@ impl MonitoringService {
             }
         };          
         for monitor in monitoring_config.monitors.iter() {
-            let job = self.get_job(monitor)?;
-            self.add_job(&scheduler, job).await?;
+            let monitor_type = monitor.monitor.clone();
+            let job = match monitor_type {
+                crate::config::MonitorType::Tcp{host, port} => {
+                    self.get_tcp_monitor_job(monitor.schedule.as_str(), monitor.name.as_str(), host.as_str(), &port)?                    
+                },
+                _ => {
+                    return Err(ApplicationError::new("Unsupported monitor type"));
+                }
+            };      
+            self.add_job(&scheduler, job).await?;      
         }
+        /*
+         * Start the scheduler.
+         */
         match scheduler.start().await {
             Ok(_) => {
                 self.scheduler = Some(scheduler);
@@ -93,7 +109,8 @@ impl MonitoringService {
             }
         }        
         loop {
-            tokio::time::sleep(tokio::time::Duration::from_secs(60 * 5)).await;
+            println!("Monitoring status {:?}", self.status.lock().unwrap());
+            tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
         }
     }
 
@@ -128,13 +145,73 @@ impl MonitoringService {
      * 
      * @throws ApplicationError: If the job fails to be created.
      */
-    fn get_job(&self, monitor: &Monitor) -> Result<Job, ApplicationError> {   
-        let monitor = monitor.clone(); 
-        match Job::new(monitor.schedule.as_str(), move |_uuid,_locked| {
-            println!("Running monitor: {:?}", monitor.name);
+    fn get_tcp_monitor_job(&mut self, schedule: &str, name: &str, host: &str, port: &u16) -> Result<Job, ApplicationError> {  
+        let name = name.to_string(); 
+        let host = host.to_string();
+        let port = port.clone();      
+        let status = self.status.clone();
+        match Job::new(schedule, move |uuid,_locked| {
+            let mut status = status.lock().unwrap();
+            if !status.contains_key(name.as_str()) {
+                status.insert(uuid.to_string(), TcpMonitor::new(host.as_str(), &port, name.as_str()));
+            }
+            let monitor = status.get_mut(&uuid.to_string()).unwrap();
+            println!("Checking monitor: {}", monitor.get_name());
+            monitor.status = monitor.check();
+            println!("Monitor {} status: {:?}", monitor.name, monitor.status);
         }) {
             Ok(job) => Ok(job),
             Err(err) => Err(ApplicationError::new(format!("Could not create job: {}", err).as_str())),
         }
+    }
+}
+
+pub trait MonitorTrait {
+    fn check(&mut self) -> MonitorStatus;
+    fn get_name(&self) -> String;
+}
+
+#[derive(Debug, Clone)]
+pub enum MonitorStatus {
+    Ok,
+    Unknown,
+    Error { message: String }
+}
+
+#[derive(Debug, Clone)]
+struct TcpMonitor {
+    name: String,
+    host: String,
+    port: u16,
+    status: MonitorStatus
+}
+
+impl TcpMonitor {
+    pub fn new(host: &str, port: &u16, name: &str) -> TcpMonitor {
+        TcpMonitor {
+            name: name.to_string(),
+            host: host.to_string(),
+            port: port.clone(),
+            status: MonitorStatus::Unknown
+        }
+    }
+}
+
+impl MonitorTrait for TcpMonitor {
+
+    fn check(&mut self) -> MonitorStatus{
+        match std::net::TcpStream::connect(format!("{}:{}", self.host, self.port)) {
+            Ok(tcp_stream) => {
+                tcp_stream.shutdown(std::net::Shutdown::Both).unwrap();
+                MonitorStatus::Ok
+            },
+            Err(err) => {
+                MonitorStatus::Error { message: format!("Error connecting to {}:{} with error: {}", self.host, self.port, err) }
+            }
+        }
+    }    
+    
+    fn get_name(&self) -> String {
+        self.name.clone()
     }
 }
