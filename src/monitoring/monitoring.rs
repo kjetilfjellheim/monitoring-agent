@@ -1,6 +1,3 @@
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
-
 use tokio_cron_scheduler::{Job, JobScheduler};
 
 use crate::config::{ ApplicationArguments, MonitoringConfig };
@@ -15,7 +12,7 @@ use crate::monitoring::tcpmonitor::TcpMonitor;
  */
 pub struct MonitoringService {
     scheduler: Option<JobScheduler>,
-    status: Arc::<Mutex::<HashMap::<String, TcpMonitor>>>
+    status: Vec<Box<dyn MonitorTrait>>
 }
 
 impl MonitoringService {
@@ -25,7 +22,7 @@ impl MonitoringService {
     pub fn new() -> MonitoringService {    
         MonitoringService {
             scheduler: None,
-            status: Arc::new(Mutex::new(HashMap::new()))
+            status: Vec::new()
         }
     }
 
@@ -110,8 +107,9 @@ impl MonitoringService {
             }
         }        
         loop {        
-            for (uuid, monitor) in self.status.lock().unwrap().iter() {
-                println!("Monitor {}-{} status: {:?}", uuid, monitor.get_name(), monitor.status);
+            for monitor in self.status.iter() {
+                let status = monitor.get_status();
+                println!("Monitor {} status: {:?}", monitor.get_name(), status);
             }
             tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
         }
@@ -151,36 +149,16 @@ impl MonitoringService {
     fn get_tcp_monitor_job(&mut self, schedule: &str, name: &str, host: &str, port: &u16) -> Result<Job, ApplicationError> {  
         let name = name.to_string(); 
         let host = host.to_string();
-        let port = port.clone();      
-        let status = self.status.clone();
-        match Job::new(schedule, move |uuid,_locked| {
-            let mut status = match status.lock() {
-                Ok(status) => status,
-                Err(err) => {
-                    eprintln!("Could not get status lock: {:?}. Job stopped.", err);
-                    return;
-                }
-            };
-            if !status.contains_key(name.as_str()) {
-                status.insert(uuid.to_string(), TcpMonitor::new(host.as_str(), &port, name.as_str()));
-            }
-            let monitor =  match status.get_mut(&uuid.to_string()) {
-                Some(monitor) => monitor,
-                None => {
-                    eprintln!("Could not get monitor. Job stopped.");
-                    return;
-                }
-            };
-            monitor.status = monitor.check();
-        }) {
-            Ok(job) => Ok(job),
-            Err(err) => Err(ApplicationError::new(format!("Could not create job: {}", err).as_str())),
-        }
+        let port = port.clone();   
+        let mut tcp_monitor = TcpMonitor::new(host.as_str(), &port, name.as_str());
+        self.status.push(Box::new(tcp_monitor.clone()));
+        tcp_monitor.get_job(schedule)   
     }
 }
 
 pub trait MonitorTrait {
-    fn check(&mut self) -> MonitorStatus;
+    fn get_job(&mut self, schedule: &str) -> Result<Job, ApplicationError>;
+    fn get_status(&self) -> MonitorStatus;
     fn get_name(&self) -> String;
 }
 
