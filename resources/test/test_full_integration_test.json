@@ -1,11 +1,20 @@
 [
     {
-        "name":"Every ten seconds",
+        "name":"Apache TCP",
         "schedule": "*/10 * * * * *",
         "monitor": {
             "type": "tcp",
             "host": "127.0.0.1",
             "port": 80
+        }
+    },
+    {
+        "name":"Netbios TCP",
+        "schedule": "*/10 * * * * *",
+        "monitor": {
+            "type": "tcp",
+            "host": "127.0.0.1",
+            "port": 139
         }
     }
 ]

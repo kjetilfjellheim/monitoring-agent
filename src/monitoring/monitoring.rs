@@ -5,6 +5,7 @@ use tokio_cron_scheduler::{Job, JobScheduler};
 
 use crate::config::{ ApplicationArguments, MonitoringConfig };
 use crate::common::ApplicationError;
+use crate::monitoring::tcpmonitor::TcpMonitor;
 
 /**
  * The main action of the application.
@@ -108,9 +109,11 @@ impl MonitoringService {
                 return Err(ApplicationError::new(format!("Could not start scheduler: {}", err).as_str()));
             }
         }        
-        loop {
-            println!("Monitoring status {:?}", self.status.lock().unwrap());
-            tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+        loop {        
+            for (uuid, monitor) in self.status.lock().unwrap().iter() {
+                println!("Monitor {}-{} status: {:?}", uuid, monitor.get_name(), monitor.status);
+            }
+            tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
         }
     }
 
@@ -151,14 +154,24 @@ impl MonitoringService {
         let port = port.clone();      
         let status = self.status.clone();
         match Job::new(schedule, move |uuid,_locked| {
-            let mut status = status.lock().unwrap();
+            let mut status = match status.lock() {
+                Ok(status) => status,
+                Err(err) => {
+                    eprintln!("Could not get status lock: {:?}. Job stopped.", err);
+                    return;
+                }
+            };
             if !status.contains_key(name.as_str()) {
                 status.insert(uuid.to_string(), TcpMonitor::new(host.as_str(), &port, name.as_str()));
             }
-            let monitor = status.get_mut(&uuid.to_string()).unwrap();
-            println!("Checking monitor: {}", monitor.get_name());
+            let monitor =  match status.get_mut(&uuid.to_string()) {
+                Some(monitor) => monitor,
+                None => {
+                    eprintln!("Could not get monitor. Job stopped.");
+                    return;
+                }
+            };
             monitor.status = monitor.check();
-            println!("Monitor {} status: {:?}", monitor.name, monitor.status);
         }) {
             Ok(job) => Ok(job),
             Err(err) => Err(ApplicationError::new(format!("Could not create job: {}", err).as_str())),
@@ -178,40 +191,3 @@ pub enum MonitorStatus {
     Error { message: String }
 }
 
-#[derive(Debug, Clone)]
-struct TcpMonitor {
-    name: String,
-    host: String,
-    port: u16,
-    status: MonitorStatus
-}
-
-impl TcpMonitor {
-    pub fn new(host: &str, port: &u16, name: &str) -> TcpMonitor {
-        TcpMonitor {
-            name: name.to_string(),
-            host: host.to_string(),
-            port: port.clone(),
-            status: MonitorStatus::Unknown
-        }
-    }
-}
-
-impl MonitorTrait for TcpMonitor {
-
-    fn check(&mut self) -> MonitorStatus{
-        match std::net::TcpStream::connect(format!("{}:{}", self.host, self.port)) {
-            Ok(tcp_stream) => {
-                tcp_stream.shutdown(std::net::Shutdown::Both).unwrap();
-                MonitorStatus::Ok
-            },
-            Err(err) => {
-                MonitorStatus::Error { message: format!("Error connecting to {}:{} with error: {}", self.host, self.port, err) }
-            }
-        }
-    }    
-    
-    fn get_name(&self) -> String {
-        self.name.clone()
-    }
-}
