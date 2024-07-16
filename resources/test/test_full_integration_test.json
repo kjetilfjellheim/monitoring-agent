@@ -16,5 +16,14 @@
             "host": "127.0.0.1",
             "port": 139
         }
+    },
+    {
+        "name":"Apache Http",
+        "schedule": "*/5 * * * * *",
+        "monitor": {
+            "type": "http",
+            "url": "http://planescape.forgottendonkey.com",
+            "method": "get"
+        }
     }
 ]

@@ -1,8 +1,13 @@
+use std::time::Duration;
+
 use tokio_cron_scheduler::{Job, JobScheduler};
 
 use crate::config::{ ApplicationArguments, MonitoringConfig };
 use crate::common::ApplicationError;
 use crate::monitoring::tcpmonitor::TcpMonitor;
+use crate::monitoring::httpmonitor::HttpMonitor;
+use crate::config::HttpMethod;
+
 
 /**
  * The main action of the application.
@@ -87,7 +92,10 @@ impl MonitoringService {
             let monitor_type = monitor.monitor.clone();
             let job = match monitor_type {
                 crate::config::MonitorType::Tcp{host, port} => {
-                    self.get_tcp_monitor_job(monitor.schedule.as_str(), monitor.name.as_str(), host.as_str(), &port)?                    
+                    self.get_tcp_monitor_job(monitor.schedule.as_str(), monitor.name.as_str(), host.as_str(), &port)?                  
+                },
+                crate::config::MonitorType::Http{url, method, body, headers} => {
+                    self.get_http_monitor_job(monitor.schedule.as_str(), monitor.name.as_str(), url.as_str(), method, body, headers)?
                 },
                 _ => {
                     return Err(ApplicationError::new("Unsupported monitor type"));
@@ -106,12 +114,8 @@ impl MonitoringService {
                 return Err(ApplicationError::new(format!("Could not start scheduler: {}", err).as_str()));
             }
         }        
-        loop {        
-            for monitor in self.status.iter() {
-                let status = monitor.get_status();
-                println!("Monitor {} status: {:?}", monitor.get_name(), status);
-            }
-            tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
+        loop {
+            tokio::time::sleep(Duration::from_secs(20000)).await;
         }
     }
 
@@ -147,12 +151,15 @@ impl MonitoringService {
      * @throws ApplicationError: If the job fails to be created.
      */
     fn get_tcp_monitor_job(&mut self, schedule: &str, name: &str, host: &str, port: &u16) -> Result<Job, ApplicationError> {  
-        let name = name.to_string(); 
-        let host = host.to_string();
-        let port = port.clone();   
-        let mut tcp_monitor = TcpMonitor::new(host.as_str(), &port, name.as_str());
+        let mut tcp_monitor = TcpMonitor::new(host, port, name);
         self.status.push(Box::new(tcp_monitor.clone()));
         tcp_monitor.get_job(schedule)   
+    }
+
+    fn get_http_monitor_job(&mut self, schedule: &str, name: &str, url: &str, method: HttpMethod, body:Option<String>, headers:Option<std::collections::HashMap<String, String>>) -> Result<Job, ApplicationError> {  
+        let mut http_monitor = HttpMonitor::new(url, method, body, headers, &name);
+        self.status.push(Box::new(http_monitor.clone()));
+        http_monitor.get_job(schedule)   
     }
 }
 
