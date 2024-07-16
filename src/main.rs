@@ -10,6 +10,7 @@ use daemonize::Daemonize;
 use crate::config::ApplicationArguments;
 use crate::monitoring::MonitoringService;
 
+
 fn main() {
     /*
      * Parse command line arguments.

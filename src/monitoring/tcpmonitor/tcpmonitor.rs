@@ -54,7 +54,9 @@ impl MonitorTrait for TcpMonitor {
         let host = self.host.clone();
         let port = self.port.clone();
         let status = self.status.clone();
+        let name = self.name.clone();
         match Job::new(schedule, move |_uuid,_locked| {
+            println!("Running tcp monitor job {}", name);
             let new_status = TcpMonitor::check(&host, &port);
             match status.lock() {
                 Ok(mut monitor_status) => {
@@ -63,7 +65,7 @@ impl MonitorTrait for TcpMonitor {
                 Err(err) => {
                     eprintln!("Error updating monitor status: {:?}", err);
                 }
-            }
+            }            
         }) {
             Ok(job) => {
                 return Ok(job);
