@@ -15,16 +15,48 @@ fn main() {
      * Parse command line arguments.
      */
     let args = ApplicationArguments::parse();
-
     /*
-     * stdout out and stderr file descriptors.
+     * Start appliction in daemon or non daemon mode.
+     */
+    if args.daemon {
+        daemonize_application(args);
+    } else {
+        normal_application(args);
+    }
+
+}
+/**
+ * Start the application in non daemon mode.
+ * 
+ * @param args Application arguments.
+ * 
+ */
+fn normal_application(args: ApplicationArguments) {
+    let mut monitoring_service = MonitoringService::new();
+    match monitoring_service.start(&args.config, &args.test) {
+        Ok(_) => {
+            println!("Monitoring service started!");
+        }
+        Err(err) => {
+            eprintln!("Error starting monitoring service: {:?}", err.message);
+        }
+    }
+}
+/**
+ * Daemonize the application.
+ * 
+ * @param args Application arguments.
+ */
+fn daemonize_application(args: ApplicationArguments) {
+    /*
+     * Open stdout for logging daemon output.
      */
     let stdout = match OpenOptions::new()
         .read(true)
         .write(true)
         .append(true)
         .create(true)
-        .open("/var/log/monitoring_agent.out")
+        .open(&args.stdout)
     {
         Ok(file) => file,
         Err(err) => {
@@ -32,12 +64,15 @@ fn main() {
             return;
         }
     };
+    /*
+     * Open stderr for logging daemon errors.
+     */
     let stderr = match OpenOptions::new()
         .read(true)
         .write(true)
         .append(true)
         .create(true)
-        .open("/var/log/monitoring_agent.err")
+        .open(&args.stderr)
     {
         Ok(file) => file,
         Err(err) => {
@@ -46,18 +81,17 @@ fn main() {
         }
     };
     /*
-     * Daemonize the application.
+     * Create daemonize object.
      */
     let daemonize = Daemonize::new()
-        .pid_file("/tmp/monitoring_agent.pid")
+        .pid_file(&args.pidfile)
         .chown_pid_file(true)
-        .working_directory("/tmp")
         .umask(0770)
         .stdout(stdout)
         .stderr(stderr)
         .privileged_action(move || {
             let mut monitoring_service = MonitoringService::new();
-            match monitoring_service.start(&args) {
+            match monitoring_service.start(&args.config, &args.test) {
                 Ok(_) => {
                     println!("Monitoring service started!");
                 }
@@ -66,7 +100,7 @@ fn main() {
                 }
             }
         });
-
+    
     /*
      * Start the daemon.
      */
@@ -78,4 +112,37 @@ fn main() {
             eprintln!("Error starting daemon: {:?}", err);
         }
     }
+    
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_normal_application() {
+        let args = ApplicationArguments {
+            config: "./resources/test/test_full_integration_test.json".to_string(),
+            daemon: false,
+            test: true,
+            stdout: String::new(),
+            stderr: String::new(),
+            pidfile: String::new()
+        };
+        super::normal_application(args);
+    }
+
+    #[test]
+    fn test_daemonize_application() {
+        let args = ApplicationArguments {
+            config: "./resources/test/test_full_integration_test.json".to_string(),
+            daemon: true,
+            test: true,
+            stdout: "/tmp/monitoring_agent.out".to_string(),
+            stderr: "/tmp/monitoring_agent.err".to_string(),
+            pidfile: "/tmp/monitoring_agent.pid".to_string()
+        };
+        super::daemonize_application(args);
+    }
+
 }

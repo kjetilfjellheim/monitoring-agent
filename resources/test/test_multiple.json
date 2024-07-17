@@ -1,20 +1,20 @@
 [
     {
-        "name":"",
-        "schedule": "0 0 0 0 0 0 0",
+        "name":"Apache TCP",
+        "schedule": "*/10 * * * * *",
         "monitor": {
             "type": "tcp",
-            "host": "192.168.1.1",
-            "port": 8080
+            "host": "127.0.0.1",
+            "port": 80
         }
     },
     {
-        "name":"",
-        "schedule": "0 0 0 0 0 0 1",
+        "name":"Netbios TCP",
+        "schedule": "*/10 * * * * *",
         "monitor": {
-            "type": "http",
-            "url": "https://test.com",
-            "method": "get"
+            "type": "tcp",
+            "host": "127.0.0.1",
+            "port": 139
         }
     }
 ]

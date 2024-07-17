@@ -95,3 +95,52 @@ impl TcpMonitor {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+
+    /**
+     * Test the check method. Testing toward Netbios port 139.
+     */
+    #[tokio::test]
+    async fn test_check_port_139() {
+        let mut monitor = TcpMonitor::new(
+            "localhost",
+            &139,
+            "localhost",
+        );
+        monitor.check().await.unwrap();
+        assert_eq!(*monitor.status.lock().unwrap(), MonitorStatus::Ok);
+    }
+
+    /**
+     * Test the check method. Testing toward port 65000.
+     */
+    #[tokio::test]
+    async fn test_check_port_65000() {
+        let mut monitor = TcpMonitor::new(
+            "localhost",
+            &65000,
+            "localhost",
+        );
+        monitor.check().await.unwrap();
+        assert_eq!(*monitor.status.lock().unwrap(), MonitorStatus::Error { message: "Error connecting to localhost:65000 with error: Connection refused (os error 111)".to_string() });
+    }    
+
+    /**
+     * Test the set_status method.
+     */
+    #[test]
+    fn test_set_status() {
+        let mut monitor = TcpMonitor::new(
+            "localhost",
+            &65000,
+            "localhost",
+        );
+        monitor.set_status(MonitorStatus::Ok);
+        assert_eq!(*monitor.status.lock().unwrap(), MonitorStatus::Ok);
+    }
+
+}
