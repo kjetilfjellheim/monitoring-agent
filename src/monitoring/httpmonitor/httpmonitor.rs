@@ -1,13 +1,10 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Mutex;
-use futures::executor::LocalPool;
-
-use tokio_cron_scheduler::Job;
+use std::time::Duration;
 
 use crate::common::ApplicationError;
 use crate::config::HttpMethod;
-use crate::monitoring::monitoring::MonitorTrait;
 use crate::monitoring::monitoring::MonitorStatus;
 
 #[derive(Debug, Clone)]
@@ -21,13 +18,13 @@ pub struct HttpMonitor {
 }
 
 impl HttpMonitor {
-    pub fn new(url: &str, method: HttpMethod, body: Option<String>, headers: Option<HashMap<String, String>>, name: &str) -> HttpMonitor {
+    pub fn new(url: &str, method: &HttpMethod, body: &Option<String>, headers: &Option<HashMap<String, String>>, name: &str) -> HttpMonitor {
         HttpMonitor {
             url: url.to_string(),
             name: name.to_string(),
-            method: method,
-            body: body,
-            headers: headers,
+            method: method.clone(),
+            body: body.clone(),
+            headers: headers.clone(),
             status: Arc::new(Mutex::new(MonitorStatus::Unknown))
         }
     }
@@ -45,7 +42,18 @@ impl HttpMonitor {
         return header_map;
     }
 
-    fn check(http_method: &HttpMethod, url: &str, headers: &Option<HashMap<String, String>>, body: &Option<String>) -> MonitorStatus {
+    fn set_status(&mut self, status: MonitorStatus) {
+        match self.status.lock() {
+            Ok(mut monitor_status) => {
+                *monitor_status = status;
+            },
+            Err(err) => {
+                eprintln!("Error updating monitor status: {:?}", err);
+            }
+        }
+    }
+
+    pub async fn check(&mut self, http_method: &HttpMethod, url: &str, headers: &Option<HashMap<String, String>>, body: &Option<String>) -> Result<(), ApplicationError> {
         let client = reqwest::Client::default();
         let headers = HttpMonitor::get_headers(headers);
         let request_builder = match http_method {
@@ -76,69 +84,22 @@ impl HttpMonitor {
                 request_builder
             }
         };
-        println!("Before http async");
-        let req_response = tokio::runtime::Builder::.unwrap().block_on(request_builder.send());
-        println!("After http async");
+        let request_builder = request_builder.timeout(Duration::from_secs(5));
+        let req_response = request_builder.send().await;        
         match req_response {
             Ok(response) => {
                 if response.status().is_success() {
-                    MonitorStatus::Ok
+                    self.set_status(MonitorStatus::Ok);
                 } else {
-                    MonitorStatus::Error { message: format!("Error connecting to {} with status code: {}", url, response.status()) }
-                }
+                    self.set_status(MonitorStatus::Error { message: format!("Error connecting to {} with status code: {}", url, response.status()) });
+                }                
             },
             Err(err) => {
-                MonitorStatus::Error { message: format!("Error connecting to {} with error: {}", url, err) }
+                self.set_status(MonitorStatus::Error { message: format!("Error connecting to {} with error: {}", url, err) });
             }
         }
+        Ok(())
     }
 
 }
 
-impl MonitorTrait for HttpMonitor {
-
-    fn get_job(&mut self, schedule: &str) -> Result<Job, ApplicationError> {
-        println!("Creating Http monitor {:?}:{} job...", &self.method, &self.url);
-        let status = self.status.clone();
-        let http_method = self.method.clone();
-        let url = self.url.clone();
-        let headers = self.headers.clone();
-        let body = self.body.clone();
-        let name = self.name.clone();
-        match Job::new(schedule, move |_uuid,_locked| {  
-            println!("Running http monitor job {}", &name);                
-            let new_status = HttpMonitor::check(&http_method, &url, &headers, &body);
-            match status.lock() {
-                Ok(mut monitor_status) => {
-                    *monitor_status = new_status;
-                },
-                Err(err) => {
-                    eprintln!("Error updating monitor status: {:?}", err);
-                }
-            }
-        }) {
-            Ok(job) => {
-                return Ok(job);
-            },
-            Err(err) => {
-                return Err(ApplicationError::new(format!("Could not create job: {}", err).as_str()));
-            }
-        };
-    }    
-    
-    fn get_status(&self) -> MonitorStatus {
-        match self.status.lock() {
-            Ok(status) => {
-                return status.clone();
-            },
-            Err(err) => {
-                eprintln!("Error getting monitor status: {:?}", err);
-                return MonitorStatus::Unknown;
-            }
-        }
-    }
-
-    fn get_name(&self) -> String {
-        return self.name.clone();
-    }
-}

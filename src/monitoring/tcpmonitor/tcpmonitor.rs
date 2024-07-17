@@ -1,10 +1,7 @@
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use tokio_cron_scheduler::Job;
-
 use crate::common::ApplicationError;
-use crate::monitoring::monitoring::MonitorTrait;
 use crate::monitoring::monitoring::MonitorStatus;
 
 #[derive(Debug, Clone)]
@@ -34,61 +31,28 @@ impl TcpMonitor {
         }
     }
     
-    fn check(host: &str, port: &u16) -> MonitorStatus {
+    fn set_status(&mut self, status: MonitorStatus) {
+        match self.status.lock() {
+            Ok(mut monitor_status) => {
+                *monitor_status = status;
+            },
+            Err(err) => {
+                eprintln!("Error updating monitor status: {:?}", err);
+            }
+        }
+    }
+
+    pub async fn check(&mut self, host: &str, port: &u16) -> Result<(), ApplicationError> {
         match std::net::TcpStream::connect(format!("{}:{}", host, port)) {
             Ok(tcp_stream) => {
                 TcpMonitor::close_connection(tcp_stream);   
-                MonitorStatus::Ok           
+                self.set_status(MonitorStatus::Ok);           
             },
             Err(err) => {
-                MonitorStatus::Error { message: format!("Error connecting to {}:{} with error: {}", host, port, err) }
+                self.set_status(MonitorStatus::Error { message: format!("Error connecting to {}:{} with error: {}", host, port, err) });
             }
         }
-    }
-}
-
-impl MonitorTrait for TcpMonitor {
-
-    fn get_job(&mut self, schedule: &str) -> Result<Job, ApplicationError> {
-        println!("Creating TCP monitor {}:{} job...", self.host, self.port);
-        let host = self.host.clone();
-        let port = self.port.clone();
-        let status = self.status.clone();
-        let name = self.name.clone();
-        match Job::new(schedule, move |_uuid,_locked| {
-            println!("Running tcp monitor job {}", name);
-            let new_status = TcpMonitor::check(&host, &port);
-            match status.lock() {
-                Ok(mut monitor_status) => {
-                    *monitor_status = new_status;
-                },
-                Err(err) => {
-                    eprintln!("Error updating monitor status: {:?}", err);
-                }
-            }            
-        }) {
-            Ok(job) => {
-                return Ok(job);
-            },
-            Err(err) => {
-                return Err(ApplicationError::new(format!("Could not create job: {}", err).as_str()));
-            }
-        };
-    }    
-    
-    fn get_status(&self) -> MonitorStatus {
-        match self.status.lock() {
-            Ok(status) => {
-                return status.clone();
-            },
-            Err(err) => {
-                eprintln!("Error getting monitor status: {:?}", err);
-                return MonitorStatus::Unknown;
-            }
-        }
+        Ok(())
     }
 
-    fn get_name(&self) -> String {
-        return self.name.clone();
-    }
 }

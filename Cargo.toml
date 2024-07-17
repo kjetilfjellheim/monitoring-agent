@@ -10,6 +10,6 @@ tokio-cron-scheduler = "0.10.2"                                                 
 tokio = { version = "1.35.1", features = ["full"] }                                     # For schduling jobs.
 clap = { version = "4.5.9", features = ["derive"] }                                     # For parsing input arguments.
 daemonize = "0.5.0"                                                                     # For daemonizing the process.
-reqwest = "0.12.5"                                                                      # For handling http requests.
+reqwest = { version = "0.12.5", features = ["blocking"]}                                # For handling http requests.
 futures = "0.3.30"
 
