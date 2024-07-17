@@ -145,3 +145,57 @@ impl HttpMonitor {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod test {
+
+    use reqwest::header::HeaderValue;
+
+    use super::*;
+    use crate::config::HttpMethod;
+    use std::collections::HashMap;
+
+    /**
+     * Test the check method. Testing failure towards a non-existing URL.
+     */
+    #[tokio::test]
+    async fn test_check() {
+        let mut monitor = HttpMonitor::new(
+            "http://localhost:65000",
+            &HttpMethod::Get,
+            &None,
+            &None,
+            "localhost",
+        );
+        monitor.check().await.unwrap();
+        assert_eq!(*monitor.status.lock().unwrap(), MonitorStatus::Error { message: "Error connecting to http://localhost:65000 with error: error sending request for url (http://localhost:65000/)".to_string() });
+    }
+
+    /**
+     * Test the get_headers method.
+     */
+    #[test]
+    fn test_get_headers() {
+        let mut headers = HashMap::new();
+        headers.insert("Content-Type".to_string(), "application/json".to_string());
+        let header_map = HttpMonitor::get_headers(&Some(headers));
+        assert_eq!(header_map.len(), 1);
+        assert_eq!(header_map.get("Content-Type"), Some(&HeaderValue::from_str("application/json").unwrap()));
+    }
+
+    /**
+     * Test the set_status method.
+     */
+    #[test]
+    fn test_set_status() {
+        let mut monitor = HttpMonitor::new(
+            "https://www.google.com",
+            &HttpMethod::Get,
+            &None,
+            &None,
+            "Google",
+        );
+        monitor.set_status(MonitorStatus::Ok);
+        assert_eq!(*monitor.status.lock().unwrap(), MonitorStatus::Ok);
+    }
+}

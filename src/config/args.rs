@@ -9,10 +9,29 @@ use clap::Parser;
  * 
  */
 #[derive(Parser, Debug)]
-#[command(version, about="Monitoring tool", long_about = None)]
+#[command(version, about="Monitoring agent", long_about = None)]
 pub struct ApplicationArguments {
-    /// Configuration file. Not required.
-    #[arg(short, long, default_value = "/etc/monitoring/config.json")]
+    /// Configuration file.
+    #[arg(short, long, default_value = "/etc/monitoring_agent/config.json")]
     pub config: String,
 
+    /// Daemonize the application. Will not daemonize by default.
+    #[arg(short, long, default_value = "false")]
+    pub daemon: bool,
+
+    /// Test configuration. Will not test by default.
+    #[arg(short, long, default_value = "false")]
+    pub test: bool,
+
+    /// stdout file. Only used when daemonizing the application.
+    #[arg(short, long, default_value = "/var/log/monitoring_agent.out")]
+    pub stdout: String,
+
+    /// stderr file. Only used when daemonizing the application.
+    #[arg(short, long, default_value = "/var/log/monitoring_agent.err")]
+    pub stderr: String,
+
+    /// pid file. Only used when daemonizing the application.
+    #[arg(short, long, default_value = "/tmp/monitoring_agent.pid")]
+    pub pidfile: String,  
 }
