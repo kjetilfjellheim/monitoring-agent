@@ -1,5 +1,8 @@
+/**
+ * Monitoring module.
+ */
+mod httpmonitor;
 mod monitoring;
 mod tcpmonitor;
-mod httpmonitor;
 
 pub use monitoring::MonitoringService;

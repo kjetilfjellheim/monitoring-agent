@@ -4,6 +4,17 @@ use std::fs;
 
 use crate::common::ApplicationError;
 
+/**
+ * Monitor type.
+ * 
+ * This enum represents the different types of monitors that can be used.
+ * 
+ * Tcp: Monitor a TCP connection.
+ * Http: Monitor an HTTP connection.
+ * Sql: Monitor a SQL connection.
+ * Command: Monitor a command.
+ * 
+ */
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum MonitorType {
@@ -35,6 +46,9 @@ pub enum MonitorType {
     },
 }
 
+/**
+ * HTTP methods.
+ */
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum HttpMethod {
@@ -46,6 +60,16 @@ pub enum HttpMethod {
     Head,
 }
 
+/**
+ * Monitor struct.
+ * 
+ * This struct represents a monitor configuration.
+ * 
+ * name: Monitor name.
+ * schedule: Monitor cron schedule.
+ * monitor: Monitor type.
+ * 
+ */
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Monitor {
@@ -54,6 +78,15 @@ pub struct Monitor {
     pub monitor: MonitorType,
 }
 
+/**
+ * Monitoring configuration.
+ * 
+ * This struct represents the monitoring configuration.
+ * 
+ * input: Input file.
+ * monitors: List of monitors.
+ * 
+ */
 #[derive(Debug, PartialEq, Clone)]
 pub struct MonitoringConfig {
     input: String,
@@ -66,21 +99,29 @@ impl MonitoringConfig {
         let monitors: Vec<Monitor> = MonitoringConfig::get_monitor_config(monitor_data.as_str())?;
         Ok(MonitoringConfig {
             input: input.to_string(),
-            monitors
-        })        
+            monitors,
+        })
     }
 
     fn get_monitor_data(path: &str) -> Result<String, ApplicationError> {
         match fs::read_to_string(path) {
             Ok(data) => Ok(data),
-            Err(err) => Err(ApplicationError::new(format!("Could not read config file {}, error: {}", path, err).as_str())),
+            Err(err) => Err(ApplicationError::new(
+                format!("Could not read config file {}, error: {}", path, err).as_str(),
+            )),
         }
     }
 
     fn get_monitor_config(data: &str) -> Result<Vec<Monitor>, ApplicationError> {
         match serde_json::from_str(data) {
             Ok(monitors) => Ok(monitors),
-            Err(err) => Err(ApplicationError::new(format!("Could not parse config file: Line {}", err.line().to_string()).as_str())),        
+            Err(err) => Err(ApplicationError::new(
+                format!(
+                    "Could not parse config file: Line {}",
+                    err.line().to_string()
+                )
+                .as_str(),
+            )),
         }
     }
 }
