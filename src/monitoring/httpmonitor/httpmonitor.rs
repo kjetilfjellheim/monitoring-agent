@@ -67,6 +67,7 @@ impl HttpMonitor {
         let client = reqwest::Client::builder()
             .tls_built_in_root_certs(use_builtin_root_certs.clone())            
             .danger_accept_invalid_certs(accept_invalid_certs.clone())
+            .use_native_tls()
             .tls_info(tls_info.clone());
 
         /*
@@ -324,7 +325,7 @@ impl HttpMonitor {
         Ok(identity)
     }
 
-/**
+    /**
      * Get root_certificate. 
      * 
      * root_certificate: The root_certificate file path
@@ -391,7 +392,7 @@ mod test {
         ).unwrap();
         monitor.check().await.unwrap();
         assert_eq!(*monitor.status.lock().unwrap(), MonitorStatus::Error { message: "Error connecting to http://localhost:65000 with error: error sending request for url (http://localhost:65000/)".to_string() });
-    }
+    }    
 
     /**
      * Test the check method with tls config. Testing failure towards a non-existing URL.
@@ -407,8 +408,8 @@ mod test {
             &true,
             &true,
             &false,
-            &Some("./resources/test/server_cert/test.cer".to_string()),
-            &Some("./resources/test/client_cert/test.p12".to_string()),
+            &Some("./resources/test/server_cert/server.cer".to_string()),
+            &Some("./resources/test/client_cert/client.p12".to_string()),
             &Some("test".to_string())
         ).unwrap();
         monitor.check().await.unwrap();
