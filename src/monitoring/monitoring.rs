@@ -2,6 +2,7 @@ use std::time::{ Duration, Instant };
 
 use futures::Future;
 use tokio_cron_scheduler::{ Job, JobScheduler };
+use log::{info, error};
 
 use crate::common::ApplicationError;
 use crate::config::HttpMethod;
@@ -184,7 +185,7 @@ impl MonitoringService {
      * Log the monitors.
      */
     fn log_monitors(&self) {
-        println!("Logging monitors {:?}", Instant::now());
+        info!("Logging monitors {:?}", Instant::now());
         for tcp_monitor in self.tcp_monitors.iter() {
             self.log_tcp_monitor(tcp_monitor);
         }
@@ -291,10 +292,10 @@ impl MonitoringService {
         let lock = http_monitor.status.lock();
         match lock {
             Ok(lock) => {
-                println!("Job {}: Status: {:?}", http_monitor.name, lock);
+                info!("Job {}: Status: {:?}", http_monitor.name, lock);
             }
             Err(err) => {
-                eprintln!("Error getting lock: {:?}", err);
+                error!("Error getting lock: {:?}", err);
             }
         }
     }
@@ -308,10 +309,10 @@ impl MonitoringService {
         let lock = tcp_monitor.status.lock();
         match lock {
             Ok(lock) => {
-                println!("Job {}: Status: {:?}", tcp_monitor.name, lock);
+                info!("Job {}: Status: {:?}", tcp_monitor.name, lock);
             }
             Err(err) => {
-                eprintln!("Error getting lock: {:?}", err);
+                error!("Error getting lock: {:?}", err);
             }
         }
     }
@@ -331,7 +332,7 @@ impl MonitoringService {
                 let _ = moved_http_monitor
                     .check()
                     .await
-                    .map_err(|err| eprintln!("Error: {}", err.message));
+                    .map_err(|err| error!("Error: {}", err.message));
             }
         })
     }
@@ -345,7 +346,7 @@ impl MonitoringService {
                 let _ = moved_tcp_monitor
                     .check()
                     .await
-                    .map_err(|err| eprintln!("Error: {}", err.message));
+                    .map_err(|err| error!("Error: {}", err.message));
             }
         })
     }

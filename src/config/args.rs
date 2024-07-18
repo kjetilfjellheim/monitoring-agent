@@ -12,26 +12,30 @@ use clap::Parser;
 #[command(version, about="Monitoring agent", long_about = None)]
 pub struct ApplicationArguments {
     /// Configuration file.
-    #[arg(short, long, default_value = "/etc/monitoring_agent/config.json")]
+    #[arg(short = 'c', long, default_value = "/etc/monitoring_agent/config.json")]
     pub config: String,
 
+    /// log4rs logfile.
+    #[arg(short = 'l', long, default_value = "/etc/monitoring_agent/logging.yml")]
+    pub loggingfile: String,
+
     /// Daemonize the application. Will not daemonize by default.
-    #[arg(short, long, default_value = "false")]
+    #[arg(short = 'd', long, default_value = "false")]
     pub daemon: bool,
 
     /// Test configuration. Will not test by default.
-    #[arg(short, long, default_value = "false")]
+    #[arg(short = 't', long, default_value = "false")]
     pub test: bool,
 
     /// stdout file. Only used when daemonizing the application.
-    #[arg(short, long, default_value = "/var/log/monitoring_agent.out")]
+    #[arg(short = 'i', long, default_value = "/var/log/monitoring_agent.out")]
     pub stdout: String,
 
     /// stderr file. Only used when daemonizing the application.
-    #[arg(short, long, default_value = "/var/log/monitoring_agent.err")]
+    #[arg(short = 'e', long, default_value = "/var/log/monitoring_agent.err")]
     pub stderr: String,
 
     /// pid file. Only used when daemonizing the application.
-    #[arg(short, long, default_value = "/tmp/monitoring_agent.pid")]
+    #[arg(short = 'p', long, default_value = "/tmp/monitoring_agent.pid")]
     pub pidfile: String,  
 }

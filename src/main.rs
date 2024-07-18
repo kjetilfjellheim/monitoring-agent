@@ -3,9 +3,9 @@ mod config;
 mod monitoring;
 
 use std::fs::OpenOptions;
-
 use clap::Parser;
 use daemonize::Daemonize;
+use log::{info, error};
 
 use crate::config::ApplicationArguments;
 use crate::monitoring::MonitoringService;
@@ -15,6 +15,15 @@ fn main() {
      * Parse command line arguments.
      */
     let args = ApplicationArguments::parse();
+
+    match log4rs::init_file(&args.loggingfile, Default::default()) {
+        Ok(_) => {
+            info!("Logging initialized!");
+        }
+        Err(err) => {
+            error!("Error initializing logging: {:?}", err);
+        }
+    }
     /*
      * Start appliction in daemon or non daemon mode.
      */
@@ -35,10 +44,10 @@ fn normal_application(args: ApplicationArguments) {
     let mut monitoring_service = MonitoringService::new();
     match monitoring_service.start(&args.config, &args.test) {
         Ok(_) => {
-            println!("Monitoring service started!");
+            info!("Monitoring service started!");
         }
         Err(err) => {
-            eprintln!("Error starting monitoring service: {:?}", err.message);
+            error!("Error starting monitoring service: {:?}", err.message);
         }
     }
 }
@@ -60,7 +69,7 @@ fn daemonize_application(args: ApplicationArguments) {
     {
         Ok(file) => file,
         Err(err) => {
-            eprintln!("Error opening stdout file: {:?}", err);
+            error!("Error opening stdout file: {:?}", err);
             return;
         }
     };
@@ -76,7 +85,7 @@ fn daemonize_application(args: ApplicationArguments) {
     {
         Ok(file) => file,
         Err(err) => {
-            eprintln!("Error opening stderr file: {:?}", err);
+            error!("Error opening stderr file: {:?}", err);
             return;
         }
     };
@@ -93,10 +102,10 @@ fn daemonize_application(args: ApplicationArguments) {
             let mut monitoring_service = MonitoringService::new();
             match monitoring_service.start(&args.config, &args.test) {
                 Ok(_) => {
-                    println!("Monitoring service started!");
+                    info!("Monitoring service started!");
                 }
                 Err(err) => {
-                    eprintln!("Error starting monitoring service: {:?}", err.message);
+                    error!("Error starting monitoring service: {:?}", err.message);
                 }
             }
         });
@@ -106,13 +115,12 @@ fn daemonize_application(args: ApplicationArguments) {
      */
     match daemonize.start() {
         Ok(_) => {
-            println!("Started daemon!");
+            info!("Started daemon!");
         }
         Err(err) => {
-            eprintln!("Error starting daemon: {:?}", err);
+            error!("Error starting daemon: {:?}", err);
         }
     }
-    
 }
 
 #[cfg(test)]

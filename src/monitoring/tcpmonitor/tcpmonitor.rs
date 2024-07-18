@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use std::sync::Mutex;
+use log::{ error };
 
 use crate::common::ApplicationError;
 use crate::common::MonitorStatus;
@@ -68,7 +69,7 @@ impl TcpMonitor {
                 *monitor_status = status;
             }
             Err(err) => {
-                eprintln!("Error updating monitor status: {:?}", err);
+                error!("Error updating monitor status: {:?}", err);
             }
         }
     }
