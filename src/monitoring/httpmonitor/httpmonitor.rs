@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use crate::common::ApplicationError;
 use crate::config::HttpMethod;
-use crate::monitoring::monitoring::MonitorStatus;
+use crate::common::MonitorStatus;
 
 /**
  * HTTP Monitor.

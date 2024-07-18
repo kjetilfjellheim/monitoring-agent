@@ -345,13 +345,6 @@ impl MonitoringService {
 
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum MonitorStatus {
-    Ok,
-    Unknown,
-    Error { message: String },
-}
-
 #[cfg(test)]
 mod test {
 
