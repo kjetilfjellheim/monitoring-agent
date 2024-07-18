@@ -17,7 +17,7 @@ use crate::monitoring::tcpmonitor::TcpMonitor;
  * scheduler: The job scheduler.
  * tcp_monitors: The TCP monitors.
  * http_monitors: The HTTP monitors.
- 
+ *  
  */
 pub struct MonitoringService {
     scheduler: Option<JobScheduler>,
@@ -62,23 +62,12 @@ impl MonitoringService {
          */
         let future_scheduling = self.add_jobs(&monitoring_config);
         /*
-         * Block the main thread until the scheduling is done.
+         * Block the main thread until the scheduling is done. If test is true, the scheduling will be ignored.
+         * This is useful for testing the configuration file and for testing the code.
          */
         if !test {
-            match tokio::runtime::Builder::new_multi_thread()
-                .enable_all()
-                .build()
-            {
-                Ok(runtime) => {
-                    runtime.block_on(future_scheduling)?;
-                }
-                Err(err) => {
-                    return Err(ApplicationError::new(
-                        format!("Could not create runtime: {}", err).as_str(),
-                    ));
-                }
-            }
-     }
+            start_scheduling(future_scheduling)?;
+        }
         Ok(())
     }
 
@@ -343,6 +332,33 @@ impl MonitoringService {
         })
     }
 
+}
+
+/**
+ * Start the scheduling.
+ * 
+ * future_scheduling: The scheduling future.
+ * 
+ * result: The result of starting the scheduling.
+ * 
+ * throws: ApplicationError: If the scheduling fails to start.
+ * 
+ */
+fn start_scheduling(future_scheduling: impl Future<Output = Result<(), ApplicationError>>) -> Result<(), ApplicationError> {
+    match tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+    {
+        Ok(runtime) => {
+            runtime.block_on(future_scheduling)?;
+        }
+        Err(err) => {
+            return Err(ApplicationError::new(
+                format!("Could not create runtime: {}", err).as_str(),
+            ));
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]
