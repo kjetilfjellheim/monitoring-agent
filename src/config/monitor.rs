@@ -29,6 +29,18 @@ pub enum MonitorType {
         body: Option<String>,
         #[serde(skip_serializing_if = "Option::is_none")]
         headers: Option<HashMap<String, String>>,
+        #[serde(default = "default_as_true", alias = "useBuiltinRootCerts")]
+        use_builtin_root_certs: bool,
+        #[serde(default = "default_as_false", rename = "acceptInvalidCerts")]
+        accept_invalid_certs: bool,
+        #[serde(default = "default_as_false", rename = "tlsInfo")]
+        tls_info: bool,
+        #[serde(skip_serializing_if = "Option::is_none", rename = "rootCertificate")]
+        root_certificate: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none", rename = "identity")]
+        identity: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none", rename = "identityPassword")]
+        identity_password: Option<String>,        
     },
     Sql {
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -44,6 +56,20 @@ pub enum MonitorType {
         #[serde(skip_serializing_if = "Option::is_none")]
         command: Option<String>,
     },
+}
+
+/**
+ * Default as false. Fix for issue with serde. Issue https://github.com/serde-rs/serde/issues/368
+ */
+fn default_as_false() -> bool {
+    false
+}
+
+/**
+ * Default as true. Fix for issue with serde. Issue https://github.com/serde-rs/serde/issues/368
+ */
+fn default_as_true() -> bool {
+    true
 }
 
 /**
@@ -103,6 +129,9 @@ impl MonitoringConfig {
         })
     }
 
+    /**
+     * Get monitor data.
+     */
     fn get_monitor_data(path: &str) -> Result<String, ApplicationError> {
         match fs::read_to_string(path) {
             Ok(data) => Ok(data),
@@ -112,6 +141,9 @@ impl MonitoringConfig {
         }
     }
 
+    /**
+     * Get monitor configuration.
+     */
     fn get_monitor_config(data: &str) -> Result<Vec<Monitor>, ApplicationError> {
         match serde_json::from_str(data) {
             Ok(monitors) => Ok(monitors),
@@ -131,6 +163,9 @@ mod tests {
 
     use super::*;
 
+    /**
+     * Test for a simple tcp monitor.
+     */
     #[test]
     fn test_simple_tcp_file() -> Result<(), ApplicationError> {
         let monitoring: MonitoringConfig =
@@ -148,6 +183,9 @@ mod tests {
         Ok(())
     }
 
+    /**
+     * Test for a simple http monitor.
+     */
     #[test]
     fn test_simple_http_file() -> Result<(), ApplicationError> {
         let monitoring: MonitoringConfig =
@@ -161,37 +199,80 @@ mod tests {
                 url: "https://post.com".to_string(),
                 body: Some("body".to_string()),
                 method: HttpMethod::Post,
-                headers: Some(HashMap::new())
+                headers: Some(HashMap::new()),
+                use_builtin_root_certs: true,
+                accept_invalid_certs: false,
+                tls_info: false,
+                root_certificate: None,
+                identity: None,
+                identity_password: None
             }
         );
         Ok(())
     }
 
+    /**
+     * Test for multiple monitors in a single file.
+     */
     #[test]
     fn test_multiple_file() -> Result<(), ApplicationError> {
         let monitoring: MonitoringConfig =
             MonitoringConfig::new("resources/test/test_multiple.json")?;
-        assert_eq!("0 0 0 0 0 0 0".to_string(), monitoring.monitors[0].schedule);
-        assert_eq!("0 0 0 0 0 0 1".to_string(), monitoring.monitors[1].schedule);
+        assert_eq!("* * * * * * *".to_string(), monitoring.monitors[0].schedule);
+        assert_eq!("* * * * * * *".to_string(), monitoring.monitors[1].schedule);
         assert_eq!(2, monitoring.monitors.len());
         let monitor = monitoring.monitors[0].monitor.clone();
         assert_eq!(
             monitor,
             MonitorType::Tcp {
-                host: "192.168.1.1".to_string(),
-                port: 8080,
+                host: "127.0.0.1".to_string(),
+                port: 80,
             }
         );
         let monitor = monitoring.monitors[1].monitor.clone();
         assert_eq!(
             monitor,
             MonitorType::Http {
-                url: "https://test.com".to_string(),
-                body: None,
-                method: HttpMethod::Get,
-                headers: None
+                url: "https://post.com".to_string(),
+                body: Some("body".to_string()),
+                method: HttpMethod::Post,
+                headers: Some(HashMap::new()),
+                use_builtin_root_certs: true,
+                accept_invalid_certs: false,
+                tls_info: false,
+                root_certificate: None,
+                identity: None,
+                identity_password: None
             }
         );
         Ok(())
     }
+
+    /**
+     * Test for a http monitor with tls fields set.
+     */
+    #[test]
+    fn test_simple_tlsfields() -> Result<(), ApplicationError> {
+        let monitoring: MonitoringConfig =
+            MonitoringConfig::new("resources/test/test_simple_tlsfields.json")?;
+        assert_eq!("0 0 0 0 0 0 0".to_string(), monitoring.monitors[0].schedule);
+        let monitor = monitoring.monitors[0].monitor.clone();
+        assert_eq!(
+            monitor,
+            MonitorType::Http {
+                url: "https://post.com".to_string(),
+                body: Some("body".to_string()),
+                method: HttpMethod::Post,
+                headers: Some(HashMap::new()),
+                use_builtin_root_certs: false,
+                accept_invalid_certs: true,
+                tls_info: true,
+                root_certificate: Some("rootCertificate".to_string()),
+                identity: Some("identity".to_string()),
+                identity_password: Some("identityPassword".to_string())
+            }
+        );
+        Ok(())
+    }
+
 }
