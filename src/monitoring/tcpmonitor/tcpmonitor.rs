@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use crate::common::ApplicationError;
-use crate::monitoring::monitoring::MonitorStatus;
+use crate::common::MonitorStatus;
 
 /**
  * TCP Monitor.
