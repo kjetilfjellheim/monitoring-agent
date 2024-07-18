@@ -7,6 +7,8 @@ use std::time::Duration;
 use reqwest::header::HeaderMap;
 use reqwest::Certificate;
 use reqwest::Identity;
+use log::{ error };
+
 
 use crate::common::ApplicationError;
 use crate::config::HttpMethod;
@@ -201,7 +203,7 @@ impl HttpMonitor {
                 *monitor_status = status;
             }
             Err(err) => {
-                eprintln!("Error updating monitor status: {:?}", err);
+                error!("Error updating monitor status: {:?}", err);
             }
         }
     }
