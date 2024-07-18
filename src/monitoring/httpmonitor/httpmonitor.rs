@@ -1,9 +1,12 @@
 use std::collections::HashMap;
+use std::fs;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Duration;
 
 use reqwest::header::HeaderMap;
+use reqwest::Certificate;
+use reqwest::Identity;
 
 use crate::common::ApplicationError;
 use crate::config::HttpMethod;
@@ -29,6 +32,7 @@ pub struct HttpMonitor {
     pub body: Option<String>,
     pub headers: Option<HashMap<String, String>>,
     pub status: Arc<Mutex<MonitorStatus>>,
+    client: reqwest::Client,
 }
 
 impl HttpMonitor {
@@ -49,15 +53,70 @@ impl HttpMonitor {
         body: &Option<String>,
         headers: &Option<HashMap<String, String>>,
         name: &str,
-    ) -> HttpMonitor {
-        HttpMonitor {
+        use_builtin_root_certs: &bool,
+        accept_invalid_certs: &bool,
+        tls_info: &bool,
+        root_certificate: &Option<String>,
+        identity: &Option<String>,
+        identity_password: &Option<String>,
+    ) -> Result<HttpMonitor, ApplicationError> {
+
+        /*
+         *  Start create http client.
+         */
+        let client = reqwest::Client::builder()
+            .tls_built_in_root_certs(use_builtin_root_certs.clone())            
+            .danger_accept_invalid_certs(accept_invalid_certs.clone())
+            .tls_info(tls_info.clone());
+
+        /*
+         * Add root certificate if included.
+         */
+        let client = match root_certificate {
+            Some(root_certificate) => {
+                let root_certificate = HttpMonitor::get_root_certificate(root_certificate)?;
+                client.add_root_certificate(root_certificate)
+            }
+            None => {
+                client
+            }
+        };
+
+        /*
+         * Set identity if included.
+         */
+        let client = match identity {
+            Some(identity) => {
+                let identity = HttpMonitor::get_identity(identity, identity_password)?;
+                client.identity(identity)
+            }
+            None => {
+                client
+            }
+        };
+        /*
+         * Get client 
+         */
+        let client = match client.build() {
+            Ok(client) => {
+                client
+            }
+            Err(err) => {
+                return Err(ApplicationError::new(&format!("Error creating HTTP client: {}", err)));
+            }
+        };
+        /*
+         * Return HTTP monitor.
+         */
+        Ok(HttpMonitor {
             url: url.to_string(),
             name: name.to_string(),
             method: method.clone(),
             body: body.clone(),
             headers: headers.clone(),
             status: Arc::new(Mutex::new(MonitorStatus::Unknown)),
-        }
+            client: client,
+        })
     }
 
     /**
@@ -154,20 +213,15 @@ impl HttpMonitor {
         &mut self
     ) -> Result<(), ApplicationError> {
         /*
-         *  Create http client.
-         */
-        let client = reqwest::Client::default();
-        /*
          * Set http method.
          */
         let request_builder = match &self.method {
-            HttpMethod::Get => client.get(&self.url),
-            HttpMethod::Post => client.post(&self.url),
-            HttpMethod::Put => client.put(&self.url),
-            HttpMethod::Delete => client.delete(&self.url),
-            HttpMethod::Option => client
-                .request(reqwest::Method::OPTIONS, &self.url),
-            HttpMethod::Head => client.head(&self.url),
+            HttpMethod::Get => self.client.get(&self.url),
+            HttpMethod::Post => self.client.post(&self.url),
+            HttpMethod::Put => self.client.put(&self.url),
+            HttpMethod::Delete => self.client.delete(&self.url),
+            HttpMethod::Option => self.client.request(reqwest::Method::OPTIONS, &self.url),
+            HttpMethod::Head => self.client.head(&self.url),
         };
         /*
          * Set headers.
@@ -223,7 +277,90 @@ impl HttpMonitor {
             }
         }
     }
+
+    /**
+     * Get identity. 
+     * 
+     * identity: The identity file path
+     * identity_password: The password for the identity file.
+     * 
+     * Returns an Identity.
+     * 
+     */
+    fn get_identity(identity: &String, identity_password: &Option<String>) -> Result<Identity, ApplicationError> {
+        /*
+        * Read identity file.
+        */
+        let data = match fs::read(identity) {
+            Ok(data) => {
+                data
+            }
+            Err(err) => {
+                return Err(ApplicationError::new(&format!("Error reading identity: {}", err)));
+            }
+        };
+        /*
+        * Get identity password. If missing then fail.
+        */
+        let identity_password = match identity_password {
+            Some(identity_password) => {
+                identity_password
+            }
+            None => {
+                return Err(ApplicationError::new("Identity password is required"))
+            }
+        };
+        /*
+        * Create identity.
+        */
+        let identity = match reqwest::Identity::from_pkcs12_der(&data, &identity_password) {
+            Ok(identity) => {
+                identity
+            }
+            Err(err) => {
+                return Err(ApplicationError::new(&format!("Error creating identity: {}", err)));
+            }
+        };
+        Ok(identity)
+    }
+
+/**
+     * Get root_certificate. 
+     * 
+     * root_certificate: The root_certificate file path
+     * 
+     * Returns a certificate.
+     * 
+     */
+    fn get_root_certificate(root_certificate: &str) -> Result<Certificate, ApplicationError> {
+        /*
+        * Read root certificate.
+        */
+        let data = match fs::read(root_certificate) {
+            Ok(data) => {
+                data
+            }
+            Err(err) => {
+                return Err(ApplicationError::new(&format!("Error reading root_certificate: {}", err)));
+            }
+        };
+        /*
+        * Create root certificate.
+        */
+        let identity = match reqwest::Certificate::from_pem(&data) {
+            Ok(identity) => {
+                identity
+            }
+            Err(err) => {
+                return Err(ApplicationError::new(&format!("Error creating identity: {}", err)));
+            }
+        };
+        Ok(identity)
+    }
+
 }
+
+
 
 #[cfg(test)]
 mod test {
@@ -245,10 +382,38 @@ mod test {
             &None,
             &None,
             "localhost",
-        );
+            &true,
+            &true,
+            &false,
+            &None,
+            &None,
+            &None
+        ).unwrap();
         monitor.check().await.unwrap();
         assert_eq!(*monitor.status.lock().unwrap(), MonitorStatus::Error { message: "Error connecting to http://localhost:65000 with error: error sending request for url (http://localhost:65000/)".to_string() });
     }
+
+    /**
+     * Test the check method with tls config. Testing failure towards a non-existing URL.
+     */
+    #[tokio::test]
+    async fn test_check_with_tls() {
+        let mut monitor = HttpMonitor::new(
+            "http://localhost:65000",
+            &HttpMethod::Get,
+            &None,
+            &None,
+            "localhost",
+            &true,
+            &true,
+            &false,
+            &Some("./resources/test/server_cert/test.cer".to_string()),
+            &Some("./resources/test/client_cert/test.p12".to_string()),
+            &Some("test".to_string())
+        ).unwrap();
+        monitor.check().await.unwrap();
+        assert_eq!(*monitor.status.lock().unwrap(), MonitorStatus::Error { message: "Error connecting to http://localhost:65000 with error: error sending request for url (http://localhost:65000/)".to_string() });
+    }    
 
     /**
      * Test the get_headers method.
@@ -274,7 +439,13 @@ mod test {
             &None,
             &None,
             "Google",
-        );
+            &true,
+            &true,
+            &false,
+            &None,
+            &None,
+            &None
+        ).unwrap();
         monitor.set_status(MonitorStatus::Ok);
         assert_eq!(*monitor.status.lock().unwrap(), MonitorStatus::Ok);
     }

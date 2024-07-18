@@ -1,7 +1,7 @@
 [
     {
         "name":"Apache TCP",
-        "schedule": "*/10 * * * * *",
+        "schedule": "* * * * * * *",
         "monitor": {
             "type": "tcp",
             "host": "127.0.0.1",
@@ -9,12 +9,14 @@
         }
     },
     {
-        "name":"Netbios TCP",
-        "schedule": "*/10 * * * * *",
+        "name":"",
+        "schedule": "* * * * * * *",
         "monitor": {
-            "type": "tcp",
-            "host": "127.0.0.1",
-            "port": 139
+            "type": "http",
+            "url": "https://post.com",
+            "method": "post",
+            "body": "body",
+            "headers": {}
         }
     }
 ]

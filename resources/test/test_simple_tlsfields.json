@@ -1,0 +1,19 @@
+[
+    {
+        "name":"",
+        "schedule": "0 0 0 0 0 0 0",
+        "monitor": {
+            "type": "http",
+            "url": "https://post.com",
+            "method": "post",
+            "body": "body",
+            "headers": {},
+            "useBuiltinRootCerts": false,
+            "acceptInvalidCerts": true,
+            "tlsInfo": true,
+            "rootCertificate": "./resources/test/server_cert/test.cer",
+            "identity": "./resources/test/client_cert/test.p12",
+            "identityPassword": "test"
+        }
+    }
+]

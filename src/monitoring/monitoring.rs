@@ -149,7 +149,13 @@ impl MonitoringService {
                 method,
                 body,
                 headers,
-            } => {
+                use_builtin_root_certs,
+                accept_invalid_certs,
+                tls_info,
+                root_certificate,
+                identity,
+                identity_password
+            } => {              
                 self.get_http_monitor_job(
                     monitor.schedule.as_str(),
                     monitor.name.as_str(),
@@ -157,6 +163,12 @@ impl MonitoringService {
                     &method,
                     &body,
                     &headers,
+                    &use_builtin_root_certs,
+                    &accept_invalid_certs,
+                    &tls_info,
+                    &root_certificate,
+                    &identity,
+                    &identity_password
                 )
                 .await?
             }
@@ -251,8 +263,14 @@ impl MonitoringService {
         method: &HttpMethod,
         body: &Option<String>,
         headers: &Option<std::collections::HashMap<String, String>>,
+        use_builtin_root_certs: &bool,
+        accept_invalid_certs: &bool,
+        tls_info: &bool,
+        root_certificate: &Option<String>,
+        identity: &Option<String>,
+        identity_password: &Option<String>        
     ) -> Result<Job, ApplicationError> {
-        let http_monitor = HttpMonitor::new(url, &method, body, headers, &name);
+        let http_monitor = HttpMonitor::new(url, &method, &body, &headers, &name, &use_builtin_root_certs, &accept_invalid_certs, &tls_info, &root_certificate, &identity, &identity_password)?;
         self.http_monitors.push(http_monitor.clone());
         match Job::new_async(schedule, move |_uuid, _locked| {
             MonitoringService::check_http_monitor(&http_monitor)
@@ -410,5 +428,15 @@ mod test {
             
         }
     }
+
+    /**
+     * Test the http monitoring service with a tls configuration.
+     */
+    #[test]
+    fn test_monitoring_service_with_tls_config() {
+        let mut monitoring_service = MonitoringService::new();
+        let result = monitoring_service.start("./resources/test/test_simple_tlsfields.json", &true);
+        assert!(result.is_ok());
+    }    
 
 }
