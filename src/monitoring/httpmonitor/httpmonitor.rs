@@ -7,8 +7,7 @@ use std::time::Duration;
 use reqwest::header::HeaderMap;
 use reqwest::Certificate;
 use reqwest::Identity;
-use log::{ error };
-
+use log::{ debug, error };
 
 use crate::common::ApplicationError;
 use crate::config::HttpMethod;
@@ -62,7 +61,7 @@ impl HttpMonitor {
         identity: &Option<String>,
         identity_password: &Option<String>,
     ) -> Result<HttpMonitor, ApplicationError> {
-
+        debug!("Creating HTTP monitor: {}", &name);
         /*
          *  Start create http client.
          */
@@ -111,6 +110,7 @@ impl HttpMonitor {
         /*
          * Return HTTP monitor.
          */
+        debug!("HTTP monitor created: {}", &name);       
         Ok(HttpMonitor {
             url: url.to_string(),
             name: name.to_string(),
@@ -200,6 +200,7 @@ impl HttpMonitor {
     fn set_status(&mut self, status: MonitorStatus) {
         match self.status.lock() {
             Ok(mut monitor_status) => {
+                debug!("Setting monitor status for {} to: {:?}", &self.name, &status);
                 *monitor_status = status;
             }
             Err(err) => {
@@ -215,6 +216,7 @@ impl HttpMonitor {
     pub async fn check(
         &mut self
     ) -> Result<(), ApplicationError> {
+        debug!("Checking monitor: {}", &self.name);
         /*
          * Set http method.
          */
@@ -249,6 +251,7 @@ impl HttpMonitor {
          * Check response and set status in the monitor.
          */
         self.check_response_and_set_status(req_response);
+        debug!("Monitor checked: {}", &self.name);
         Ok(())
     }
 
