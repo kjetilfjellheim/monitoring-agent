@@ -1,0 +1,10 @@
+[
+    {
+        "name":"test command",
+        "schedule": "0 0 0 0 0 0 0",
+        "monitor": {
+            "type": "command",
+            "command": "ls"            
+        }
+    }
+]

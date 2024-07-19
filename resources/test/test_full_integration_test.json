@@ -25,5 +25,15 @@
             "url": "http://localhost",
             "method": "get"
         }
+    },
+    {
+        "name":"Systemctl memcached",
+        "schedule": "*/5 * * * * *",
+        "monitor": {
+            "type": "command",
+            "command": "systemctl",
+            "args": ["show", "memcached.service", "--property=ActiveState"],
+            "expected": "ActiveState=active\n"
+        }
     }
 ]

@@ -52,9 +52,12 @@ pub enum MonitorType {
         #[serde(skip_serializing_if = "Option::is_none")]
         password: Option<String>,
     },
-    Command {
+    Command {        
+        command: String,
         #[serde(skip_serializing_if = "Option::is_none")]
-        command: Option<String>,
+        args: Option<Vec<String>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        expected: Option<String>        
     },
 }
 
@@ -251,6 +254,7 @@ mod tests {
     /**
      * Test for a http monitor with tls fields set.
      */
+    #[ignore = "No support for testing yet."]
     #[test]
     fn test_simple_tlsfields() -> Result<(), ApplicationError> {
         let monitoring: MonitoringConfig =

@@ -9,6 +9,8 @@ use crate::config::HttpMethod;
 use crate::config::MonitoringConfig;
 use crate::monitoring::httpmonitor::HttpMonitor;
 use crate::monitoring::tcpmonitor::TcpMonitor;
+use crate::monitoring::commandmonitor::CommandMonitor;
+
 
 /**
  * Monitoring Service.
@@ -24,6 +26,7 @@ pub struct MonitoringService {
     scheduler: Option<JobScheduler>,
     tcp_monitors: Vec<TcpMonitor>,
     http_monitors: Vec<HttpMonitor>,
+    command_monitors: Vec<CommandMonitor>
 }
 
 impl MonitoringService {
@@ -37,6 +40,7 @@ impl MonitoringService {
             scheduler: None,
             tcp_monitors: Vec::new(),
             http_monitors: Vec::new(),
+            command_monitors: Vec::new()
         }
     }
 
@@ -172,7 +176,19 @@ impl MonitoringService {
                     &identity_password
                 )
                 .await?
-            }
+            },
+            crate::config::MonitorType::Command {               
+                command,
+                args,
+                expected
+            } => {
+                self.get_command_monitor_job(
+                    monitor.schedule.as_str(),
+                    monitor.name.as_str(), 
+                    &command, 
+                    &args, 
+                    &expected).await?
+            }        
             _ => {
                 return Err(ApplicationError::new("Unsupported monitor type"));
             }
@@ -192,6 +208,9 @@ impl MonitoringService {
         for http_monitor in self.http_monitors.iter() {
             self.log_http_monitor(http_monitor);
         }
+        for command_monitor in self.command_monitors.iter() {
+            self.log_command_monitor(command_monitor);
+        }
     }
 
     /**
@@ -209,6 +228,27 @@ impl MonitoringService {
             Ok(_) => Ok(()),
             Err(err) => Err(ApplicationError::new(
                 format!("Could not add job: {}", err).as_str(),
+            )),
+        }
+    }
+
+    async fn get_command_monitor_job(
+        &mut self,
+        schedule: &str,
+        name: &str,
+        command: &str,
+        args: &Option<Vec<String>>,
+        expected: &Option<String>
+    ) -> Result<Job, ApplicationError> {
+        debug!("Creating Command monitor: {}", &name);
+        let command_monitor = CommandMonitor::new(name, command, args.clone(), expected.clone());
+        self.command_monitors.push(command_monitor.clone());
+        match Job::new_async(schedule, move |_uuid, _locked| {
+            MonitoringService::check_command_monitor(&command_monitor)
+        }) {
+            Ok(job) => Ok(job),
+            Err(err) => Err(ApplicationError::new(
+                format!("Could not create job: {}", err).as_str(),
             )),
         }
     }
@@ -320,6 +360,23 @@ impl MonitoringService {
     }
 
     /**
+     * Log the Command monitor.
+     * 
+     * command_monitor: The command monitor.
+     */
+    fn log_command_monitor(&self, command_monitor: &CommandMonitor) {
+        let lock = command_monitor.status.lock();
+        match lock {
+            Ok(lock) => {
+                info!("Job {}: Status: {:?}", command_monitor.name, lock);
+            }
+            Err(err) => {
+                error!("Error getting lock: {:?}", err);
+            }
+        }
+    }    
+
+    /**
      * Check the HTTP monitor.
      * 
      * http_monitor: The HTTP monitor.
@@ -346,6 +403,20 @@ impl MonitoringService {
             let mut moved_tcp_monitor = tcp_monitor.clone();
             async move {
                 let _ = moved_tcp_monitor
+                    .check()
+                    .await
+                    .map_err(|err| error!("Error: {}", err.message));
+            }
+        })
+    }
+
+    fn check_command_monitor(
+        command_monitor: &CommandMonitor
+    ) -> std::pin::Pin<Box<impl Future<Output = ()>>> {
+        Box::pin({
+            let mut moved_command_monitor = command_monitor.clone();
+            async move {
+                let _ = moved_command_monitor
                     .check()
                     .await
                     .map_err(|err| error!("Error: {}", err.message));
@@ -413,6 +484,15 @@ mod test {
         let mut monitoring_service = MonitoringService::new();
         monitoring_service.start("./resources/test/test_simple_http.json", &true).unwrap();
     }
+
+    /**
+     * Test the monitoring service with an command monitor.
+     */
+    #[test]
+    fn test_monitoring_service_command() {
+        let mut monitoring_service = MonitoringService::new();
+        monitoring_service.start("./resources/test/test_simple_command.json", &true).unwrap();
+    }    
 
     /**
      * Test the monitoring service with an unknown monitor.
