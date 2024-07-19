@@ -71,7 +71,7 @@ impl MonitoringService {
          * This is useful for testing the configuration file and for testing the code.
          */
         if !test {
-            start_scheduling(future_scheduling)?;
+            MonitoringService::start_scheduling(future_scheduling)?;
         }
         Ok(())
     }
@@ -381,6 +381,7 @@ impl MonitoringService {
      * 
      * http_monitor: The HTTP monitor.
      * 
+     * result: Future of the check.
      */
     fn check_http_monitor(
         http_monitor: &HttpMonitor
@@ -396,6 +397,13 @@ impl MonitoringService {
         })
     }
 
+    /**
+     * Check the TCP monitor.
+     * 
+     * tcp_monitor: The TCP monitor.
+     * 
+     * result: Future of the check.
+     */
     fn check_tcp_monitor(
         tcp_monitor: &TcpMonitor
     ) -> std::pin::Pin<Box<impl Future<Output = ()>>> {
@@ -410,6 +418,13 @@ impl MonitoringService {
         })
     }
 
+    /**
+     * Check the command monitor.
+     * 
+     * command_monitor: The command monitor.
+     * 
+     * result: Future of the check.
+     */    
     fn check_command_monitor(
         command_monitor: &CommandMonitor
     ) -> std::pin::Pin<Box<impl Future<Output = ()>>> {
@@ -424,33 +439,33 @@ impl MonitoringService {
         })
     }
 
-}
-
-/**
- * Start the scheduling.
- * 
- * future_scheduling: The scheduling future.
- * 
- * result: The result of starting the scheduling.
- * 
- * throws: ApplicationError: If the scheduling fails to start.
- * 
- */
-fn start_scheduling(future_scheduling: impl Future<Output = Result<(), ApplicationError>>) -> Result<(), ApplicationError> {
-    match tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()
-    {
-        Ok(runtime) => {
-            runtime.block_on(future_scheduling)?;
+    /**
+     * Start the scheduling.
+     * 
+     * future_scheduling: The scheduling future.
+     * 
+     * result: The result of starting the scheduling.
+     * 
+     * throws: ApplicationError: If the scheduling fails to start.
+     * 
+     */
+    fn start_scheduling(future_scheduling: impl Future<Output = Result<(), ApplicationError>>) -> Result<(), ApplicationError> {
+        match tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+        {
+            Ok(runtime) => {
+                runtime.block_on(future_scheduling)?;
+            }
+            Err(err) => {
+                return Err(ApplicationError::new(
+                    format!("Could not create runtime: {}", err).as_str(),
+                ));
+            }
         }
-        Err(err) => {
-            return Err(ApplicationError::new(
-                format!("Could not create runtime: {}", err).as_str(),
-            ));
-        }
+        Ok(())
     }
-    Ok(())
+
 }
 
 #[cfg(test)]

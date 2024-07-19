@@ -14,7 +14,7 @@ use crate::common::MonitorStatus;
  * host: The host to monitor.
  * port: The port to monitor.
  * status: The status of the monitor.
- 
+ *
  */
 #[derive(Debug, Clone)]
 pub struct TcpMonitor {

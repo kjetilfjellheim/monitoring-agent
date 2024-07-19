@@ -3,7 +3,12 @@ use std::sync::{Arc, Mutex};
 use log::{debug, error};
 
 use crate::common::{ApplicationError, MonitorStatus};
-
+/**
+ * Command Monitor.
+ * 
+ * This struct represents a command monitor. It is used to monitor the output of a command.
+ *
+ */
 #[derive(Debug, Clone)]
 pub struct CommandMonitor {
     pub name: String,
@@ -14,7 +19,15 @@ pub struct CommandMonitor {
 }
 
 impl CommandMonitor {
-
+    /**
+     * Create a new command monitor.
+     * 
+     * name: The name of the monitor.
+     * command: The command to run.
+     * args: The arguments to the command.
+     * expected: The expected output of the command.
+     * 
+     */
     pub fn new(name: &str, command: &str, args: Option<Vec<String>>, expected: Option<String>) -> CommandMonitor {
         CommandMonitor {
             name: name.to_string(),
@@ -43,7 +56,7 @@ impl CommandMonitor {
         }
     }
 
-/**
+    /**
      * Check the monitor.
      * 
      */

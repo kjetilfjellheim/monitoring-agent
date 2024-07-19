@@ -1,5 +1,5 @@
 /**
- * 
+ * Common module
  */
 mod error;
 mod monitorstatus;
