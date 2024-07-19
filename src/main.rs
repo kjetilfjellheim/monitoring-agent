@@ -135,7 +135,8 @@ mod test {
             test: true,
             stdout: String::new(),
             stderr: String::new(),
-            pidfile: String::new()
+            pidfile: String::new(),
+            loggingfile: "./resources/test/logging.yml".to_string()
         };
         super::normal_application(args);
     }
@@ -148,7 +149,8 @@ mod test {
             test: true,
             stdout: "/tmp/monitoring_agent.out".to_string(),
             stderr: "/tmp/monitoring_agent.err".to_string(),
-            pidfile: "/tmp/monitoring_agent.pid".to_string()
+            pidfile: "/tmp/monitoring_agent.pid".to_string(),
+            loggingfile: "./resources/test/logging.yml".to_string()
         };
         super::daemonize_application(args);
     }
