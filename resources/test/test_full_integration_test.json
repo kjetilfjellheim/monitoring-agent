@@ -1,7 +1,7 @@
 [
     {
         "name":"Apache TCP",
-        "schedule": "*/10 * * * * *",
+        "schedule": "*/1 * * * * *",
         "monitor": {
             "type": "tcp",
             "host": "127.0.0.1",
@@ -10,7 +10,7 @@
     },
     {
         "name":"Netbios TCP",
-        "schedule": "*/10 * * * * *",
+        "schedule": "*/1 * * * * *",
         "monitor": {
             "type": "tcp",
             "host": "127.0.0.1",
@@ -19,7 +19,7 @@
     },
     {
         "name":"Apache Http",
-        "schedule": "*/5 * * * * *",
+        "schedule": "*/1 * * * * *",
         "monitor": {
             "type": "http",
             "url": "http://localhost",
@@ -28,7 +28,7 @@
     },
     {
         "name":"Systemctl memcached",
-        "schedule": "*/5 * * * * *",
+        "schedule": "*/1 * * * * *",
         "monitor": {
             "type": "command",
             "command": "systemctl",
