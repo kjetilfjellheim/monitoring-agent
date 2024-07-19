@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use std::sync::Mutex;
-use log::{ error };
+use log::{ debug, error };
 
 use crate::common::ApplicationError;
 use crate::common::MonitorStatus;
@@ -34,6 +34,7 @@ impl TcpMonitor {
      * 
      */
     pub fn new(host: &str, port: &u16, name: &str) -> TcpMonitor {
+        debug!("Creating TCP monitor: {}", &name);
         TcpMonitor {
             name: name.to_string(),
             host: host.to_string(),
@@ -66,6 +67,7 @@ impl TcpMonitor {
     fn set_status(&mut self, status: MonitorStatus) {
         match self.status.lock() {
             Ok(mut monitor_status) => {
+                debug!("Setting monitor status for {} to: {:?}", &self.name, &status);
                 *monitor_status = status;
             }
             Err(err) => {
@@ -82,6 +84,7 @@ impl TcpMonitor {
      * 
      */
     pub async fn check(&mut self) -> Result<(), ApplicationError> {
+        debug!("Checking monitor: {}", &self.name);
         match std::net::TcpStream::connect(format!("{}:{}", &self.host, &self.port)) {
             Ok(tcp_stream) => {
                 TcpMonitor::close_connection(tcp_stream);
@@ -93,6 +96,7 @@ impl TcpMonitor {
                 });
             }
         }
+        debug!("Monitor checked: {}", &self.name);
         Ok(())
     }
 }

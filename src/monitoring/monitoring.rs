@@ -2,7 +2,7 @@ use std::time::{ Duration, Instant };
 
 use futures::Future;
 use tokio_cron_scheduler::{ Job, JobScheduler };
-use log::{info, error};
+use log::{ debug, info, error };
 
 use crate::common::ApplicationError;
 use crate::config::HttpMethod;
@@ -230,6 +230,7 @@ impl MonitoringService {
         host: &str,
         port: &u16,
     ) -> Result<Job, ApplicationError> {
+        debug!("Creating Tcp monitor: {}", &name);
         let tcp_monitor = TcpMonitor::new(host, port, name);
         self.tcp_monitors.push(tcp_monitor.clone());
         match Job::new_async(schedule, move |_uuid, _locked| {
@@ -271,6 +272,7 @@ impl MonitoringService {
         identity: &Option<String>,
         identity_password: &Option<String>        
     ) -> Result<Job, ApplicationError> {
+        debug!("Creating http monitor: {}", &name);
         let http_monitor = HttpMonitor::new(url, &method, &body, &headers, &name, &use_builtin_root_certs, &accept_invalid_certs, &tls_info, &root_certificate, &identity, &identity_password)?;
         self.http_monitors.push(http_monitor.clone());
         match Job::new_async(schedule, move |_uuid, _locked| {
