@@ -1,10 +1,10 @@
+mod commandmonitor;
 /**
  * Monitoring module.
  */
 mod httpmonitor;
 mod monitoring;
-mod tcpmonitor;
-mod commandmonitor;
 mod server;
+mod tcpmonitor;
 
 pub use monitoring::MonitoringService;

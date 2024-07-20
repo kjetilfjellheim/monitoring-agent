@@ -2,10 +2,10 @@ mod common;
 mod config;
 mod monitoring;
 
-use std::fs::OpenOptions;
 use clap::Parser;
 use daemonize::Daemonize;
-use log::{info, error};
+use log::{error, info};
+use std::fs::OpenOptions;
 
 use crate::config::ApplicationArguments;
 use crate::monitoring::MonitoringService;
@@ -32,13 +32,12 @@ fn main() {
     } else {
         normal_application(args);
     }
-
 }
 /**
  * Start the application in non daemon mode.
- * 
+ *
  * @param args Application arguments.
- * 
+ *
  */
 fn normal_application(args: ApplicationArguments) {
     let mut monitoring_service = MonitoringService::new();
@@ -53,7 +52,7 @@ fn normal_application(args: ApplicationArguments) {
 }
 /**
  * Daemonize the application.
- * 
+ *
  * @param args Application arguments.
  */
 fn daemonize_application(args: ApplicationArguments) {
@@ -109,7 +108,7 @@ fn daemonize_application(args: ApplicationArguments) {
                 }
             }
         });
-    
+
     /*
      * Start the daemon.
      */
@@ -136,7 +135,7 @@ mod test {
             stdout: String::new(),
             stderr: String::new(),
             pidfile: String::new(),
-            loggingfile: "./resources/test/logging.yml".to_string()
+            loggingfile: "./resources/test/logging.yml".to_string(),
         };
         super::normal_application(args);
     }
@@ -150,9 +149,8 @@ mod test {
             stdout: "/tmp/monitoring_agent.out".to_string(),
             stderr: "/tmp/monitoring_agent.err".to_string(),
             pidfile: "/tmp/monitoring_agent.pid".to_string(),
-            loggingfile: "./resources/test/logging.yml".to_string()
+            loggingfile: "./resources/test/logging.yml".to_string(),
         };
         super::daemonize_application(args);
     }
-
 }

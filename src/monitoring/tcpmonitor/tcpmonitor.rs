@@ -1,16 +1,16 @@
+use log::{debug, error};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Mutex;
-use log::{ debug, error };
 
 use crate::common::ApplicationError;
-use crate::common::{ MonitorStatus, Status };
+use crate::common::{MonitorStatus, Status};
 
 /**
  * TCP Monitor.
- * 
+ *
  * This struct represents a TCP monitor.
- * 
+ *
  * name: The name of the monitor.
  * host: The host to monitor.
  * port: The port to monitor.
@@ -28,21 +28,26 @@ pub struct TcpMonitor {
 impl TcpMonitor {
     /**
      * Create a new TCP monitor.
-     * 
+     *
      * host: The host to monitor.
      * port: The port to monitor.
      * name: The name of the monitor.
      * status: The status of the monitor.
-     * 
+     *
      */
-    pub fn new(host: &str, port: &u16, name: &str, status: Arc<Mutex<HashMap<String, MonitorStatus>>>) -> TcpMonitor {
+    pub fn new(
+        host: &str,
+        port: &u16,
+        name: &str,
+        status: Arc<Mutex<HashMap<String, MonitorStatus>>>,
+    ) -> TcpMonitor {
         debug!("Creating TCP monitor: {}", &name);
 
         let status_lock = status.lock();
         match status_lock {
             Ok(mut lock) => {
                 lock.insert(name.to_string(), MonitorStatus::new(Status::Unknown));
-            },
+            }
             Err(err) => {
                 error!("Error creating command monitor: {:?}", err);
             }
@@ -58,9 +63,9 @@ impl TcpMonitor {
 
     /**
      * Close the connection.
-     * 
+     *
      * tcp_stream: The TCP stream to close.
-     * 
+     *
      */
     fn close_connection(tcp_stream: std::net::TcpStream) {
         match tcp_stream.shutdown(std::net::Shutdown::Both) {
@@ -73,14 +78,17 @@ impl TcpMonitor {
 
     /**
      * Set the status of the monitor.
-     * 
+     *
      * status: The status to set.
-     * 
+     *
      */
     fn set_status(&mut self, status: Status) {
         match self.status.lock() {
             Ok(mut monitor_lock) => {
-                debug!("Setting monitor status for {} to: {:?}", &self.name, &status);
+                debug!(
+                    "Setting monitor status for {} to: {:?}",
+                    &self.name, &status
+                );
                 let monitor_status = match monitor_lock.get_mut(&self.name) {
                     Some(status) => status,
                     None => {
@@ -98,10 +106,10 @@ impl TcpMonitor {
 
     /**
      * Check the monitor.
-     * 
+     *
      * host: The host to monitor.
      * port: The port to monitor.
-     * 
+     *
      */
     pub async fn check(&mut self) -> Result<(), ApplicationError> {
         debug!("Checking monitor: {}", &self.name);
@@ -112,7 +120,10 @@ impl TcpMonitor {
             }
             Err(err) => {
                 self.set_status(Status::Error {
-                    message: format!("Error connecting to {}:{} with error: {}", &self.host, &self.port, err),
+                    message: format!(
+                        "Error connecting to {}:{} with error: {}",
+                        &self.host, &self.port, err
+                    ),
                 });
             }
         }
@@ -132,14 +143,12 @@ mod test {
     #[tokio::test]
     async fn test_check_port_139() {
         let status = Arc::new(Mutex::new(HashMap::new()));
-        let mut monitor = TcpMonitor::new(
-            "localhost",
-            &139,
-            "localhost",
-            status.clone()
-        );
+        let mut monitor = TcpMonitor::new("localhost", &139, "localhost", status.clone());
         monitor.check().await.unwrap();
-        assert_eq!(status.lock().unwrap().get("localhost").unwrap().status, Status::Ok);
+        assert_eq!(
+            status.lock().unwrap().get("localhost").unwrap().status,
+            Status::Ok
+        );
     }
 
     /**
@@ -147,31 +156,25 @@ mod test {
      */
     #[tokio::test]
     async fn test_check_port_65000() {
-        let status: Arc<Mutex<HashMap<String, MonitorStatus>>> = Arc::new(Mutex::new(HashMap::new()));
-        let mut monitor = TcpMonitor::new(
-            "localhost",
-            &65000,
-            "localhost",
-            status.clone()
-        );
+        let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
+            Arc::new(Mutex::new(HashMap::new()));
+        let mut monitor = TcpMonitor::new("localhost", &65000, "localhost", status.clone());
         monitor.check().await.unwrap();
         assert_eq!(status.lock().unwrap().get("localhost").unwrap().status, Status::Error { message: "Error connecting to localhost:65000 with error: Connection refused (os error 111)".to_string() });
-    }    
+    }
 
     /**
      * Test the set_status method.
      */
     #[test]
     fn test_set_status() {
-        let status: Arc<Mutex<HashMap<String, MonitorStatus>>> = Arc::new(Mutex::new(HashMap::new()));
-        let mut monitor = TcpMonitor::new(
-            "localhost",
-            &65000,
-            "localhost",
-            status.clone()
-        );
+        let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
+            Arc::new(Mutex::new(HashMap::new()));
+        let mut monitor = TcpMonitor::new("localhost", &65000, "localhost", status.clone());
         monitor.set_status(Status::Ok);
-        assert_eq!(status.lock().unwrap().get("localhost").unwrap().status, Status::Ok);
+        assert_eq!(
+            status.lock().unwrap().get("localhost").unwrap().status,
+            Status::Ok
+        );
     }
-
 }

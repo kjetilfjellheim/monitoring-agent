@@ -1,12 +1,12 @@
 use clap::Parser;
 
 /**
- * Application arguments. 
- * 
- * This struct is used to parse command line arguments. 
+ * Application arguments.
+ *
+ * This struct is used to parse command line arguments.
  *
  * config: Configuration file. Not required.
- * 
+ *
  */
 #[derive(Parser, Debug)]
 #[command(version, about="Monitoring agent", long_about = None)]
@@ -37,5 +37,5 @@ pub struct ApplicationArguments {
 
     /// pid file. Only used when daemonizing the application.
     #[arg(short = 'p', long, default_value = "/tmp/monitoring_agent.pid")]
-    pub pidfile: String,  
+    pub pidfile: String,
 }

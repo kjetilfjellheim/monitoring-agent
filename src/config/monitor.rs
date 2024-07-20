@@ -6,14 +6,14 @@ use crate::common::ApplicationError;
 
 /**
  * Monitor type.
- * 
+ *
  * This enum represents the different types of monitors that can be used.
- * 
+ *
  * Tcp: Monitor a TCP connection.
  * Http: Monitor an HTTP connection.
  * Sql: Monitor a SQL connection.
  * Command: Monitor a command.
- * 
+ *
  */
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(tag = "type", rename_all = "camelCase")]
@@ -40,7 +40,7 @@ pub enum MonitorType {
         #[serde(skip_serializing_if = "Option::is_none", rename = "identity")]
         identity: Option<String>,
         #[serde(skip_serializing_if = "Option::is_none", rename = "identityPassword")]
-        identity_password: Option<String>,        
+        identity_password: Option<String>,
     },
     Sql {
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -52,12 +52,12 @@ pub enum MonitorType {
         #[serde(skip_serializing_if = "Option::is_none")]
         password: Option<String>,
     },
-    Command {        
+    Command {
         command: String,
         #[serde(skip_serializing_if = "Option::is_none")]
         args: Option<Vec<String>>,
         #[serde(skip_serializing_if = "Option::is_none")]
-        expected: Option<String>        
+        expected: Option<String>,
     },
 }
 
@@ -91,13 +91,13 @@ pub enum HttpMethod {
 
 /**
  * Monitor struct.
- * 
+ *
  * This struct represents a monitor configuration.
- * 
+ *
  * name: Monitor name.
  * schedule: Monitor cron schedule.
  * monitor: Monitor type.
- * 
+ *
  */
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -109,12 +109,12 @@ pub struct Monitor {
 
 /**
  * Monitoring configuration.
- * 
+ *
  * This struct represents the monitoring configuration.
- * 
+ *
  * input: Input file.
  * monitors: List of monitors.
- * 
+ *
  */
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 pub struct MonitoringConfig {
@@ -124,7 +124,7 @@ pub struct MonitoringConfig {
 impl MonitoringConfig {
     pub fn new(input: &str) -> Result<MonitoringConfig, ApplicationError> {
         let monitor_data: String = MonitoringConfig::get_monitor_data(input)?;
-        MonitoringConfig::get_monitor_config(monitor_data.as_str())    
+        MonitoringConfig::get_monitor_config(monitor_data.as_str())
     }
 
     /**
@@ -273,5 +273,4 @@ mod tests {
         );
         Ok(())
     }
-
 }
