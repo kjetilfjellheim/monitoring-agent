@@ -32,18 +32,27 @@ impl TcpMonitor {
      * host: The host to monitor.
      * port: The port to monitor.
      * name: The name of the monitor.
+     * status: The status of the monitor.
      * 
      */
     pub fn new(host: &str, port: &u16, name: &str, status: Arc<Mutex<HashMap<String, MonitorStatus>>>) -> TcpMonitor {
         debug!("Creating TCP monitor: {}", &name);
 
-        status.lock().unwrap().insert(name.to_string(), MonitorStatus::new(Status::Unknown));
+        let status_lock = status.lock();
+        match status_lock {
+            Ok(mut lock) => {
+                lock.insert(name.to_string(), MonitorStatus::new(Status::Unknown));
+            },
+            Err(err) => {
+                error!("Error creating command monitor: {:?}", err);
+            }
+        }
 
         TcpMonitor {
             name: name.to_string(),
             host: host.to_string(),
             port: port.clone(),
-            status: status,
+            status: status.clone(),
         }
     }
 
@@ -72,7 +81,13 @@ impl TcpMonitor {
         match self.status.lock() {
             Ok(mut monitor_lock) => {
                 debug!("Setting monitor status for {} to: {:?}", &self.name, &status);
-                let monitor_status =  monitor_lock.get_mut(&self.name).unwrap();
+                let monitor_status = match monitor_lock.get_mut(&self.name) {
+                    Some(status) => status,
+                    None => {
+                        error!("Monitor status not found for: {}", &self.name);
+                        return;
+                    }
+                };
                 monitor_status.set_status(&status);
             }
             Err(err) => {

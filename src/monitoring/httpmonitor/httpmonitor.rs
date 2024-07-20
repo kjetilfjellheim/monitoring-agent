@@ -46,6 +46,13 @@ impl HttpMonitor {
      * body: The body of the request.
      * headers: The headers of the request.
      * name: The name of the monitor.
+     * use_builtin_root_certs: Use the built-in root certificates.
+     * accept_invalid_certs: Accept invalid certificates.
+     * tls_info: Use TLS info.
+     * root_certificate: The root certificate.
+     * identity: The identity.
+     * identity_password: The password for the identity.
+     * status: The status of the monitor.
      * 
      */
     pub fn new(
@@ -109,8 +116,18 @@ impl HttpMonitor {
             }
         };
 
-        status.lock().unwrap().insert(name.to_string(), MonitorStatus::new(Status::Unknown));
-
+        /*
+         * Set monitor status.
+         */
+        let monitor_lock = status.lock();
+        match monitor_lock {
+            Ok(mut lock) => {
+                lock.insert(name.to_string(), MonitorStatus::new(Status::Unknown));
+            }
+            Err(err) => {
+                error!("Error creating HTTP monitor: {:?}", err);
+            }
+        };
         /*
          * Return HTTP monitor.
          */
@@ -121,7 +138,7 @@ impl HttpMonitor {
             method: method.clone(),
             body: body.clone(),
             headers: headers.clone(),
-            status: status,
+            status: status.clone(),
             client: client,
         })
     }
@@ -205,7 +222,13 @@ impl HttpMonitor {
         match self.status.lock() {
             Ok(mut monitor_lock) => {
                 debug!("Setting monitor status for {} to: {:?}", &self.name, &status);
-                let monitor_status = monitor_lock.get_mut(&self.name).unwrap();
+                let monitor_status = match monitor_lock.get_mut(&self.name) {
+                    Some(status) => status,
+                    None => {
+                        error!("Monitor status not found for: {}", &self.name);
+                        return;
+                    }
+                };
                 monitor_status.set_status(&status);
             }
             Err(err) => {
@@ -464,6 +487,6 @@ mod test {
             status.clone()
         ).unwrap();
         monitor.set_status(Status::Ok);
-        assert_eq!(status.lock().unwrap().get("localhost").unwrap().status, MonitorStatus::Ok);
+        assert_eq!(status.lock().unwrap().get("localhost").unwrap().status, Status::Ok);
     }
 }
