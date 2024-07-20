@@ -1,39 +1,41 @@
-[
-    {
-        "name":"Apache TCP",
-        "schedule": "*/1 * * * * *",
-        "monitor": {
-            "type": "tcp",
-            "host": "127.0.0.1",
-            "port": 80
+{
+    "monitors":[
+        {
+            "name":"Apache TCP",
+            "schedule": "*/1 * * * * *",
+            "monitor": {
+                "type": "tcp",
+                "host": "127.0.0.1",
+                "port": 80
+            }
+        },
+        {
+            "name":"Netbios TCP",
+            "schedule": "*/1 * * * * *",
+            "monitor": {
+                "type": "tcp",
+                "host": "127.0.0.1",
+                "port": 139
+            }
+        },
+        {
+            "name":"Apache Http",
+            "schedule": "*/1 * * * * *",
+            "monitor": {
+                "type": "http",
+                "url": "http://localhost",
+                "method": "get"
+            }
+        },
+        {
+            "name":"Systemctl memcached",
+            "schedule": "*/1 * * * * *",
+            "monitor": {
+                "type": "command",
+                "command": "systemctl",
+                "args": ["show", "memcached.service", "--property=ActiveState"],
+                "expected": "ActiveState=active\n"
+            }
         }
-    },
-    {
-        "name":"Netbios TCP",
-        "schedule": "*/1 * * * * *",
-        "monitor": {
-            "type": "tcp",
-            "host": "127.0.0.1",
-            "port": 139
-        }
-    },
-    {
-        "name":"Apache Http",
-        "schedule": "*/1 * * * * *",
-        "monitor": {
-            "type": "http",
-            "url": "http://localhost",
-            "method": "get"
-        }
-    },
-    {
-        "name":"Systemctl memcached",
-        "schedule": "*/1 * * * * *",
-        "monitor": {
-            "type": "command",
-            "command": "systemctl",
-            "args": ["show", "memcached.service", "--property=ActiveState"],
-            "expected": "ActiveState=active\n"
-        }
-    }
-]
+    ]
+}

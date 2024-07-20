@@ -1,22 +1,24 @@
-[
-    {
-        "name":"Apache TCP",
-        "schedule": "* * * * * * *",
-        "monitor": {
-            "type": "tcp",
-            "host": "127.0.0.1",
-            "port": 80
+{
+    "monitors":[
+        {
+            "name":"Apache TCP",
+            "schedule": "* * * * * * *",
+            "monitor": {
+                "type": "tcp",
+                "host": "127.0.0.1",
+                "port": 80
+            }
+        },
+        {
+            "name":"",
+            "schedule": "* * * * * * *",
+            "monitor": {
+                "type": "http",
+                "url": "https://post.com",
+                "method": "post",
+                "body": "body",
+                "headers": {}
+            }
         }
-    },
-    {
-        "name":"",
-        "schedule": "* * * * * * *",
-        "monitor": {
-            "type": "http",
-            "url": "https://post.com",
-            "method": "post",
-            "body": "body",
-            "headers": {}
-        }
-    }
-]
+    ]
+}

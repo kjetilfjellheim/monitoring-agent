@@ -542,7 +542,7 @@ mod test {
                 assert!(false);
             }
             Err(err) => {
-                assert_eq!("Could not parse config file: Line 6", err.message);
+                assert_eq!("Could not parse config file: Line 7", err.message);
             }
             
         }
