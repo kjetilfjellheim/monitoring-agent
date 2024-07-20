@@ -11,7 +11,7 @@ use log::{ debug, error };
 
 use crate::common::ApplicationError;
 use crate::config::HttpMethod;
-use crate::common::MonitorStatus;
+use crate::common::{ MonitorStatus, Status };
 
 /**
  * HTTP Monitor.
@@ -32,8 +32,8 @@ pub struct HttpMonitor {
     pub method: HttpMethod,
     pub body: Option<String>,
     pub headers: Option<HashMap<String, String>>,
-    pub status: Arc<Mutex<MonitorStatus>>,
     client: reqwest::Client,
+    pub status: Arc<Mutex<HashMap<String, MonitorStatus>>>,
 }
 
 impl HttpMonitor {
@@ -60,6 +60,7 @@ impl HttpMonitor {
         root_certificate: &Option<String>,
         identity: &Option<String>,
         identity_password: &Option<String>,
+        status: Arc<Mutex<HashMap<String, MonitorStatus>>>,
     ) -> Result<HttpMonitor, ApplicationError> {
         debug!("Creating HTTP monitor: {}", &name);
         /*
@@ -107,6 +108,9 @@ impl HttpMonitor {
                 return Err(ApplicationError::new(&format!("Error creating HTTP client: {}", err)));
             }
         };
+
+        status.lock().unwrap().insert(name.to_string(), MonitorStatus::new(Status::Unknown));
+
         /*
          * Return HTTP monitor.
          */
@@ -117,7 +121,7 @@ impl HttpMonitor {
             method: method.clone(),
             body: body.clone(),
             headers: headers.clone(),
-            status: Arc::new(Mutex::new(MonitorStatus::Unknown)),
+            status: status,
             client: client,
         })
     }
@@ -197,11 +201,12 @@ impl HttpMonitor {
      * status: The new status.
      * 
      */
-    fn set_status(&mut self, status: MonitorStatus) {
+    fn set_status(&mut self, status: Status) {
         match self.status.lock() {
-            Ok(mut monitor_status) => {
+            Ok(mut monitor_lock) => {
                 debug!("Setting monitor status for {} to: {:?}", &self.name, &status);
-                *monitor_status = status;
+                let monitor_status = monitor_lock.get_mut(&self.name).unwrap();
+                monitor_status.set_status(&status);
             }
             Err(err) => {
                 error!("Error updating monitor status: {:?}", err);
@@ -265,9 +270,9 @@ impl HttpMonitor {
         match response {
             Ok(response) => {
                 if response.status().is_success() {
-                    self.set_status(MonitorStatus::Ok);
+                    self.set_status(Status::Ok);
                 } else {
-                    self.set_status(MonitorStatus::Error {
+                    self.set_status(Status::Error {
                         message: format!(
                             "Error connecting to {} with status code: {}",
                             &self.url,
@@ -277,7 +282,7 @@ impl HttpMonitor {
                 }
             }
             Err(err) => {
-                self.set_status(MonitorStatus::Error {
+                self.set_status(Status::Error {
                     message: format!("Error connecting to {} with error: {}", &self.url, err),
                 });
             }
@@ -382,6 +387,7 @@ mod test {
      */
     #[tokio::test]
     async fn test_check() {
+        let status: Arc<Mutex<HashMap<String, MonitorStatus>>> = Arc::new(Mutex::new(HashMap::new()));
         let mut monitor = HttpMonitor::new(
             "http://localhost:65000",
             &HttpMethod::Get,
@@ -393,10 +399,11 @@ mod test {
             &false,
             &None,
             &None,
-            &None
+            &None,
+            status.clone()
         ).unwrap();
         monitor.check().await.unwrap();
-        assert_eq!(*monitor.status.lock().unwrap(), MonitorStatus::Error { message: "Error connecting to http://localhost:65000 with error: error sending request for url (http://localhost:65000/)".to_string() });
+        assert_eq!(status.lock().unwrap().get("localhost").unwrap().status, Status::Error { message: "Error connecting to http://localhost:65000 with error: error sending request for url (http://localhost:65000/)".to_string() });
     }    
 
     /**
@@ -404,6 +411,7 @@ mod test {
      */
     #[tokio::test]
     async fn test_check_with_tls() {
+        let status: Arc<Mutex<HashMap<String, MonitorStatus>>> = Arc::new(Mutex::new(HashMap::new()));
         let mut monitor = HttpMonitor::new(
             "http://localhost:65000",
             &HttpMethod::Get,
@@ -415,10 +423,11 @@ mod test {
             &false,
             &Some("./resources/test/server_cert/server.cer".to_string()),
             &Some("./resources/test/client_cert/client.p12".to_string()),
-            &Some("test".to_string())
+            &Some("test".to_string()),
+            status.clone()
         ).unwrap();
         monitor.check().await.unwrap();
-        assert_eq!(*monitor.status.lock().unwrap(), MonitorStatus::Error { message: "Error connecting to http://localhost:65000 with error: error sending request for url (http://localhost:65000/)".to_string() });
+        assert_eq!(status.lock().unwrap().get("localhost").unwrap().status, Status::Error { message: "Error connecting to http://localhost:65000 with error: error sending request for url (http://localhost:65000/)".to_string() });
     }    
 
     /**
@@ -439,6 +448,7 @@ mod test {
      */
     #[test]
     fn test_set_status() {
+        let status: Arc<Mutex<HashMap<String, MonitorStatus>>> = Arc::new(Mutex::new(HashMap::new()));
         let mut monitor = HttpMonitor::new(
             "https://www.google.com",
             &HttpMethod::Get,
@@ -450,9 +460,10 @@ mod test {
             &false,
             &None,
             &None,
-            &None
+            &None,
+            status.clone()
         ).unwrap();
-        monitor.set_status(MonitorStatus::Ok);
-        assert_eq!(*monitor.status.lock().unwrap(), MonitorStatus::Ok);
+        monitor.set_status(Status::Ok);
+        assert_eq!(status.lock().unwrap().get("localhost").unwrap().status, MonitorStatus::Ok);
     }
 }

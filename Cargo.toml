@@ -15,4 +15,4 @@ futures = "0.3.30"                                                              
 native-tls = "0.2.8"                                                                    # Use native tls for reqwest.
 log4rs = { version = "1.3.0" }                                                          # For logging.
 log = "0.4.22"                                                                          # For logging.
-
+warp = "0.3.7"                                                                          # For creating a web server.

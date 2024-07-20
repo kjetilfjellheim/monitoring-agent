@@ -1,15 +1,20 @@
+use std::collections::HashMap;
+use std::net::{Ipv4Addr, SocketAddrV4};
+use std::sync::{Arc, Mutex};
 use std::time::{ Duration, Instant };
 
 use futures::Future;
 use tokio_cron_scheduler::{ Job, JobScheduler };
 use log::{ debug, info, error };
 
-use crate::common::ApplicationError;
+use crate::common::{ApplicationError, MonitorStatus};
 use crate::config::HttpMethod;
 use crate::config::MonitoringConfig;
 use crate::monitoring::httpmonitor::HttpMonitor;
 use crate::monitoring::tcpmonitor::TcpMonitor;
 use crate::monitoring::commandmonitor::CommandMonitor;
+
+use super::server::Server;
 
 
 /**
@@ -100,9 +105,18 @@ impl MonitoringService {
                 ));
             }
         };
+        let status: Arc<Mutex<HashMap<String, MonitorStatus>>> = Arc::new(Mutex::new(HashMap::new()));
+        /*
+         * Create and add jobs to the scheduler.
+         */
         for monitor in monitoring_config.monitors.iter() {
-            self.create_and_add_job(monitor, &scheduler).await?;
+            self.create_and_add_job(monitor, &scheduler, &status).await?;
         }
+        /*
+         * Create a new server to respond to monitoring requests.
+         */
+        let server = Server::new(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 65000), &status);
+        server.start().await;        
         /*
          * Start the scheduler.
          */
@@ -137,6 +151,7 @@ impl MonitoringService {
         &mut self,
         monitor: &crate::config::Monitor,
         scheduler: &JobScheduler,
+        status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
     ) -> Result<(), ApplicationError> {
         let monitor_type = monitor.monitor.clone();
         let job = match monitor_type {
@@ -146,6 +161,7 @@ impl MonitoringService {
                     monitor.name.as_str(),
                     host.as_str(),
                     &port,
+                    &status,
                 )
                 .await?
             },
@@ -173,7 +189,8 @@ impl MonitoringService {
                     &tls_info,
                     &root_certificate,
                     &identity,
-                    &identity_password
+                    &identity_password,
+                    &status
                 )
                 .await?
             },
@@ -187,7 +204,8 @@ impl MonitoringService {
                     monitor.name.as_str(), 
                     &command, 
                     &args, 
-                    &expected).await?
+                    &expected,
+                    &status).await?
             }        
             _ => {
                 return Err(ApplicationError::new("Unsupported monitor type"));
@@ -238,10 +256,11 @@ impl MonitoringService {
         name: &str,
         command: &str,
         args: &Option<Vec<String>>,
-        expected: &Option<String>
+        expected: &Option<String>,
+        status: &Arc<Mutex<HashMap<String, MonitorStatus>>>      
     ) -> Result<Job, ApplicationError> {
         debug!("Creating Command monitor: {}", &name);
-        let command_monitor = CommandMonitor::new(name, command, args.clone(), expected.clone());
+        let command_monitor = CommandMonitor::new(name, command, args.clone(), expected.clone(), status.clone());
         self.command_monitors.push(command_monitor.clone());
         match Job::new_async(schedule, move |_uuid, _locked| {
             MonitoringService::check_command_monitor(&command_monitor)
@@ -269,9 +288,10 @@ impl MonitoringService {
         name: &str,
         host: &str,
         port: &u16,
+        status: &Arc<Mutex<HashMap<String, MonitorStatus>>>
     ) -> Result<Job, ApplicationError> {
         debug!("Creating Tcp monitor: {}", &name);
-        let tcp_monitor = TcpMonitor::new(host, port, name);
+        let tcp_monitor = TcpMonitor::new(host, port, name, status.clone());
         self.tcp_monitors.push(tcp_monitor.clone());
         match Job::new_async(schedule, move |_uuid, _locked| {
             MonitoringService::check_tcp_monitor(&tcp_monitor)
@@ -310,10 +330,11 @@ impl MonitoringService {
         tls_info: &bool,
         root_certificate: &Option<String>,
         identity: &Option<String>,
-        identity_password: &Option<String>        
+        identity_password: &Option<String>,
+        status: &Arc<Mutex<HashMap<String, MonitorStatus>>>        
     ) -> Result<Job, ApplicationError> {
         debug!("Creating http monitor: {}", &name);
-        let http_monitor = HttpMonitor::new(url, &method, &body, &headers, &name, &use_builtin_root_certs, &accept_invalid_certs, &tls_info, &root_certificate, &identity, &identity_password)?;
+        let http_monitor = HttpMonitor::new(url, &method, &body, &headers, &name, &use_builtin_root_certs, &accept_invalid_certs, &tls_info, &root_certificate, &identity, &identity_password, status.clone())?;
         self.http_monitors.push(http_monitor.clone());
         match Job::new_async(schedule, move |_uuid, _locked| {
             MonitoringService::check_http_monitor(&http_monitor)
