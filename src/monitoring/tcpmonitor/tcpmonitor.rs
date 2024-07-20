@@ -1,9 +1,10 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Mutex;
 use log::{ debug, error };
 
 use crate::common::ApplicationError;
-use crate::common::MonitorStatus;
+use crate::common::{ MonitorStatus, Status };
 
 /**
  * TCP Monitor.
@@ -21,7 +22,7 @@ pub struct TcpMonitor {
     pub name: String,
     pub host: String,
     pub port: u16,
-    pub status: Arc<Mutex<MonitorStatus>>,
+    pub status: Arc<Mutex<HashMap<String, MonitorStatus>>>,
 }
 
 impl TcpMonitor {
@@ -33,13 +34,16 @@ impl TcpMonitor {
      * name: The name of the monitor.
      * 
      */
-    pub fn new(host: &str, port: &u16, name: &str) -> TcpMonitor {
+    pub fn new(host: &str, port: &u16, name: &str, status: Arc<Mutex<HashMap<String, MonitorStatus>>>) -> TcpMonitor {
         debug!("Creating TCP monitor: {}", &name);
+
+        status.lock().unwrap().insert(name.to_string(), MonitorStatus::new(Status::Unknown));
+
         TcpMonitor {
             name: name.to_string(),
             host: host.to_string(),
             port: port.clone(),
-            status: Arc::new(Mutex::new(MonitorStatus::Unknown)),
+            status: status,
         }
     }
 
@@ -64,11 +68,12 @@ impl TcpMonitor {
      * status: The status to set.
      * 
      */
-    fn set_status(&mut self, status: MonitorStatus) {
+    fn set_status(&mut self, status: Status) {
         match self.status.lock() {
-            Ok(mut monitor_status) => {
+            Ok(mut monitor_lock) => {
                 debug!("Setting monitor status for {} to: {:?}", &self.name, &status);
-                *monitor_status = status;
+                let monitor_status =  monitor_lock.get_mut(&self.name).unwrap();
+                monitor_status.set_status(&status);
             }
             Err(err) => {
                 error!("Error updating monitor status: {:?}", err);
@@ -88,10 +93,10 @@ impl TcpMonitor {
         match std::net::TcpStream::connect(format!("{}:{}", &self.host, &self.port)) {
             Ok(tcp_stream) => {
                 TcpMonitor::close_connection(tcp_stream);
-                self.set_status(MonitorStatus::Ok);
+                self.set_status(Status::Ok);
             }
             Err(err) => {
-                self.set_status(MonitorStatus::Error {
+                self.set_status(Status::Error {
                     message: format!("Error connecting to {}:{} with error: {}", &self.host, &self.port, err),
                 });
             }
@@ -111,13 +116,15 @@ mod test {
      */
     #[tokio::test]
     async fn test_check_port_139() {
+        let status = Arc::new(Mutex::new(HashMap::new()));
         let mut monitor = TcpMonitor::new(
             "localhost",
             &139,
             "localhost",
+            status.clone()
         );
         monitor.check().await.unwrap();
-        assert_eq!(*monitor.status.lock().unwrap(), MonitorStatus::Ok);
+        assert_eq!(status.lock().unwrap().get("localhost").unwrap().status, Status::Ok);
     }
 
     /**
@@ -125,13 +132,15 @@ mod test {
      */
     #[tokio::test]
     async fn test_check_port_65000() {
+        let status: Arc<Mutex<HashMap<String, MonitorStatus>>> = Arc::new(Mutex::new(HashMap::new()));
         let mut monitor = TcpMonitor::new(
             "localhost",
             &65000,
             "localhost",
+            status.clone()
         );
         monitor.check().await.unwrap();
-        assert_eq!(*monitor.status.lock().unwrap(), MonitorStatus::Error { message: "Error connecting to localhost:65000 with error: Connection refused (os error 111)".to_string() });
+        assert_eq!(status.lock().unwrap().get("localhost").unwrap().status, Status::Error { message: "Error connecting to localhost:65000 with error: Connection refused (os error 111)".to_string() });
     }    
 
     /**
@@ -139,13 +148,15 @@ mod test {
      */
     #[test]
     fn test_set_status() {
+        let status: Arc<Mutex<HashMap<String, MonitorStatus>>> = Arc::new(Mutex::new(HashMap::new()));
         let mut monitor = TcpMonitor::new(
             "localhost",
             &65000,
             "localhost",
+            status.clone()
         );
-        monitor.set_status(MonitorStatus::Ok);
-        assert_eq!(*monitor.status.lock().unwrap(), MonitorStatus::Ok);
+        monitor.set_status(Status::Ok);
+        assert_eq!(status.lock().unwrap().get("localhost").unwrap().status, Status::Ok);
     }
 
 }
