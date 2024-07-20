@@ -1,15 +1,15 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use chrono::{DateTime, Utc };
 
 /**
  * MonitorStatus struct
- * 
+ *
  * This struct is used to represent the status of a monitor. It contains the following fields:
  * - status: The status of the monitor
  * - last_successful_time: The last time the monitor was successful
  * - last_error: The last error message
  * - last_error_time: The last time the monitor encountered an error
- * 
+ *
  */
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MonitorStatus {
@@ -46,16 +46,15 @@ impl MonitorStatus {
         }
         self.status = status.clone();
     }
-
 }
 /**
  * MonitorStatus enum
- * 
+ *
  * This enum is used to represent the status of a monitor. It can be one of the following:
  * - Ok: The monitor is working correctly
  * - Unknown: The monitor status is unknown
  * - Error: The monitor has encountered an error. The error message is stored in the message field
- * 
+ *
  */
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Status {
