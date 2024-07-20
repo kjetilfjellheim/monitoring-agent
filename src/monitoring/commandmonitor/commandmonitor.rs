@@ -26,17 +26,26 @@ impl CommandMonitor {
      * command: The command to run.
      * args: The arguments to the command.
      * expected: The expected output of the command.
+     * status: The status of the monitor.
      * 
      */
     pub fn new(name: &str, command: &str, args: Option<Vec<String>>, expected: Option<String>, status: Arc<Mutex<HashMap<String, MonitorStatus>>>) -> CommandMonitor {
-        status.lock().unwrap().insert(name.to_string(), MonitorStatus::new(Status::Unknown));
+        let status_lock = status.lock();
+        match status_lock {
+            Ok(mut lock) => {
+                lock.insert(name.to_string(), MonitorStatus::new(Status::Unknown));
+            },
+            Err(err) => {
+                error!("Error creating command monitor: {:?}", err);
+            }
+        }
 
         CommandMonitor {
             name: name.to_string(),
             command: command.to_string(),
             args: args,
             expected: expected,
-            status: status
+            status: status.clone()
         }
     }
 
@@ -50,7 +59,13 @@ impl CommandMonitor {
         match self.status.lock() {
             Ok(mut monitor_lock) => {
                 debug!("Setting monitor status for {} to: {:?}", &self.name, &status);
-                let monitor_status = monitor_lock.get_mut(&self.name).unwrap();
+                let monitor_status = match monitor_lock.get_mut(&self.name) {
+                    Some(status) => status,
+                    None => {
+                        error!("Monitor status not found for: {}", &self.name);
+                        return;
+                    }
+                };
                 monitor_status.set_status(&status);
             }
             Err(err) => {
@@ -79,7 +94,7 @@ impl CommandMonitor {
                 debug!("Command output: {}", output_resp);
                 if output.status.success() && self.expected.is_none() {                                      
                     self.set_status(Status::Ok);
-                } else if output.status.success() && self.expected.is_some() && self.expected.as_ref().unwrap().eq(&output_resp) {
+                } else if output.status.success() && self.expected.is_some() && self.expected.as_ref().unwrap_or(&"".to_string()).eq(&output_resp) {
                     self.set_status(Status::Ok);
                 } else {
                     self.set_status(Status::Error {
@@ -108,7 +123,7 @@ mod test {
      * Test the check method. Testing success commandL.
      */
     #[tokio::test]
-    async fn test_check_() {
+    async fn test_check_ls() {
         let status: Arc<Mutex<HashMap<String, MonitorStatus>>> = Arc::new(Mutex::new(HashMap::new()));
         let mut monitor = CommandMonitor::new(
             "test",
@@ -118,7 +133,7 @@ mod test {
             status.clone()            
         );
         monitor.check().await.unwrap();
-        assert_eq!(status.lock().unwrap().get("localhost").unwrap().status, Status::Ok);
+        assert_eq!(status.lock().unwrap().get("test").unwrap().status, Status::Ok);
     }   
 
     /**
@@ -152,7 +167,7 @@ mod test {
             status.clone()        
         );
         let _ = monitor.check().await;
-        assert_eq!(status.lock().unwrap().get("localhost").unwrap().status, Status::Error { message: "Error running command: Os { code: 2, kind: NotFound, message: \"No such file or directory\" }".to_string() });
+        assert_eq!(status.lock().unwrap().get("test").unwrap().status, Status::Error { message: "Error running command: Os { code: 2, kind: NotFound, message: \"No such file or directory\" }".to_string() });
     }  
     
     /**

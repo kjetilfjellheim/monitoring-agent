@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use chrono::{DateTime, Utc };
 
 /**
  * MonitorStatus struct
@@ -12,10 +13,14 @@ use serde::{Deserialize, Serialize};
  */
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MonitorStatus {
+    #[serde(rename = "status")]
     pub status: Status,
-    pub last_successful_time: Option<std::time::SystemTime>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "lastSuccessfulTime")]
+    pub last_successful_time: Option<DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "lastError")]
     pub last_error: Option<String>,
-    pub last_error_time: Option<std::time::SystemTime>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "lastErrorTime")]
+    pub last_error_time: Option<DateTime<Utc>>,
 }
 
 impl MonitorStatus {
@@ -31,11 +36,11 @@ impl MonitorStatus {
     pub fn set_status(&mut self, status: &Status) {
         match status {
             Status::Error { message } => {
-                self.last_error_time = Some(std::time::SystemTime::now());
+                self.last_error_time = Some(chrono::Utc::now());
                 self.last_error = Some(message.clone());
             }
             Status::Ok => {
-                self.last_successful_time = Some(std::time::SystemTime::now());
+                self.last_successful_time = Some(chrono::Utc::now());
             }
             _ => {}
         }
