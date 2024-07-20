@@ -76,36 +76,38 @@ Run as daemon `./monitoring_agent --daemon`
 #### Example file
 
 ```
-[
-  {
-        "name":"",
-        "schedule": "*/10 * * * * *",
-        "monitor": {
-            "type": "http",
-            "url": "http://post.com",
-            "method": "post",
-            "body": "body",
-            "headers": {}
-        }
-    },
+{
+  "monitors": [
     {
-        "name":"Netbios TCP",
-        "schedule": "*/10 * * * * *",
-        "monitor": {
-            "type": "tcp",
-            "host": "127.0.0.1",
-            "port": 139
-        }
-    },
-    {
-        "name":"Systemctl memcached",
-        "schedule": "*/5 * * * * *",
-        "monitor": {
-            "type": "command",
-            "command": "systemctl",
-            "args": ["show", "memcached.service", "--property=ActiveState"],
-            "expected": "ActiveState=active\n"
-        }
-    }
-]
+          "name":"",
+          "schedule": "*/10 * * * * *",
+          "monitor": {
+              "type": "http",
+              "url": "http://post.com",
+              "method": "post",
+              "body": "body",
+              "headers": {}
+          }
+      },
+      {
+          "name":"Netbios TCP",
+          "schedule": "*/10 * * * * *",
+          "monitor": {
+              "type": "tcp",
+              "host": "127.0.0.1",
+              "port": 139
+          }
+      },
+      {
+          "name":"Systemctl memcached",
+          "schedule": "*/5 * * * * *",
+          "monitor": {
+              "type": "command",
+              "command": "systemctl",
+              "args": ["show", "memcached.service", "--property=ActiveState"],
+              "expected": "ActiveState=active\n"
+          }
+      }
+  ]
+}
 ```
