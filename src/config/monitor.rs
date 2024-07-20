@@ -116,20 +116,15 @@ pub struct Monitor {
  * monitors: List of monitors.
  * 
  */
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 pub struct MonitoringConfig {
-    input: String,
     pub monitors: Vec<Monitor>,
 }
 
 impl MonitoringConfig {
     pub fn new(input: &str) -> Result<MonitoringConfig, ApplicationError> {
         let monitor_data: String = MonitoringConfig::get_monitor_data(input)?;
-        let monitors: Vec<Monitor> = MonitoringConfig::get_monitor_config(monitor_data.as_str())?;
-        Ok(MonitoringConfig {
-            input: input.to_string(),
-            monitors,
-        })
+        MonitoringConfig::get_monitor_config(monitor_data.as_str())    
     }
 
     /**
@@ -147,9 +142,9 @@ impl MonitoringConfig {
     /**
      * Get monitor configuration.
      */
-    fn get_monitor_config(data: &str) -> Result<Vec<Monitor>, ApplicationError> {
+    fn get_monitor_config(data: &str) -> Result<MonitoringConfig, ApplicationError> {
         match serde_json::from_str(data) {
-            Ok(monitors) => Ok(monitors),
+            Ok(monitor_config) => Ok(monitor_config),
             Err(err) => Err(ApplicationError::new(
                 format!(
                     "Could not parse config file: Line {}",
