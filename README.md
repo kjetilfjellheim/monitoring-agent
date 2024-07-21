@@ -51,9 +51,9 @@ Run as daemon `./monitoring_agent --daemon`
 | ------------- | ------------- |
 | name | Name for the monitoring | 
 | schedule | Cron describing how often it should run | 
-| monitor.type | Type of monitor. Must be tcp | 
-| monitor.host | Host/ip to connect to. | 
-| monitor.port | Port to connect to. | 
+| details.type | Type of monitor. Must be tcp | 
+| details.host | Host/ip to connect to. | 
+| details.port | Port to connect to. | 
 
 #### Http monitoring
 
@@ -61,11 +61,11 @@ Run as daemon `./monitoring_agent --daemon`
 | ------------- | ------------- |
 | name | Name for the monitoring | 
 | schedule | Cron describing how often it should run | 
-| monitor.type | Type of monitor. Must be http | 
-| monitor.url | Url to make the request to. | 
-| monitor.method | Method like post, put, delete, get, option, head | 
-| monitor.body | Body to send | 
-| monitor.headers | Headers to send | 
+| details.type | Type of monitor. Must be http | 
+| details.url | Url to make the request to. | 
+| details.method | Method like post, put, delete, get, option, head | 
+| details.body | Body to send | 
+| details.headers | Headers to send | 
 
 #### Command monitoring
 
@@ -73,10 +73,10 @@ Run as daemon `./monitoring_agent --daemon`
 | ------------- | ------------- |
 | name | Name for the monitoring | 
 | schedule | Cron describing how often it should run | 
-| monitor.type | Type of monitor. Must be command | 
-| monitor.command | Command to run | 
-| monitor.args | List of command arguments | 
-| monitor.expected | Expected response | 
+| details.type | Type of monitor. Must be command | 
+| details.command | Command to run | 
+| details.args | List of command arguments | 
+| details.expected | Expected response | 
 
 #### Example file
 
@@ -90,7 +90,7 @@ Run as daemon `./monitoring_agent --daemon`
     {
           "name":"",
           "schedule": "*/10 * * * * *",
-          "monitor": {
+          "details": {
               "type": "http",
               "url": "http://post.com",
               "method": "post",
@@ -101,7 +101,7 @@ Run as daemon `./monitoring_agent --daemon`
       {
           "name":"Netbios TCP",
           "schedule": "*/10 * * * * *",
-          "monitor": {
+          "details": {
               "type": "tcp",
               "host": "127.0.0.1",
               "port": 139
@@ -110,7 +110,7 @@ Run as daemon `./monitoring_agent --daemon`
       {
           "name":"Systemctl memcached",
           "schedule": "*/5 * * * * *",
-          "monitor": {
+          "details": {
               "type": "command",
               "command": "systemctl",
               "args": ["show", "memcached.service", "--property=ActiveState"],
