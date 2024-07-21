@@ -3,7 +3,7 @@
         {
             "name":"Apache TCP",
             "schedule": "* * * * * * *",
-            "monitor": {
+            "details": {
                 "type": "tcp",
                 "host": "127.0.0.1",
                 "port": 80
@@ -12,7 +12,7 @@
         {
             "name":"",
             "schedule": "* * * * * * *",
-            "monitor": {
+            "details": {
                 "type": "http",
                 "url": "https://post.com",
                 "method": "post",

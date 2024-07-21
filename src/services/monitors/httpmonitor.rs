@@ -57,7 +57,7 @@ impl HttpMonitor {
     pub fn new(
         url: &str,
         method: HttpMethod,
-        body: Option<String>,
+        body: &Option<String>,
         headers: &Option<HashMap<String, String>>,
         name: &str,
         use_builtin_root_certs: bool,
@@ -412,7 +412,7 @@ mod test {
         let mut monitor = HttpMonitor::new(
             "http://localhost:65000",
             HttpMethod::Get,
-            None,
+            &None,
             &None,
             "localhost",
             true,
@@ -438,7 +438,7 @@ mod test {
         let mut monitor = HttpMonitor::new(
             "http://localhost:65000",
             HttpMethod::Get,
-            None,
+            &None,
             &None,
             "localhost",
             true,
@@ -480,7 +480,7 @@ mod test {
         let mut monitor = HttpMonitor::new(
             "https://www.google.com",
             HttpMethod::Get,
-            None,
+            &None,
             &None,
             "Google",
             true,

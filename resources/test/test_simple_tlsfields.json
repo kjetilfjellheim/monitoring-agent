@@ -3,7 +3,7 @@
         {
             "name":"",
             "schedule": "0 0 0 0 0 0 0",
-            "monitor": {
+            "details": {
                 "type": "http",
                 "url": "https://post.com",
                 "method": "post",
