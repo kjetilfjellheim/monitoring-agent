@@ -112,7 +112,8 @@ impl MonitoringService {
          * Create a new server to respond to monitoring requests.
          */
         let server = Server::new(
-            SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 65000),
+            &monitoring_config.server.ip,
+            &monitoring_config.server.port,
             &status,
         );
         server.start().await;

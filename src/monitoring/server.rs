@@ -1,39 +1,65 @@
 use std::{
     collections::HashMap,
-    net::SocketAddrV4,
+    net::{Ipv4Addr, SocketAddrV4},
     sync::{Arc, Mutex},
 };
 
+use log::error;
 use warp::{
     reply::{json, with_status},
     Filter,
 };
 
+/**
+ * Server struct.
+ *
+ * This struct represents a server.
+ * It is used to start the monitoring server.
+ *
+ */
 use crate::common::MonitorStatus;
 pub struct Server {
-    socket_addr: SocketAddrV4,
+    ip: String,
+    port: u16,
     status: Arc<Mutex<HashMap<String, MonitorStatus>>>,
 }
 
 impl Server {
     pub fn new(
-        socket_addr: SocketAddrV4,
+        ip: &String,
+        port: &u16,
         status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
     ) -> Server {
         Server {
-            socket_addr,
+            ip: ip.clone(),
+            port: port.clone(),
             status: status.clone(),
         }
     }
-
+    /**
+     * Start the server.
+     */
     pub async fn start(&self) {
-        let socket_addr = self.socket_addr.clone();
+        let ip_addr = self.ip.parse::<Ipv4Addr>();
+        let socket_addr = match ip_addr {
+            Ok(ip) => SocketAddrV4::new(ip, self.port),
+            Err(err) => {
+                error!("Error parsing IP address: {:?}. Server not started", err);
+                return;
+            }
+        };
         let status = Arc::clone(&self.status);
         tokio::spawn(async move {
             Server::start_server(&socket_addr, status).await;
         });
     }
 
+    /**
+     * Start the server.
+     *
+     * socket_addr: The socket address to bind to.
+     * status: The status of the monitors.
+     */
     pub async fn start_server(
         socket_addr: &SocketAddrV4,
         status: Arc<Mutex<HashMap<String, MonitorStatus>>>,
