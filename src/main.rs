@@ -42,7 +42,7 @@ fn main() {
  */
 fn normal_application(args: &ApplicationArguments) {
     let mut monitoring_service = MonitoringService::new();
-    match monitoring_service.start(&args.config, &args.test) {
+    match monitoring_service.start(&args.config, args.test) {
         Ok(()) => {
             info!("Monitoring service started!");
         }
@@ -98,7 +98,7 @@ fn daemonize_application(args: ApplicationArguments) {
         .stderr(stderr)
         .privileged_action(move || {
             let mut monitoring_service = MonitoringService::new();
-            match monitoring_service.start(&args.config, &args.test) {
+            match monitoring_service.start(&args.config, args.test) {
                 Ok(()) => {
                     info!("Monitoring service started!");
                 }

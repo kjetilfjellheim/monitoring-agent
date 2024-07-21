@@ -40,18 +40,18 @@ impl HttpMonitor {
     /**
      * Create a new HTTP monitor.
      *
-     * url: The URL to monitor.
-     * method: The HTTP method to use.
-     * body: The body of the request.
-     * headers: The headers of the request.
-     * name: The name of the monitor.
-     * use_builtin_root_certs: Use the built-in root certificates.
-     * accept_invalid_certs: Accept invalid certificates.
-     * tls_info: Use TLS info.
-     * root_certificate: The root certificate.
-     * identity: The identity.
-     * identity_password: The password for the identity.
-     * status: The status of the monitor.
+     * `url`: The URL to monitor.
+     * `method`: The HTTP method to use.
+     * `body`: The body of the request.
+     * `headers`: The headers of the request.
+     * `name`: The name of the monitor.
+     * `use_builtin_root_certs`: Use the built-in root certificates.
+     * `accept_invalid_certs`: Accept invalid certificates.
+     * `tls_info`: Use TLS info.
+     * `root_certificate`: The root certificate.
+     * `identity`: The identity.
+     * `identity_password`: The password for the identity.
+     * `status`: The status of the monitor.
      *
      */
     pub fn new(
@@ -139,18 +139,19 @@ impl HttpMonitor {
     }
 
     /**
-     * This method converts a HashMap to a HeaderMap.
+     * This method converts a `HashMap` to a `HeaderMap`.
      *
-     * headers: The headers.
+     * `headers`: The headers.
      *
-     * Returns a HeaderMap.
+     * Returns a `HeaderMap`.
+     * Returns a `HeaderMap`.
      *
      */
     fn get_header_map(
         headers: &HashMap<String, String>,
     ) -> Result<reqwest::header::HeaderMap, ApplicationError> {
         let mut header_map = reqwest::header::HeaderMap::new();
-        for (key, value) in &*headers {
+        for (key, value) in headers {
             header_map.insert(
                 HttpMonitor::get_header_name(key)?,
                 HttpMonitor::get_header_value(value)?,
@@ -162,9 +163,9 @@ impl HttpMonitor {
     /**
      * Get header name.
      *
-     * key: The key.
+     * `key`: The key.
      *
-     * Returns a HeaderName.
+     * Returns a `HeaderName`.
      *
      */
     fn get_header_name(key: &String) -> Result<reqwest::header::HeaderName, ApplicationError> {
@@ -179,12 +180,12 @@ impl HttpMonitor {
     /**
      * Get header value.
      *
-     * value: The value.
+     * `value`: The value.
      *
-     * Returns a HeaderValue.
+     * Returns a `HeaderValue`.
      *
      */
-    fn get_header_value(value: &String) -> Result<reqwest::header::HeaderValue, ApplicationError> {
+    fn get_header_value(value: &str) -> Result<reqwest::header::HeaderValue, ApplicationError> {
         match reqwest::header::HeaderValue::from_str(value) {
             Ok(header_value) => Ok(header_value),
             Err(err) => Err(ApplicationError::new(&format!(
@@ -195,11 +196,11 @@ impl HttpMonitor {
 
     /**
      * Get headers.
-     * If headers is None, an empty HeaderMap is returned.
+     * If `headers` is None, an empty `HeaderMap` is returned.
      *
-     * headers: The headers.
+     * `headers`: The headers.
      *
-     * Returns a HeaderMap.
+     * Returns a `HeaderMap`.
      *
      */
     fn get_headers(
@@ -218,17 +219,17 @@ impl HttpMonitor {
     /**
      * Set the status of the monitor.
      *
-     * status: The new status.
+     * `status`: The new status.
      *
      */
-    fn set_status(&mut self, status: Status) {
+    fn set_status(&mut self, status: &Status) {
         match self.status.lock() {
             Ok(mut monitor_lock) => {
                 debug!(
                     "Setting monitor status for {} to: {:?}",
                     &self.name, &status
                 );
-                let monitor_status = if let Some(status) = monitor_lock.get_mut(&self.name) { status } else {
+                let Some(monitor_status) = monitor_lock.get_mut(&self.name) else {
                     error!("Monitor status not found for: {}", &self.name);
                     return;
                 };
@@ -287,7 +288,7 @@ impl HttpMonitor {
     /**
      * Check the response and set the status of the monitor.
      *
-     * response: The response from the request.
+     * `response`: The response from the request.
      *
      */
     fn check_response_and_set_status(
@@ -297,9 +298,9 @@ impl HttpMonitor {
         match response {
             Ok(response) => {
                 if response.status().is_success() {
-                    self.set_status(Status::Ok);
+                    self.set_status(&Status::Ok);
                 } else {
-                    self.set_status(Status::Error {
+                    self.set_status(&Status::Error {
                         message: format!(
                             "Error connecting to {} with status code: {}",
                             &self.url,
@@ -309,7 +310,7 @@ impl HttpMonitor {
                 }
             }
             Err(err) => {
-                self.set_status(Status::Error {
+                self.set_status(&Status::Error {
                     message: format!("Error connecting to {} with error: {err}", &self.url),
                 });
             }
@@ -319,8 +320,8 @@ impl HttpMonitor {
     /**
      * Get identity.
      *
-     * identity: The identity file path
-     * identity_password: The password for the identity file.
+     * `identity`: The identity file path
+     * `identity_password`: The password for the identity file.
      *
      * Returns an Identity.
      *
@@ -361,9 +362,9 @@ impl HttpMonitor {
     }
 
     /**
-     * Get root_certificate.
+     * Get root certificate.
      *
-     * root_certificate: The root_certificate file path
+     * `root_certificate`: The root certificate file path
      *
      * Returns a certificate.
      *
@@ -405,7 +406,7 @@ mod test {
     use std::collections::HashMap;
 
     /**
-     * Test the check method. Testing failure towards a non-existing URL.
+     * Test the `check` method. Testing failure towards a non-existing URL.
      */
     #[tokio::test]
     async fn test_check() {
@@ -431,7 +432,7 @@ mod test {
     }
 
     /**
-     * Test the check method with tls config. Testing failure towards a non-existing URL.
+     * Test the `check` method with tls config. Testing failure towards a non-existing URL.
      */
     #[tokio::test]
     async fn test_check_with_tls() {
@@ -457,7 +458,7 @@ mod test {
     }
 
     /**
-     * Test the get_headers method.
+     * Test the `get_headers` method.
      */
     #[test]
     fn test_get_headers() {
@@ -473,7 +474,7 @@ mod test {
     }
 
     /**
-     * Test the set_status method.
+     * Test the `set_status` method.
      */
     #[test]
     fn test_set_status() {
@@ -494,7 +495,7 @@ mod test {
             &status,
         )
         .unwrap();
-        monitor.set_status(Status::Ok);
+        monitor.set_status(&Status::Ok);
         assert_eq!(
             status.lock().unwrap().get("localhost").unwrap().status,
             Status::Ok

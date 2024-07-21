@@ -37,7 +37,7 @@ impl CommandMonitor {
         command: &str,
         args: Option<Vec<String>>,
         expected: Option<String>,
-        status: Arc<Mutex<HashMap<String, MonitorStatus>>>,
+        status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
     ) -> CommandMonitor {
         let status_lock = status.lock();
         match status_lock {
@@ -64,20 +64,17 @@ impl CommandMonitor {
      * status: The new status.
      *
      */
-    fn set_status(&mut self, status: Status) {
+    fn set_status(&mut self, status: &Status) {
         match self.status.lock() {
             Ok(mut monitor_lock) => {
                 debug!(
                     "Setting monitor status for {} to: {:?}",
                     &self.name, &status
                 );
-                let monitor_status = match monitor_lock.get_mut(&self.name) {
-                    Some(status) => status,
-                    None => {
-                        error!("Monitor status not found for: {}", &self.name);
-                        return;
-                    }
-                };
+                let Some(monitor_status) = monitor_lock.get_mut(&self.name) else {
+                    error!("Monitor status not found for: {}", &self.name);
+                    return;
+                };                    
                 monitor_status.set_status(&status);
             }
             Err(err) => {
@@ -96,40 +93,39 @@ impl CommandMonitor {
         let command = match &self.args {
             Some(args) => command.args(args),
             None => &mut command,
-        };
+        };            
         let command_result = command.output().await.and_then(|output| {
             let output_resp = String::from_utf8_lossy(&output.stdout);
             debug!("Command output: {}", output_resp);
             if output.status.success() && self.expected.is_none() {
-                self.set_status(Status::Ok);
+                self.set_status(&Status::Ok);
             } else if output.status.success()
                 && self.expected.is_some()
                 && self
                     .expected
                     .as_ref()
-                    .unwrap_or(&"".to_string())
+                    .unwrap_or(&String::new())
                     .eq(&output_resp)
             {
-                self.set_status(Status::Ok);
+                self.set_status(&Status::Ok);
             } else {
-                self.set_status(Status::Error {
+                self.set_status(&Status::Error {
                     message: format!("Error running command: {output:?}"),
                 });
             }
             Ok(())
         });
         match command_result {
-            Ok(_) => return Ok(()),
+            Ok(()) => Ok(()),
             Err(err) => {
-                self.set_status(Status::Error {
+                self.set_status(&Status::Error {
                     message: format!("Error running command: {err:?}"),
                 });
-                return Err(ApplicationError::new(&format!(
-                    "Error running command: {:?}",
-                    err
-                )));
+                Err(ApplicationError::new(&format!(
+                    "Error running command: {err:?}"                    
+                )))
             }
-        };
+        }
     }
 }
 
@@ -144,7 +140,7 @@ mod test {
     async fn test_check_ls() {
         let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
             Arc::new(Mutex::new(HashMap::new()));
-        let mut monitor = CommandMonitor::new("test", "ls", None, None, status.clone());
+        let mut monitor = CommandMonitor::new("test", "ls", None, None, &status);
         monitor.check().await.unwrap();
         assert_eq!(
             status.lock().unwrap().get("test").unwrap().status,
@@ -164,7 +160,7 @@ mod test {
             "systemctl",
             Some(vec!["status".to_string(), "dbus.service".to_string()]),
             None,
-            status.clone(),
+            &status,
         );
         monitor.check().await.unwrap();
         assert_eq!(
@@ -180,7 +176,7 @@ mod test {
     async fn test_check_non_existing_command() {
         let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
             Arc::new(Mutex::new(HashMap::new()));
-        let mut monitor = CommandMonitor::new("test", "grumpy", None, None, status.clone());
+        let mut monitor = CommandMonitor::new("test", "grumpy", None, None, &status);
         let _ = monitor.check().await;
         assert_eq!(status.lock().unwrap().get("test").unwrap().status, Status::Error { message: "Error running command: Os { code: 2, kind: NotFound, message: \"No such file or directory\" }".to_string() });
     }
@@ -201,7 +197,7 @@ mod test {
                 "--property=ActiveState".to_string(),
             ]),
             Some("ActiveState=active\n".to_string()),
-            status.clone(),
+            &status,
         );
         let _ = monitor.check().await;
         assert_eq!(
