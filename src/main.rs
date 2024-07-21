@@ -1,6 +1,5 @@
 mod common;
-mod config;
-mod monitoring;
+mod services;
 
 use clap::Parser;
 use daemonize::Daemonize;
@@ -8,8 +7,8 @@ use log::{error, info};
 use log4rs::config::Deserializers;
 use std::fs::OpenOptions;
 
-use crate::config::ApplicationArguments;
-use crate::monitoring::MonitoringService;
+use crate::common::ApplicationArguments;
+use crate::services::MonitoringService;
 
 fn main() {
     /*

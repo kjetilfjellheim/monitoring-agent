@@ -74,8 +74,8 @@ impl CommandMonitor {
                 let Some(monitor_status) = monitor_lock.get_mut(&self.name) else {
                     error!("Monitor status not found for: {}", &self.name);
                     return;
-                };                    
-                monitor_status.set_status(&status);
+                };
+                monitor_status.set_status(status);
             }
             Err(err) => {
                 error!("Error updating monitor status: {:?}", err);
@@ -93,19 +93,18 @@ impl CommandMonitor {
         let command = match &self.args {
             Some(args) => command.args(args),
             None => &mut command,
-        };            
+        };
         let command_result = command.output().await.and_then(|output| {
             let output_resp = String::from_utf8_lossy(&output.stdout);
             debug!("Command output: {}", output_resp);
-            if output.status.success() && self.expected.is_none() {
-                self.set_status(&Status::Ok);
-            } else if output.status.success()
-                && self.expected.is_some()
-                && self
-                    .expected
-                    .as_ref()
-                    .unwrap_or(&String::new())
-                    .eq(&output_resp)
+            if output.status.success()
+                && (self.expected.is_none()
+                    || (self.expected.is_some()
+                        && self
+                            .expected
+                            .as_ref()
+                            .unwrap_or(&String::new())
+                            .eq(&output_resp)))
             {
                 self.set_status(&Status::Ok);
             } else {
@@ -122,7 +121,7 @@ impl CommandMonitor {
                     message: format!("Error running command: {err:?}"),
                 });
                 Err(ApplicationError::new(&format!(
-                    "Error running command: {err:?}"                    
+                    "Error running command: {err:?}"
                 )))
             }
         }

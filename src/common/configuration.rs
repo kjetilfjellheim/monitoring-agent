@@ -54,7 +54,7 @@ pub enum MonitorType {
 /**
  * HTTP methods.
  */
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Copy)]
 #[serde(rename_all = "camelCase")]
 pub enum HttpMethod {
     Get,
@@ -124,11 +124,7 @@ impl MonitoringConfig {
         match serde_json::from_str(data) {
             Ok(monitor_config) => Ok(monitor_config),
             Err(err) => Err(ApplicationError::new(
-                format!(
-                    "Could not parse config file: Line {}",
-                    err.line()
-                )
-                .as_str(),
+                format!("Could not parse config file: Line {}", err.line()).as_str(),
             )),
         }
     }

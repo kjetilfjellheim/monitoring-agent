@@ -24,7 +24,6 @@ pub struct MonitorStatus {
 }
 
 impl MonitorStatus {
-
     /**
      * Create a new `MonitorStatus`.
      *

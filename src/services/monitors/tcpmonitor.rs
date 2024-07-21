@@ -1,3 +1,4 @@
+
 use log::{debug, error};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -118,7 +119,7 @@ impl TcpMonitor {
                 self.set_status(&Status::Error {
                     message: format!(
                         "Error connecting to {}:{} with error: {err}",
-                        &self.host, &self.port, 
+                        &self.host, &self.port,
                     ),
                 });
             }

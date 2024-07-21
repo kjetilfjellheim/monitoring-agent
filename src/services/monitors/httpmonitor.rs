@@ -11,7 +11,7 @@ use reqwest::Identity;
 
 use crate::common::ApplicationError;
 use crate::common::{MonitorStatus, Status};
-use crate::config::HttpMethod;
+use crate::common::HttpMethod;
 
 /**
  * HTTP Monitor.
@@ -58,7 +58,7 @@ impl HttpMonitor {
         url: &str,
         method: HttpMethod,
         body: Option<String>,
-        headers: Option<HashMap<String, String>>,
+        headers: &Option<HashMap<String, String>>,
         name: &str,
         use_builtin_root_certs: bool,
         accept_invalid_certs: bool,
@@ -83,7 +83,8 @@ impl HttpMonitor {
          */
         let client = match root_certificate {
             Some(root_certificate) => {
-                let root_certificate = HttpMonitor::get_root_certificate(root_certificate.as_str())?;
+                let root_certificate =
+                    HttpMonitor::get_root_certificate(root_certificate.as_str())?;
                 client.add_root_certificate(root_certificate)
             }
             None => client,
@@ -106,7 +107,7 @@ impl HttpMonitor {
             Ok(client) => client,
             Err(err) => {
                 return Err(ApplicationError::new(&format!(
-                    "Error creating HTTP client: {err}"                    
+                    "Error creating HTTP client: {err}"
                 )));
             }
         };
@@ -130,7 +131,7 @@ impl HttpMonitor {
         Ok(HttpMonitor {
             url: url.to_string(),
             name: name.to_string(),
-            method: method.clone(),
+            method,
             body: body.clone(),
             headers: headers.clone(),
             status: status.clone(),
@@ -189,7 +190,7 @@ impl HttpMonitor {
         match reqwest::header::HeaderValue::from_str(value) {
             Ok(header_value) => Ok(header_value),
             Err(err) => Err(ApplicationError::new(&format!(
-                "Error creating header value: {err}"                
+                "Error creating header value: {err}"
             ))),
         }
     }
@@ -207,12 +208,8 @@ impl HttpMonitor {
         headers: &Option<HashMap<String, String>>,
     ) -> Result<reqwest::header::HeaderMap, ApplicationError> {
         match headers {
-            Some(headers) => {
-                HttpMonitor::get_header_map(headers)
-            }
-            None => {
-                Ok(HeaderMap::new())
-            }
+            Some(headers) => HttpMonitor::get_header_map(headers),
+            None => Ok(HeaderMap::new()),
         }
     }
 
@@ -233,7 +230,7 @@ impl HttpMonitor {
                     error!("Monitor status not found for: {}", &self.name);
                     return;
                 };
-                monitor_status.set_status(&status);
+                monitor_status.set_status(status);
             }
             Err(err) => {
                 error!("Error updating monitor status: {:?}", err);
@@ -354,7 +351,7 @@ impl HttpMonitor {
             Ok(identity) => identity,
             Err(err) => {
                 return Err(ApplicationError::new(&format!(
-                    "Error creating identity: {err}"                    
+                    "Error creating identity: {err}"
                 )));
             }
         };
@@ -402,7 +399,7 @@ mod test {
 
     use reqwest::header::HeaderValue;
 
-    use crate::config::HttpMethod;
+    use crate::common::HttpMethod;
     use std::collections::HashMap;
 
     /**
@@ -416,7 +413,7 @@ mod test {
             "http://localhost:65000",
             HttpMethod::Get,
             None,
-            None,
+            &None,
             "localhost",
             true,
             true,
@@ -442,7 +439,7 @@ mod test {
             "http://localhost:65000",
             HttpMethod::Get,
             None,
-            None,
+            &None,
             "localhost",
             true,
             true,
@@ -484,7 +481,7 @@ mod test {
             "https://www.google.com",
             HttpMethod::Get,
             None,
-            None,
+            &None,
             "Google",
             true,
             true,
