@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::net::{Ipv4Addr, SocketAddrV4};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -60,7 +59,7 @@ impl MonitoringService {
         /*
          * Load the monitoring configuration.
          */
-        let monitoring_config: MonitoringConfig = MonitoringConfig::new(&config_file)?;
+        let monitoring_config: MonitoringConfig = MonitoringConfig::new(config_file)?;
         /*
          * Start the scheduling of the monitoring jobs.
          */
@@ -95,7 +94,7 @@ impl MonitoringService {
             Ok(scheduler) => scheduler,
             Err(err) => {
                 return Err(ApplicationError::new(
-                    format!("Could not create scheduler: {}", err).as_str(),
+                    format!("Could not create scheduler: {err}").as_str(),
                 ));
             }
         };
@@ -104,7 +103,7 @@ impl MonitoringService {
         /*
          * Create and add jobs to the scheduler.
          */
-        for monitor in monitoring_config.monitors.iter() {
+        for monitor in &*monitoring_config.monitors {
             self.create_and_add_job(monitor, &scheduler, &status)
                 .await?;
         }
@@ -113,20 +112,20 @@ impl MonitoringService {
          */
         let server = Server::new(
             &monitoring_config.server.ip,
-            &monitoring_config.server.port,
+            monitoring_config.server.port,
             &status,
         );
-        server.start().await;
+        server.start();
         /*
          * Start the scheduler.
          */
         match scheduler.start().await {
-            Ok(_) => {
+            Ok(()) => {
                 self.scheduler = Some(scheduler);
             }
             Err(err) => {
                 return Err(ApplicationError::new(
-                    format!("Could not start scheduler: {}", err).as_str(),
+                    format!("Could not start scheduler: {err}").as_str(),
                 ));
             }
         }
@@ -160,10 +159,9 @@ impl MonitoringService {
                     monitor.schedule.as_str(),
                     monitor.name.as_str(),
                     host.as_str(),
-                    &port,
-                    &status,
-                )
-                .await?
+                    port,
+                    status,
+                )?
             }
             crate::config::MonitorType::Http {
                 url,
@@ -181,18 +179,17 @@ impl MonitoringService {
                     monitor.schedule.as_str(),
                     monitor.name.as_str(),
                     url.as_str(),
-                    &method,
-                    &body,
-                    &headers,
-                    &use_builtin_root_certs,
-                    &accept_invalid_certs,
-                    &tls_info,
-                    &root_certificate,
-                    &identity,
-                    &identity_password,
-                    &status,
-                )
-                .await?
+                    method,
+                    body,
+                    headers,
+                    use_builtin_root_certs,
+                    accept_invalid_certs,
+                    tls_info,
+                    root_certificate,
+                    identity,
+                    identity_password,
+                    status,
+                )?
             }
             crate::config::MonitorType::Command {
                 command,
@@ -205,9 +202,8 @@ impl MonitoringService {
                     &command,
                     &args,
                     &expected,
-                    &status,
-                )
-                .await?
+                    status,
+                )?
             }
             _ => {
                 return Err(ApplicationError::new("Unsupported monitor type"));
@@ -222,14 +218,14 @@ impl MonitoringService {
      */
     fn log_monitors(&self) {
         info!("Logging monitors {:?}", Instant::now());
-        for tcp_monitor in self.tcp_monitors.iter() {
-            self.log_tcp_monitor(tcp_monitor);
+        for tcp_monitor in &*self.tcp_monitors {
+            MonitoringService::log_tcp_monitor(tcp_monitor);
         }
-        for http_monitor in self.http_monitors.iter() {
-            self.log_http_monitor(http_monitor);
+        for http_monitor in &*self.http_monitors {
+            MonitoringService::log_http_monitor(http_monitor);
         }
-        for command_monitor in self.command_monitors.iter() {
-            self.log_command_monitor(command_monitor);
+        for command_monitor in &*self.command_monitors {
+            MonitoringService::log_command_monitor(command_monitor);
         }
     }
 
@@ -241,18 +237,18 @@ impl MonitoringService {
      *
      * result: The result of adding the job to the scheduler.
      *
-     * throws: ApplicationError: If the job fails to be added.
+     * throws: `ApplicationError`: If the job fails to be added.
      */
     async fn add_job(&self, scheduler: &JobScheduler, job: Job) -> Result<(), ApplicationError> {
         match scheduler.add(job).await {
             Ok(_) => Ok(()),
             Err(err) => Err(ApplicationError::new(
-                format!("Could not add job: {}", err).as_str(),
+                format!("Could not add job: {err}").as_str(),
             )),
         }
     }
 
-    async fn get_command_monitor_job(
+    fn get_command_monitor_job(
         &mut self,
         schedule: &str,
         name: &str,
@@ -275,7 +271,7 @@ impl MonitoringService {
         }) {
             Ok(job) => Ok(job),
             Err(err) => Err(ApplicationError::new(
-                format!("Could not create job: {}", err).as_str(),
+                format!("Could not create job: {err}").as_str(),
             )),
         }
     }
@@ -290,23 +286,23 @@ impl MonitoringService {
      *
      * result: The result of getting the TCP monitor job.
      */
-    async fn get_tcp_monitor_job(
+    fn get_tcp_monitor_job(
         &mut self,
         schedule: &str,
         name: &str,
         host: &str,
-        port: &u16,
+        port: u16,
         status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
     ) -> Result<Job, ApplicationError> {
         debug!("Creating Tcp monitor: {}", &name);
-        let tcp_monitor = TcpMonitor::new(host, port, name, status.clone());
+        let tcp_monitor = TcpMonitor::new(host, port, name, status);
         self.tcp_monitors.push(tcp_monitor.clone());
         match Job::new_async(schedule, move |_uuid, _locked| {
             MonitoringService::check_tcp_monitor(&tcp_monitor)
         }) {
             Ok(job) => Ok(job),
             Err(err) => Err(ApplicationError::new(
-                format!("Could not create job: {}", err).as_str(),
+                format!("Could not create job: {err}").as_str(),
             )),
         }
     }
@@ -323,38 +319,38 @@ impl MonitoringService {
      *
      * result: The result of getting the HTTP monitor job.
      *
-     * throws: ApplicationError: If the job fails to be created.
+     * throws: `ApplicationError`: If the job fails to be created.
      */
-    async fn get_http_monitor_job(
+    fn get_http_monitor_job(
         &mut self,
         schedule: &str,
         name: &str,
         url: &str,
-        method: &HttpMethod,
-        body: &Option<String>,
-        headers: &Option<std::collections::HashMap<String, String>>,
-        use_builtin_root_certs: &bool,
-        accept_invalid_certs: &bool,
-        tls_info: &bool,
-        root_certificate: &Option<String>,
-        identity: &Option<String>,
-        identity_password: &Option<String>,
+        method: HttpMethod,
+        body: Option<String>,
+        headers: Option<std::collections::HashMap<String, String>>,
+        use_builtin_root_certs: bool,
+        accept_invalid_certs: bool,
+        tls_info: bool,
+        root_certificate: Option<String>,
+        identity: Option<String>,
+        identity_password: Option<String>,
         status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
     ) -> Result<Job, ApplicationError> {
         debug!("Creating http monitor: {}", &name);
         let http_monitor = HttpMonitor::new(
             url,
-            &method,
-            &body,
-            &headers,
-            &name,
-            &use_builtin_root_certs,
-            &accept_invalid_certs,
-            &tls_info,
-            &root_certificate,
-            &identity,
-            &identity_password,
-            status.clone(),
+            method,
+            body,
+            headers,
+            name,
+            use_builtin_root_certs,
+            accept_invalid_certs,
+            tls_info,
+            root_certificate,
+            identity,
+            identity_password,
+            status,
         )?;
         self.http_monitors.push(http_monitor.clone());
         match Job::new_async(schedule, move |_uuid, _locked| {
@@ -362,7 +358,7 @@ impl MonitoringService {
         }) {
             Ok(job) => Ok(job),
             Err(err) => Err(ApplicationError::new(
-                format!("Could not create job: {}", err).as_str(),
+                format!("Could not create job: {err}").as_str(),
             )),
         }
     }
@@ -370,9 +366,9 @@ impl MonitoringService {
     /**
      * Log the HTTP monitor.
      *
-     * http_monitor: The HTTP monitor.
+     * `http_monitor`: The HTTP monitor.
      */
-    fn log_http_monitor(&self, http_monitor: &HttpMonitor) {
+    fn log_http_monitor(http_monitor: &HttpMonitor) {
         let lock = http_monitor.status.lock();
         match lock {
             Ok(lock) => {
@@ -387,9 +383,9 @@ impl MonitoringService {
     /**
      * Log the TCP monitor.
      *
-     * tcp_monitor: The TCP monitor.
+     * `tcp_monitor`: The TCP monitor.
      */
-    fn log_tcp_monitor(&self, tcp_monitor: &TcpMonitor) {
+    fn log_tcp_monitor(tcp_monitor: &TcpMonitor) {
         let lock = tcp_monitor.status.lock();
         match lock {
             Ok(lock) => {
@@ -404,9 +400,9 @@ impl MonitoringService {
     /**
      * Log the Command monitor.
      *
-     * command_monitor: The command monitor.
+     * `command_monitor`: The command monitor.
      */
-    fn log_command_monitor(&self, command_monitor: &CommandMonitor) {
+    fn log_command_monitor(command_monitor: &CommandMonitor) {
         let lock = command_monitor.status.lock();
         match lock {
             Ok(lock) => {
@@ -421,7 +417,7 @@ impl MonitoringService {
     /**
      * Check the HTTP monitor.
      *
-     * http_monitor: The HTTP monitor.
+     * `http_monitor`: The HTTP monitor.
      *
      * result: Future of the check.
      */
@@ -442,7 +438,7 @@ impl MonitoringService {
     /**
      * Check the TCP monitor.
      *
-     * tcp_monitor: The TCP monitor.
+     * `tcp_monitor`: The TCP monitor.
      *
      * result: Future of the check.
      */
@@ -450,10 +446,8 @@ impl MonitoringService {
         Box::pin({
             let mut moved_tcp_monitor = tcp_monitor.clone();
             async move {
-                let _ = moved_tcp_monitor
-                    .check()
-                    .await
-                    .map_err(|err| error!("Error: {}", err.message));
+                let () = moved_tcp_monitor
+                    .check();
             }
         })
     }
@@ -461,7 +455,7 @@ impl MonitoringService {
     /**
      * Check the command monitor.
      *
-     * command_monitor: The command monitor.
+     * `command_monitor`: The command monitor.
      *
      * result: Future of the check.
      */
@@ -482,11 +476,11 @@ impl MonitoringService {
     /**
      * Start the scheduling.
      *
-     * future_scheduling: The scheduling future.
+     * `future_scheduling`: The scheduling future.
      *
      * result: The result of starting the scheduling.
      *
-     * throws: ApplicationError: If the scheduling fails to start.
+     * throws: `ApplicationError`: If the scheduling fails to start.
      *
      */
     fn start_scheduling(
@@ -501,7 +495,7 @@ impl MonitoringService {
             }
             Err(err) => {
                 return Err(ApplicationError::new(
-                    format!("Could not create runtime: {}", err).as_str(),
+                    format!("Could not create runtime: {err}").as_str(),
                 ));
             }
         }
@@ -566,8 +560,8 @@ mod test {
         let mut monitoring_service = MonitoringService::new();
         let result = monitoring_service.start("./resources/test/test_simple_unknown.json", &true);
         match result {
-            Ok(_) => {
-                assert!(false);
+            Ok(()) => {
+                panic!("Should not be able to create unknown monitor");
             }
             Err(err) => {
                 assert_eq!("Could not parse config file: Line 7", err.message);

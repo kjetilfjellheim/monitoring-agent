@@ -56,34 +56,34 @@ impl HttpMonitor {
      */
     pub fn new(
         url: &str,
-        method: &HttpMethod,
-        body: &Option<String>,
-        headers: &Option<HashMap<String, String>>,
+        method: HttpMethod,
+        body: Option<String>,
+        headers: Option<HashMap<String, String>>,
         name: &str,
-        use_builtin_root_certs: &bool,
-        accept_invalid_certs: &bool,
-        tls_info: &bool,
-        root_certificate: &Option<String>,
-        identity: &Option<String>,
-        identity_password: &Option<String>,
-        status: Arc<Mutex<HashMap<String, MonitorStatus>>>,
+        use_builtin_root_certs: bool,
+        accept_invalid_certs: bool,
+        tls_info: bool,
+        root_certificate: Option<String>,
+        identity: Option<String>,
+        identity_password: Option<String>,
+        status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
     ) -> Result<HttpMonitor, ApplicationError> {
         debug!("Creating HTTP monitor: {}", &name);
         /*
          *  Start create http client.
          */
         let client = reqwest::Client::builder()
-            .tls_built_in_root_certs(use_builtin_root_certs.clone())
-            .danger_accept_invalid_certs(accept_invalid_certs.clone())
+            .tls_built_in_root_certs(use_builtin_root_certs)
+            .danger_accept_invalid_certs(accept_invalid_certs)
             .use_native_tls()
-            .tls_info(tls_info.clone());
+            .tls_info(tls_info);
 
         /*
          * Add root certificate if included.
          */
         let client = match root_certificate {
             Some(root_certificate) => {
-                let root_certificate = HttpMonitor::get_root_certificate(root_certificate)?;
+                let root_certificate = HttpMonitor::get_root_certificate(root_certificate.as_str())?;
                 client.add_root_certificate(root_certificate)
             }
             None => client,
@@ -106,8 +106,7 @@ impl HttpMonitor {
             Ok(client) => client,
             Err(err) => {
                 return Err(ApplicationError::new(&format!(
-                    "Error creating HTTP client: {}",
-                    err
+                    "Error creating HTTP client: {err}"                    
                 )));
             }
         };
@@ -135,7 +134,7 @@ impl HttpMonitor {
             body: body.clone(),
             headers: headers.clone(),
             status: status.clone(),
-            client: client,
+            client,
         })
     }
 
@@ -151,7 +150,7 @@ impl HttpMonitor {
         headers: &HashMap<String, String>,
     ) -> Result<reqwest::header::HeaderMap, ApplicationError> {
         let mut header_map = reqwest::header::HeaderMap::new();
-        for (key, value) in headers.iter() {
+        for (key, value) in &*headers {
             header_map.insert(
                 HttpMonitor::get_header_name(key)?,
                 HttpMonitor::get_header_value(value)?,
@@ -172,8 +171,7 @@ impl HttpMonitor {
         match reqwest::header::HeaderName::from_bytes(key.as_bytes()) {
             Ok(header_name) => Ok(header_name),
             Err(err) => Err(ApplicationError::new(&format!(
-                "Error creating header name: {}",
-                err
+                "Error creating header name: {err}"
             ))),
         }
     }
@@ -190,8 +188,7 @@ impl HttpMonitor {
         match reqwest::header::HeaderValue::from_str(value) {
             Ok(header_value) => Ok(header_value),
             Err(err) => Err(ApplicationError::new(&format!(
-                "Error creating header value: {}",
-                err
+                "Error creating header value: {err}"                
             ))),
         }
     }
@@ -210,10 +207,10 @@ impl HttpMonitor {
     ) -> Result<reqwest::header::HeaderMap, ApplicationError> {
         match headers {
             Some(headers) => {
-                return HttpMonitor::get_header_map(headers);
+                HttpMonitor::get_header_map(headers)
             }
             None => {
-                return Ok(HeaderMap::new());
+                Ok(HeaderMap::new())
             }
         }
     }
@@ -231,12 +228,9 @@ impl HttpMonitor {
                     "Setting monitor status for {} to: {:?}",
                     &self.name, &status
                 );
-                let monitor_status = match monitor_lock.get_mut(&self.name) {
-                    Some(status) => status,
-                    None => {
-                        error!("Monitor status not found for: {}", &self.name);
-                        return;
-                    }
+                let monitor_status = if let Some(status) = monitor_lock.get_mut(&self.name) { status } else {
+                    error!("Monitor status not found for: {}", &self.name);
+                    return;
                 };
                 monitor_status.set_status(&status);
             }
@@ -316,7 +310,7 @@ impl HttpMonitor {
             }
             Err(err) => {
                 self.set_status(Status::Error {
-                    message: format!("Error connecting to {} with error: {}", &self.url, err),
+                    message: format!("Error connecting to {} with error: {err}", &self.url),
                 });
             }
         }
@@ -332,8 +326,8 @@ impl HttpMonitor {
      *
      */
     fn get_identity(
-        identity: &String,
-        identity_password: &Option<String>,
+        identity: String,
+        identity_password: Option<String>,
     ) -> Result<Identity, ApplicationError> {
         /*
          * Read identity file.
@@ -342,17 +336,15 @@ impl HttpMonitor {
             Ok(data) => data,
             Err(err) => {
                 return Err(ApplicationError::new(&format!(
-                    "Error reading identity: {}",
-                    err
+                    "Error reading identity: {err}"
                 )));
             }
         };
         /*
          * Get identity password. If missing then fail.
          */
-        let identity_password = match identity_password {
-            Some(identity_password) => identity_password,
-            None => return Err(ApplicationError::new("Identity password is required")),
+        let Some(identity_password) = identity_password else {
+            return Err(ApplicationError::new("Identity password is required"));
         };
         /*
          * Create identity.
@@ -361,8 +353,7 @@ impl HttpMonitor {
             Ok(identity) => identity,
             Err(err) => {
                 return Err(ApplicationError::new(&format!(
-                    "Error creating identity: {}",
-                    err
+                    "Error creating identity: {err}"                    
                 )));
             }
         };
@@ -385,8 +376,7 @@ impl HttpMonitor {
             Ok(data) => data,
             Err(err) => {
                 return Err(ApplicationError::new(&format!(
-                    "Error reading root_certificate: {}",
-                    err
+                    "Error reading root_certificate: {err}"
                 )));
             }
         };
@@ -397,8 +387,7 @@ impl HttpMonitor {
             Ok(identity) => identity,
             Err(err) => {
                 return Err(ApplicationError::new(&format!(
-                    "Error creating identity: {}",
-                    err
+                    "Error creating identity: {err}"
                 )));
             }
         };
@@ -424,17 +413,17 @@ mod test {
             Arc::new(Mutex::new(HashMap::new()));
         let mut monitor = HttpMonitor::new(
             "http://localhost:65000",
-            &HttpMethod::Get,
-            &None,
-            &None,
+            HttpMethod::Get,
+            None,
+            None,
             "localhost",
-            &true,
-            &true,
-            &false,
-            &None,
-            &None,
-            &None,
-            status.clone(),
+            true,
+            true,
+            false,
+            None,
+            None,
+            None,
+            &status,
         )
         .unwrap();
         monitor.check().await.unwrap();
@@ -450,17 +439,17 @@ mod test {
             Arc::new(Mutex::new(HashMap::new()));
         let mut monitor = HttpMonitor::new(
             "http://localhost:65000",
-            &HttpMethod::Get,
-            &None,
-            &None,
+            HttpMethod::Get,
+            None,
+            None,
             "localhost",
-            &true,
-            &true,
-            &false,
-            &Some("./resources/test/server_cert/server.cer".to_string()),
-            &Some("./resources/test/client_cert/client.p12".to_string()),
-            &Some("test".to_string()),
-            status.clone(),
+            true,
+            true,
+            false,
+            Some("./resources/test/server_cert/server.cer".to_string()),
+            Some("./resources/test/client_cert/client.p12".to_string()),
+            Some("test".to_string()),
+            &status,
         )
         .unwrap();
         monitor.check().await.unwrap();
@@ -492,17 +481,17 @@ mod test {
             Arc::new(Mutex::new(HashMap::new()));
         let mut monitor = HttpMonitor::new(
             "https://www.google.com",
-            &HttpMethod::Get,
-            &None,
-            &None,
+            HttpMethod::Get,
+            None,
+            None,
             "Google",
-            &true,
-            &true,
-            &false,
-            &None,
-            &None,
-            &None,
-            status.clone(),
+            true,
+            true,
+            false,
+            None,
+            None,
+            None,
+            &status,
         )
         .unwrap();
         monitor.set_status(Status::Ok);

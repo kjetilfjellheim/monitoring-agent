@@ -52,8 +52,8 @@ impl CommandMonitor {
         CommandMonitor {
             name: name.to_string(),
             command: command.to_string(),
-            args: args,
-            expected: expected,
+            args,
+            expected,
             status: status.clone(),
         }
     }
@@ -113,7 +113,7 @@ impl CommandMonitor {
                 self.set_status(Status::Ok);
             } else {
                 self.set_status(Status::Error {
-                    message: format!("Error running command: {:?}", output),
+                    message: format!("Error running command: {output:?}"),
                 });
             }
             Ok(())
@@ -122,7 +122,7 @@ impl CommandMonitor {
             Ok(_) => return Ok(()),
             Err(err) => {
                 self.set_status(Status::Error {
-                    message: format!("Error running command: {:?}", err),
+                    message: format!("Error running command: {err:?}"),
                 });
                 return Err(ApplicationError::new(&format!(
                     "Error running command: {:?}",

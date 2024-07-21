@@ -5,6 +5,7 @@ mod monitoring;
 use clap::Parser;
 use daemonize::Daemonize;
 use log::{error, info};
+use log4rs::config::Deserializers;
 use std::fs::OpenOptions;
 
 use crate::config::ApplicationArguments;
@@ -14,10 +15,10 @@ fn main() {
     /*
      * Parse command line arguments.
      */
-    let args = ApplicationArguments::parse();
+    let args: ApplicationArguments = ApplicationArguments::parse();
 
-    match log4rs::init_file(&args.loggingfile, Default::default()) {
-        Ok(_) => {
+    match log4rs::init_file(&args.loggingfile, Deserializers::default()) {
+        Ok(()) => {
             info!("Logging initialized!");
         }
         Err(err) => {
@@ -30,7 +31,7 @@ fn main() {
     if args.daemon {
         daemonize_application(args);
     } else {
-        normal_application(args);
+        normal_application(&args);
     }
 }
 /**
@@ -39,10 +40,10 @@ fn main() {
  * @param args Application arguments.
  *
  */
-fn normal_application(args: ApplicationArguments) {
+fn normal_application(args: &ApplicationArguments) {
     let mut monitoring_service = MonitoringService::new();
     match monitoring_service.start(&args.config, &args.test) {
-        Ok(_) => {
+        Ok(()) => {
             info!("Monitoring service started!");
         }
         Err(err) => {
@@ -61,7 +62,6 @@ fn daemonize_application(args: ApplicationArguments) {
      */
     let stdout = match OpenOptions::new()
         .read(true)
-        .write(true)
         .append(true)
         .create(true)
         .open(&args.stdout)
@@ -77,7 +77,6 @@ fn daemonize_application(args: ApplicationArguments) {
      */
     let stderr = match OpenOptions::new()
         .read(true)
-        .write(true)
         .append(true)
         .create(true)
         .open(&args.stderr)
@@ -94,13 +93,13 @@ fn daemonize_application(args: ApplicationArguments) {
     let daemonize = Daemonize::new()
         .pid_file(&args.pidfile)
         .chown_pid_file(true)
-        .umask(0770)
+        .umask(770)
         .stdout(stdout)
         .stderr(stderr)
         .privileged_action(move || {
             let mut monitoring_service = MonitoringService::new();
             match monitoring_service.start(&args.config, &args.test) {
-                Ok(_) => {
+                Ok(()) => {
                     info!("Monitoring service started!");
                 }
                 Err(err) => {
@@ -113,7 +112,7 @@ fn daemonize_application(args: ApplicationArguments) {
      * Start the daemon.
      */
     match daemonize.start() {
-        Ok(_) => {
+        Ok(()) => {
             info!("Started daemon!");
         }
         Err(err) => {
@@ -137,7 +136,7 @@ mod test {
             pidfile: String::new(),
             loggingfile: "./resources/test/logging.yml".to_string(),
         };
-        super::normal_application(args);
+        super::normal_application(&args);
     }
 
     #[test]
