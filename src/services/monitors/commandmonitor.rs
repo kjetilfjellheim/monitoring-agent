@@ -94,28 +94,28 @@ impl CommandMonitor {
             Some(args) => command.args(args),
             None => &mut command,
         };
-        let command_result = command.output().await.and_then(|output| {
-            let output_resp = String::from_utf8_lossy(&output.stdout);
-            debug!("Command output: {}", output_resp);
-            if output.status.success()
-                && (self.expected.is_none()
-                    || (self.expected.is_some()
-                        && self
-                            .expected
-                            .as_ref()
-                            .unwrap_or(&String::new())
-                            .eq(&output_resp)))
-            {
-                self.set_status(&Status::Ok);
-            } else {
-                self.set_status(&Status::Error {
-                    message: format!("Error running command: {output:?}"),
-                });
-            }
-            Ok(())
-        });
+        let command_result = command.output().await;
         match command_result {
-            Ok(()) => Ok(()),
+            Ok(output) => {
+                let output_resp = String::from_utf8_lossy(&output.stdout);
+                debug!("Command output: {}", output_resp);
+                if output.status.success()
+                    && (self.expected.is_none()
+                        || (self.expected.is_some()
+                            && self
+                                .expected
+                                .as_ref()
+                                .unwrap_or(&String::new())
+                                .eq(&output_resp)))
+                {
+                    self.set_status(&Status::Ok);
+                } else {
+                    self.set_status(&Status::Error {
+                        message: format!("Error running command: {output:?}"),
+                    });
+                }
+                Ok(())
+            }
             Err(err) => {
                 self.set_status(&Status::Error {
                     message: format!("Error running command: {err:?}"),
@@ -124,7 +124,7 @@ impl CommandMonitor {
                     "Error running command: {err:?}"
                 )))
             }
-        }
+        }        
     }
 }
 

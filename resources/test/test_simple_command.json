@@ -3,7 +3,7 @@
         {
             "name":"test command",
             "schedule": "0 0 0 0 0 0 0",
-            "monitor": {
+            "details": {
                 "type": "command",
                 "command": "ls"            
             }

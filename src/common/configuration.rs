@@ -79,7 +79,7 @@ pub enum HttpMethod {
 pub struct Monitor {
     pub name: String,
     pub schedule: String,
-    pub monitor: MonitorType,
+    pub details: MonitorType,
 }
 
 /**
@@ -192,7 +192,7 @@ mod tests {
             MonitoringConfig::new("resources/test/test_simple_tcp.json")?;
         assert_eq!("0 0 0 0 0 0 0".to_string(), monitoring.monitors[0].schedule);
         assert_eq!(1, monitoring.monitors.len());
-        let monitor = monitoring.monitors[0].monitor.clone();
+        let monitor = monitoring.monitors[0].details.clone();
         assert_eq!(
             monitor,
             MonitorType::Tcp {
@@ -214,7 +214,7 @@ mod tests {
             MonitoringConfig::new("resources/test/test_simple_http.json")?;
         assert_eq!("1 2 3 4 5 6 7".to_string(), monitoring.monitors[0].schedule);
         assert_eq!(1, monitoring.monitors.len());
-        let monitor = monitoring.monitors[0].monitor.clone();
+        let monitor = monitoring.monitors[0].details.clone();
         assert_eq!(
             monitor,
             MonitorType::Http {
@@ -245,7 +245,7 @@ mod tests {
         assert_eq!("* * * * * * *".to_string(), monitoring.monitors[0].schedule);
         assert_eq!("* * * * * * *".to_string(), monitoring.monitors[1].schedule);
         assert_eq!(2, monitoring.monitors.len());
-        let monitor = monitoring.monitors[0].monitor.clone();
+        let monitor = monitoring.monitors[0].details.clone();
         assert_eq!(
             monitor,
             MonitorType::Tcp {
@@ -253,7 +253,7 @@ mod tests {
                 port: 80,
             }
         );
-        let monitor = monitoring.monitors[1].monitor.clone();
+        let monitor = monitoring.monitors[1].details.clone();
         assert_eq!(
             monitor,
             MonitorType::Http {
@@ -281,7 +281,7 @@ mod tests {
         let monitoring: MonitoringConfig =
             MonitoringConfig::new("resources/test/test_simple_tlsfields.json")?;
         assert_eq!("0 0 0 0 0 0 0".to_string(), monitoring.monitors[0].schedule);
-        let monitor = monitoring.monitors[0].monitor.clone();
+        let monitor = monitoring.monitors[0].details.clone();
         assert_eq!(
             monitor,
             MonitorType::Http {

@@ -3,7 +3,7 @@
         {
             "name":"",
             "schedule": "0 0 0 0 0 0 0",
-            "monitor": {
+            "details": {
                 "type": "unknown",
                 "host": "192.168.1.1",
                 "port": 8080

@@ -153,7 +153,7 @@ impl MonitoringService {
         scheduler: &JobScheduler,
         status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
     ) -> Result<(), ApplicationError> {
-        let monitor_type = monitor.monitor.clone();
+        let monitor_type = monitor.details.clone();
         let job = match monitor_type {
             crate::common::MonitorType::Tcp { host, port } => self.get_tcp_monitor_job(
                 monitor.schedule.as_str(),
@@ -178,7 +178,7 @@ impl MonitoringService {
                 monitor.name.as_str(),
                 url.as_str(),
                 method,
-                body,
+                &body,
                 &headers,
                 use_builtin_root_certs,
                 accept_invalid_certs,
@@ -314,7 +314,7 @@ impl MonitoringService {
         name: &str,
         url: &str,
         method: HttpMethod,
-        body: Option<String>,
+        body: &Option<String>,
         headers: &Option<std::collections::HashMap<String, String>>,
         use_builtin_root_certs: bool,
         accept_invalid_certs: bool,
