@@ -20,9 +20,10 @@ use super::server::Server;
  *
  * This struct represents the monitoring service.
  *
- * scheduler: The job scheduler.
- * tcp_monitors: The TCP monitors.
- * http_monitors: The HTTP monitors.
+ * `scheduler`: The job scheduler.
+ * `tcp_monitors`: The TCP monitors.
+ * `http_monitors`: The HTTP monitors.
+ * `command_monitors`: The command monitors.
  *  
  */
 pub struct MonitoringService {
@@ -50,12 +51,12 @@ impl MonitoringService {
     /**
      * Start the monitoring service.
      *
-     * config_file: The configuration file.
-     * test: Test the configuration. Starts the scheduling, but stops immediately.
+     * `config_file`: The configuration file.
+     * `test`: Test the configuration. Starts the scheduling, but stops immediately.
      *
      * result: The result of starting the monitoring service.
      */
-    pub fn start(&mut self, config_file: &str, test: &bool) -> Result<(), ApplicationError> {
+    pub fn start(&mut self, config_file: &str, test: bool) -> Result<(), ApplicationError> {
         /*
          * Load the monitoring configuration.
          */
@@ -77,11 +78,11 @@ impl MonitoringService {
     /**
      * Create and add jobs to the scheduler.
      *
-     * monitoring_config: The monitoring configuration.
+     * `monitoring_config`: The monitoring configuration.
      *
      * result: The result of adding the jobs to the scheduler.
      *
-     * throws: ApplicationError: If the jobs fails to be added.
+     * throws: `ApplicationError`: If the jobs fails to be added.
      */
     async fn add_jobs(
         &mut self,
@@ -139,12 +140,12 @@ impl MonitoringService {
     /**
      * Create and add a job to the scheduler.
      *
-     * monitor: The monitor configuration.
-     * scheduler: The job scheduler.
+     * `monitor`: The monitor configuration.
+     * `scheduler`: The job scheduler.
      *
-     * result: The result of creating and adding the job to the scheduler.
+     * `result`: The result of creating and adding the job to the scheduler.
      *
-     * throws: ApplicationError: If the job fails to be added.
+     * throws: `ApplicationError`: If the job fails to be added.
      */
     async fn create_and_add_job(
         &mut self,
@@ -205,9 +206,6 @@ impl MonitoringService {
                     status,
                 )?
             }
-            _ => {
-                return Err(ApplicationError::new("Unsupported monitor type"));
-            }
         };
         self.add_job(scheduler, job).await?;
         Ok(())
@@ -232,10 +230,10 @@ impl MonitoringService {
     /**
      * Add a job to the scheduler.
      *
-     * scheduler: The job scheduler.
-     * job: The job to add.
+     * `scheduler`: The job scheduler.
+     * `job`: The job to add.
      *
-     * result: The result of adding the job to the scheduler.
+     * `result`: The result of adding the job to the scheduler.
      *
      * throws: `ApplicationError`: If the job fails to be added.
      */
@@ -263,7 +261,7 @@ impl MonitoringService {
             command,
             args.clone(),
             expected.clone(),
-            status.clone(),
+            status,
         );
         self.command_monitors.push(command_monitor.clone());
         match Job::new_async(schedule, move |_uuid, _locked| {
@@ -279,12 +277,12 @@ impl MonitoringService {
     /**
      * Get a TCP monitor job.
      *
-     * schedule: The schedule.
-     * name: The name of the monitor.
-     * host: The host to monitor.
-     * port: The port to monitor.
+     * `schedule`: The schedule.
+     * `name`: The name of the monitor.
+     * `host`: The host to monitor.
+     * `port`: The port to monitor.
      *
-     * result: The result of getting the TCP monitor job.
+     * `result`: The result of getting the TCP monitor job.
      */
     fn get_tcp_monitor_job(
         &mut self,
@@ -310,12 +308,12 @@ impl MonitoringService {
     /**
      * Get an HTTP monitor job.
      *
-     * schedule: The schedule.
-     * name: The name of the monitor.
-     * url: The URL to monitor.
-     * method: The HTTP method.
-     * body: The body.
-     * headers: The headers.
+     * `schedule`: The schedule.
+     * `name`: The name of the monitor.
+     * `url`: The URL to monitor.
+     * `method`: The HTTP method.
+     * `body`: The body.
+     * `headers`: The headers.
      *
      * result: The result of getting the HTTP monitor job.
      *
@@ -515,7 +513,7 @@ mod test {
     fn test_monitoring_service() {
         let mut monitoring_service = MonitoringService::new();
         monitoring_service
-            .start("./resources/test/test_full_integration_test.json", &true)
+            .start("./resources/test/test_full_integration_test.json", true)
             .unwrap();
     }
 
@@ -526,7 +524,7 @@ mod test {
     fn test_monitoring_service_tcp() {
         let mut monitoring_service = MonitoringService::new();
         monitoring_service
-            .start("./resources/test/test_simple_tcp.json", &true)
+            .start("./resources/test/test_simple_tcp.json", true)
             .unwrap();
     }
 
@@ -537,7 +535,7 @@ mod test {
     fn test_monitoring_service_http() {
         let mut monitoring_service = MonitoringService::new();
         monitoring_service
-            .start("./resources/test/test_simple_http.json", &true)
+            .start("./resources/test/test_simple_http.json", true)
             .unwrap();
     }
 
@@ -548,7 +546,7 @@ mod test {
     fn test_monitoring_service_command() {
         let mut monitoring_service = MonitoringService::new();
         monitoring_service
-            .start("./resources/test/test_simple_command.json", &true)
+            .start("./resources/test/test_simple_command.json", true)
             .unwrap();
     }
 
@@ -558,7 +556,7 @@ mod test {
     #[test]
     fn test_monitoring_service_unknown() {
         let mut monitoring_service = MonitoringService::new();
-        let result = monitoring_service.start("./resources/test/test_simple_unknown.json", &true);
+        let result = monitoring_service.start("./resources/test/test_simple_unknown.json", true);
         match result {
             Ok(()) => {
                 panic!("Should not be able to create unknown monitor");
@@ -575,7 +573,7 @@ mod test {
     #[test]
     fn test_monitoring_service_with_tls_config() {
         let mut monitoring_service = MonitoringService::new();
-        let result = monitoring_service.start("./resources/test/test_simple_tlsfields.json", &true);
+        let result = monitoring_service.start("./resources/test/test_simple_tlsfields.json", true);
         assert!(result.is_ok());
     }
 }

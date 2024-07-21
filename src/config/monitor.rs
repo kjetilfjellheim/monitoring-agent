@@ -42,16 +42,6 @@ pub enum MonitorType {
         #[serde(skip_serializing_if = "Option::is_none", rename = "identityPassword")]
         identity_password: Option<String>,
     },
-    Sql {
-        #[serde(skip_serializing_if = "Option::is_none")]
-        query: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        database: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        username: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        password: Option<String>,
-    },
     Command {
         command: String,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -136,7 +126,7 @@ impl MonitoringConfig {
             Err(err) => Err(ApplicationError::new(
                 format!(
                     "Could not parse config file: Line {}",
-                    err.line().to_string()
+                    err.line()
                 )
                 .as_str(),
             )),
@@ -166,14 +156,14 @@ fn default_server() -> ServerConfig {
 }
 
 /**
- * Default as false. Fix for issue with serde. Issue https://github.com/serde-rs/serde/issues/368
+ * Default as false. Fix for issue with serde. Issue <https://github.com/serde-rs/serde/issues/368>
  */
 fn default_as_false() -> bool {
     false
 }
 
 /**
- * Default as true. Fix for issue with serde. Issue https://github.com/serde-rs/serde/issues/368
+ * Default as true. Fix for issue with serde. Issue <https://github.com/serde-rs/serde/issues/368>
  */
 fn default_as_true() -> bool {
     true
