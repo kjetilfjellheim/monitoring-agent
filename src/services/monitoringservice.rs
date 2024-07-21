@@ -7,11 +7,11 @@ use log::{debug, error, info};
 use tokio_cron_scheduler::{Job, JobScheduler};
 
 use crate::common::{ApplicationError, MonitorStatus};
-use crate::config::HttpMethod;
-use crate::config::MonitoringConfig;
-use crate::monitoring::commandmonitor::CommandMonitor;
-use crate::monitoring::httpmonitor::HttpMonitor;
-use crate::monitoring::tcpmonitor::TcpMonitor;
+use crate::common::configuration::HttpMethod;
+use crate::common::configuration::MonitoringConfig;
+use crate::services::monitors::CommandMonitor;
+use crate::services::monitors::HttpMonitor;
+use crate::services::monitors::TcpMonitor;
 
 use super::server::Server;
 
@@ -149,22 +149,20 @@ impl MonitoringService {
      */
     async fn create_and_add_job(
         &mut self,
-        monitor: &crate::config::Monitor,
+        monitor: &crate::common::Monitor,
         scheduler: &JobScheduler,
         status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
     ) -> Result<(), ApplicationError> {
         let monitor_type = monitor.monitor.clone();
         let job = match monitor_type {
-            crate::config::MonitorType::Tcp { host, port } => {
-                self.get_tcp_monitor_job(
-                    monitor.schedule.as_str(),
-                    monitor.name.as_str(),
-                    host.as_str(),
-                    port,
-                    status,
-                )?
-            }
-            crate::config::MonitorType::Http {
+            crate::common::MonitorType::Tcp { host, port } => self.get_tcp_monitor_job(
+                monitor.schedule.as_str(),
+                monitor.name.as_str(),
+                host.as_str(),
+                port,
+                status,
+            )?,
+            crate::common::MonitorType::Http {
                 url,
                 method,
                 body,
@@ -175,37 +173,33 @@ impl MonitoringService {
                 root_certificate,
                 identity,
                 identity_password,
-            } => {
-                self.get_http_monitor_job(
-                    monitor.schedule.as_str(),
-                    monitor.name.as_str(),
-                    url.as_str(),
-                    method,
-                    body,
-                    headers,
-                    use_builtin_root_certs,
-                    accept_invalid_certs,
-                    tls_info,
-                    root_certificate,
-                    identity,
-                    identity_password,
-                    status,
-                )?
-            }
-            crate::config::MonitorType::Command {
+            } => self.get_http_monitor_job(
+                monitor.schedule.as_str(),
+                monitor.name.as_str(),
+                url.as_str(),
+                method,
+                body,
+                &headers,
+                use_builtin_root_certs,
+                accept_invalid_certs,
+                tls_info,
+                root_certificate,
+                identity,
+                identity_password,
+                status,
+            )?,
+            crate::common::MonitorType::Command {
                 command,
                 args,
                 expected,
-            } => {
-                self.get_command_monitor_job(
-                    monitor.schedule.as_str(),
-                    monitor.name.as_str(),
-                    &command,
-                    &args,
-                    &expected,
-                    status,
-                )?
-            }
+            } => self.get_command_monitor_job(
+                monitor.schedule.as_str(),
+                monitor.name.as_str(),
+                &command,
+                &args,
+                &expected,
+                status,
+            )?,
         };
         self.add_job(scheduler, job).await?;
         Ok(())
@@ -256,13 +250,8 @@ impl MonitoringService {
         status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
     ) -> Result<Job, ApplicationError> {
         debug!("Creating Command monitor: {}", &name);
-        let command_monitor = CommandMonitor::new(
-            name,
-            command,
-            args.clone(),
-            expected.clone(),
-            status,
-        );
+        let command_monitor =
+            CommandMonitor::new(name, command, args.clone(), expected.clone(), status);
         self.command_monitors.push(command_monitor.clone());
         match Job::new_async(schedule, move |_uuid, _locked| {
             MonitoringService::check_command_monitor(&command_monitor)
@@ -326,7 +315,7 @@ impl MonitoringService {
         url: &str,
         method: HttpMethod,
         body: Option<String>,
-        headers: Option<std::collections::HashMap<String, String>>,
+        headers: &Option<std::collections::HashMap<String, String>>,
         use_builtin_root_certs: bool,
         accept_invalid_certs: bool,
         tls_info: bool,
@@ -444,8 +433,7 @@ impl MonitoringService {
         Box::pin({
             let mut moved_tcp_monitor = tcp_monitor.clone();
             async move {
-                let () = moved_tcp_monitor
-                    .check();
+                let () = moved_tcp_monitor.check();
             }
         })
     }
