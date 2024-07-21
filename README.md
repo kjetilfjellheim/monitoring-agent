@@ -40,6 +40,11 @@ Run as daemon `./monitoring_agent --daemon`
 
 ### Configuration file
 
+| Config  | Description | 
+| ------------- | ------------- |
+| server.ip | Ip4 address | 
+| server.port | Port | 
+
 #### Tcp monitoring
 
 | Config  | Description | 
@@ -77,6 +82,10 @@ Run as daemon `./monitoring_agent --daemon`
 
 ```
 {
+  "server": {
+    "ip": "127.0.0.1",
+    "port": 65000
+  },
   "monitors": [
     {
           "name":"",
