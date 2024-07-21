@@ -120,3 +120,54 @@ Run as daemon `./monitoring_agent --daemon`
   ]
 }
 ```
+
+## Setup as daemon
+### Important
+Type=forking This is important as the application forks a a daemon process. Without forking this setting this won't be identified and it will fail.
+
+### Setup
+Add the monitoring_agent command to /usr/local/bin
+Add configuration file to /etc/monitoring_agent/config.json
+Add logging file to /etc/monitoring_agent/logging.yml
+
+Create a file in /etc/systemd/system/ called monitoring_agent.service
+```
+[Unit]
+Description=Monitoring agent
+DefaultDependencies=no
+Before=shutdown.target
+
+[Service]
+ExecStart=/usr/local/bin/monitoring_agent --daemon
+Type=forking
+Restart=on-failure
+TimeoutStartSec=10
+
+[Install]
+WantedBy=default.target
+```
+
+Run the command : systemctl daemon-reload
+Run the command : systemctl enable monitoring_agent.service
+Run the command : systemctl start monitoring_agent.service
+Run the command : systemctl status monitoring_agent.service 
+You should see the following result.
+```
+● monitoring_agent.service - Monitoring agent
+     Loaded: loaded (/etc/systemd/system/monitoring_agent.service; enabled; preset: enabled)
+     Active: active (running) since Sun 2024-07-21 01:52:36 CEST; 18h ago
+    Process: 234467 ExecStart=/usr/local/bin/monitoring_agent --daemon (code=exited, status=0/SUCCESS)
+   Main PID: 234470 (monitoring_agen)
+      Tasks: 17 (limit: 18118)
+     Memory: 15.6M (peak: 17.5M)
+        CPU: 7min 19.565s
+     CGroup: /system.slice/monitoring_agent.service
+             └─234470 /usr/local/bin/monitoring_agent --daemon
+
+juli 21 01:52:36 alpha-legion systemd[1]: Starting monitoring_agent.service - Monitoring agent...
+juli 21 01:52:36 alpha-legion monitoring_agent[234467]: 2024-07-21T01:52:36.100662133+02:00 INFO monito>
+juli 21 01:52:36 alpha-legion systemd[1]: Started monitoring_agent.service - Monitoring agent.
+```
+
+
+
