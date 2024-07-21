@@ -54,6 +54,7 @@ impl HttpMonitor {
      * `status`: The status of the monitor.
      *
      */
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         url: &str,
         method: HttpMethod,

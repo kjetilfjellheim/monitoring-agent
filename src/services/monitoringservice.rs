@@ -308,6 +308,7 @@ impl MonitoringService {
      *
      * throws: `ApplicationError`: If the job fails to be created.
      */
+    #[allow(clippy::too_many_arguments)]
     fn get_http_monitor_job(
         &mut self,
         schedule: &str,
