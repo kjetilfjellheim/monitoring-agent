@@ -62,20 +62,6 @@ pub enum MonitorType {
 }
 
 /**
- * Default as false. Fix for issue with serde. Issue https://github.com/serde-rs/serde/issues/368
- */
-fn default_as_false() -> bool {
-    false
-}
-
-/**
- * Default as true. Fix for issue with serde. Issue https://github.com/serde-rs/serde/issues/368
- */
-fn default_as_true() -> bool {
-    true
-}
-
-/**
  * HTTP methods.
  */
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
@@ -100,7 +86,6 @@ pub enum HttpMethod {
  *
  */
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct Monitor {
     pub name: String,
     pub schedule: String,
@@ -118,6 +103,9 @@ pub struct Monitor {
  */
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 pub struct MonitoringConfig {
+    #[serde(rename = "server", default = "default_server")]
+    pub server: ServerConfig,
+    #[serde(rename = "monitors")]
     pub monitors: Vec<Monitor>,
 }
 
@@ -156,6 +144,63 @@ impl MonitoringConfig {
     }
 }
 
+/**
+ * Server configuration.
+ */
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+pub struct ServerConfig {
+    #[serde(rename = "port", default = "default_server_port")]
+    pub port: u16,
+    #[serde(rename = "ip", default = "default_server_ip")]
+    pub ip: String,
+}
+
+impl ServerConfig {
+    pub fn new(port: u16, ip: &str) -> ServerConfig {
+        ServerConfig {
+            port,
+            ip: ip.to_string(),
+        }
+    }
+}
+
+/**
+ * Default server configuration.
+ */
+fn default_server() -> ServerConfig {
+    ServerConfig {
+        port: default_server_port(),
+        ip: default_server_ip(),
+    }
+}
+
+/**
+ * Default as false. Fix for issue with serde. Issue https://github.com/serde-rs/serde/issues/368
+ */
+fn default_as_false() -> bool {
+    false
+}
+
+/**
+ * Default as true. Fix for issue with serde. Issue https://github.com/serde-rs/serde/issues/368
+ */
+fn default_as_true() -> bool {
+    true
+}
+
+/**
+ * Default port.
+ */
+fn default_server_port() -> u16 {
+    65000
+}
+/**
+ * Default ip.
+ */
+fn default_server_ip() -> String {
+    "127.0.0.1".to_string()
+}
+
 #[cfg(test)]
 mod tests {
 
@@ -178,6 +223,8 @@ mod tests {
                 port: 8080
             }
         );
+        assert_eq!(&8080, &monitoring.server.clone().port);
+        assert_eq!(&"127.0.0.1", &monitoring.server.ip);
         Ok(())
     }
 
@@ -206,6 +253,8 @@ mod tests {
                 identity_password: None
             }
         );
+        assert_eq!(&65000, &monitoring.server.clone().port);
+        assert_eq!(&"127.0.0.1", &monitoring.server.ip);
         Ok(())
     }
 
