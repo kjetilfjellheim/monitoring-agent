@@ -27,19 +27,19 @@ pub struct Server {
 impl Server {
     pub fn new(
         ip: &String,
-        port: &u16,
+        port: u16,
         status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
     ) -> Server {
         Server {
-            ip: ip.clone(),
-            port: port.clone(),
+            ip: ip.to_owned(),
+            port,
             status: status.clone(),
         }
     }
     /**
      * Start the server.
      */
-    pub async fn start(&self) {
+    pub fn start(&self) {
         let ip_addr = self.ip.parse::<Ipv4Addr>();
         let socket_addr = match ip_addr {
             Ok(ip) => SocketAddrV4::new(ip, self.port),
@@ -57,7 +57,7 @@ impl Server {
     /**
      * Start the server.
      *
-     * socket_addr: The socket address to bind to.
+     * `socket_addr`: The socket address to bind to.
      * status: The status of the monitors.
      */
     pub async fn start_server(
@@ -73,6 +73,6 @@ impl Server {
             with_status(json(&response), warp::http::StatusCode::OK)
         });
 
-        warp::serve(route).run(socket_addr.clone()).await;
+        warp::serve(route).run(*socket_addr).await;
     }
 }

@@ -122,7 +122,7 @@ impl MonitoringConfig {
         match fs::read_to_string(path) {
             Ok(data) => Ok(data),
             Err(err) => Err(ApplicationError::new(
-                format!("Could not read config file {}, error: {}", path, err).as_str(),
+                format!("Could not read config file {path}, error: {err}").as_str(),
             )),
         }
     }
@@ -153,15 +153,6 @@ pub struct ServerConfig {
     pub port: u16,
     #[serde(rename = "ip", default = "default_server_ip")]
     pub ip: String,
-}
-
-impl ServerConfig {
-    pub fn new(port: u16, ip: &str) -> ServerConfig {
-        ServerConfig {
-            port,
-            ip: ip.to_string(),
-        }
-    }
 }
 
 /**
