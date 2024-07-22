@@ -41,5 +41,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: monitoring_agent
-          path: target/debian/monitoring_agent_*.deb
+          path: target/debian/monitoring-agent_*.deb
 
