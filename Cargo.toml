@@ -29,6 +29,7 @@ chrono = { version = "0.4.38", features = ["serde"]}                            
 maintainer = "Kjetil Fjellheim <kjetil@forgottendonkey.net>"
 copyright = "2024, Kjetil Fjellheim <kjetil@forgottendonkey.net"
 license-file = ["LICENSE", "4"]
+revision = ""
 extended-description = """\
 A monitoring agent that can be used to monitor the health of a system.
 """
