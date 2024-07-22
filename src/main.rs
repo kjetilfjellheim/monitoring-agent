@@ -144,9 +144,9 @@ mod test {
             config: "./resources/test/test_full_integration_test.json".to_string(),
             daemon: true,
             test: true,
-            stdout: "/tmp/monitoring_agent.out".to_string(),
-            stderr: "/tmp/monitoring_agent.err".to_string(),
-            pidfile: "/tmp/monitoring_agent.pid".to_string(),
+            stdout: "/tmp/monitoring-agent.out".to_string(),
+            stderr: "/tmp/monitoring-agent.err".to_string(),
+            pidfile: "/tmp/monitoring-agent.pid".to_string(),
             loggingfile: "./resources/test/logging.yml".to_string(),
         };
         super::daemonize_application(args);
