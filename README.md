@@ -24,19 +24,19 @@ Run `cargo build`
 
 ### Run
 
-Run as non daemon `./monitoring_agent --config ./config.json --loggingfile ./logging.yml`
-Run as daemon `./monitoring_agent --daemon`
+Run as non daemon `./monitoring-agent --config ./config.json --loggingfile ./logging.yml`
+Run as daemon `./monitoring-agent --daemon`
 
 ### Arguments
 | Argument  | Description | Default | 
 | ------------- | ------------- | ------------- |
-| config | Configuration file | /etc/monitoring_agent/config.json | 
-| loggingfile | Logging file | /etc/monitoring_agent/logging.yml |
+| config | Configuration file | /etc/monitoring-agent/config.json | 
+| loggingfile | Logging file | /etc/monitoring-agent/logging.yml |
 | daemon | Run application as a daemon  | false | 
 | test | Test a configuration file | false | 
-| stdout | stdout file. Only used in daemon mode. | /var/log/monitoring_agent.out | 
-| stderr | Test a configuration file | /var/log/monitoring_agent.err | 
-| pidfile | Location of the pid file. Only in daemon mode. | /tmp/monitoring_agent.pid |
+| stdout | stdout file. Only used in daemon mode. | /var/log/monitoring-agent.out | 
+| stderr | Test a configuration file | /var/log/monitoring-agent.err | 
+| pidfile | Location of the pid file. Only in daemon mode. | /tmp/monitoring-agent.pid |
 
 ### Configuration file
 
@@ -126,11 +126,11 @@ Run as daemon `./monitoring_agent --daemon`
 Type=forking This is important as the application forks a a daemon process. Without forking this setting this won't be identified and it will fail.
 
 ### Setup
-Add the monitoring_agent command to /usr/local/bin
-Add configuration file to /etc/monitoring_agent/config.json
-Add logging file to /etc/monitoring_agent/logging.yml
+Add the monitoring-agent command to /usr/local/bin
+Add configuration file to /etc/monitoring-agent/config.json
+Add logging file to /etc/monitoring-agent/logging.yml
 
-Create a file in /etc/systemd/system/ called monitoring_agent.service
+Create a file in /etc/systemd/system/ called monitoring-agent.service
 ```
 [Unit]
 Description=Monitoring agent
@@ -138,7 +138,7 @@ DefaultDependencies=no
 Before=shutdown.target
 
 [Service]
-ExecStart=/usr/local/bin/monitoring_agent --daemon
+ExecStart=/usr/local/bin/monitoring-agent --daemon
 Type=forking
 Restart=on-failure
 TimeoutStartSec=10
@@ -148,25 +148,25 @@ WantedBy=default.target
 ```
 
 Run the command : systemctl daemon-reload
-Run the command : systemctl enable monitoring_agent.service
-Run the command : systemctl start monitoring_agent.service
-Run the command : systemctl status monitoring_agent.service 
+Run the command : systemctl enable monitoring-agent.service
+Run the command : systemctl start monitoring-agent.service
+Run the command : systemctl status monitoring-agent.service 
 You should see the following result.
 ```
-● monitoring_agent.service - Monitoring agent
-     Loaded: loaded (/etc/systemd/system/monitoring_agent.service; enabled; preset: enabled)
+● monitoring-agent.service - Monitoring agent
+     Loaded: loaded (/etc/systemd/system/monitoring-agent.service; enabled; preset: enabled)
      Active: active (running) since Sun 2024-07-21 01:52:36 CEST; 18h ago
-    Process: 234467 ExecStart=/usr/local/bin/monitoring_agent --daemon (code=exited, status=0/SUCCESS)
+    Process: 234467 ExecStart=/usr/local/bin/monitoring-agent --daemon (code=exited, status=0/SUCCESS)
    Main PID: 234470 (monitoring_agen)
       Tasks: 17 (limit: 18118)
      Memory: 15.6M (peak: 17.5M)
         CPU: 7min 19.565s
-     CGroup: /system.slice/monitoring_agent.service
-             └─234470 /usr/local/bin/monitoring_agent --daemon
+     CGroup: /system.slice/monitoring-agent.service
+             └─234470 /usr/local/bin/monitoring-agent --daemon
 
-juli 21 01:52:36 alpha-legion systemd[1]: Starting monitoring_agent.service - Monitoring agent...
-juli 21 01:52:36 alpha-legion monitoring_agent[234467]: 2024-07-21T01:52:36.100662133+02:00 INFO monito>
-juli 21 01:52:36 alpha-legion systemd[1]: Started monitoring_agent.service - Monitoring agent.
+juli 21 01:52:36 alpha-legion systemd[1]: Starting monitoring-agent.service - Monitoring agent...
+juli 21 01:52:36 alpha-legion monitoring-agent[234467]: 2024-07-21T01:52:36.100662133+02:00 INFO monito>
+juli 21 01:52:36 alpha-legion systemd[1]: Started monitoring-agent.service - Monitoring agent.
 ```
 
 

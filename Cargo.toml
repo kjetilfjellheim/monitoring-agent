@@ -1,7 +1,14 @@
 [package]
-name = "monitoring_agent"
+name = "monitoring-agent"
 version = "0.0.6"
 edition = "2021"
+description = "A monitoring agent that can be used to monitor the health of a system."
+license = "Apache 2.0"
+repository = "https://github.com/kjetilfjellheim/monitoring-agent"
+readme = "README.md"
+keywords = ["monitoring", "agent", "health", "system"]
+authors = ["Kjetil Fjellheim <kjetil@forgottendonkey.net>"]
+categories = ["monitoring", "health", "system"]
 
 [dependencies]
 serde = { version = "1.0.204", features = ["derive", ] }                                # For serializing/deserializing.
@@ -29,14 +36,14 @@ depends = "$auto"
 section = "utility"
 priority = "optional"
 assets = [
-    ["target/release/monitoring_agent", "usr/bin/", "755"],
-    ["README.md", "usr/share/doc/monitoring_agent/README", "644"],
-    ["resources/prod/etc/config.json", "/etc/monitoring_agent/config.json", "644"],
-    ["resources/prod/etc/logging.yml", "/etc/monitoring_agent/logging.yml", "644"],
-    ["resources/prod/systemd/monitoring_agent.service", "/etc/systemd/system/monitoring_agent.service", "644"],
+    ["target/release/monitoring-agent", "usr/bin/", "755"],
+    ["README.md", "usr/share/doc/monitoring-agent/README", "644"],
+    ["resources/prod/etc/config.json", "/etc/monitoring-agent/config.json", "644"],
+    ["resources/prod/etc/logging.yml", "/etc/monitoring-agent/logging.yml", "644"],
+    ["resources/prod/systemd/monitoring-agent.service", "/etc/systemd/system/monitoring-agent.service", "644"],
 ]
 conf-files = [
-    "/etc/monitoring_agent/config.json",
-    "/etc/monitoring_agent/logging.yml",
-    "/etc/systemd/system/monitoring_agent.service",
+    "/etc/monitoring-agent/config.json",
+    "/etc/monitoring-agent/logging.yml",
+    "/etc/systemd/system/monitoring-agent.service",
 ]
