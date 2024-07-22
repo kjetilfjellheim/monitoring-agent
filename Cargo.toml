@@ -18,3 +18,25 @@ log = "0.4.22"                                                                  
 warp = "0.3.7"                                                                          # For creating a web server.
 chrono = { version = "0.4.38", features = ["serde"]}                                    # For handling time.
  
+[package.metadata.deb]
+maintainer = "Kjetil Fjellheim <kjetil@forgottendonkey.net>"
+copyright = "2024, Kjetil Fjellheim <kjetil@forgottendonkey.net"
+license-file = ["LICENSE", "4"]
+extended-description = """\
+A monitoring agent that can be used to monitor the health of a system.
+"""
+depends = "$auto"
+section = "utility"
+priority = "optional"
+assets = [
+    ["target/release/monitoring_agent", "usr/bin/", "755"],
+    ["README.md", "usr/share/doc/monitoring_agent/README", "644"],
+    ["resources/prod/etc/config.json", "/etc/monitoring_agent/config.json", "644"],
+    ["resources/prod/etc/logging.yml", "/etc/monitoring_agent/logging.yml", "644"],
+    ["resources/prod/systemd/monitoring_agent.service", "/etc/systemd/system/monitoring_agent.service", "644"],
+]
+conf-files = [
+    "/etc/monitoring_agent/config.json",
+    "/etc/monitoring_agent/logging.yml",
+    "/etc/systemd/system/monitoring_agent.service",
+]
