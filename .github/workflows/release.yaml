@@ -35,14 +35,15 @@ jobs:
     needs: create-release
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - run: cargo install cargo-deb
-      - run: cargo deb
+      - run: cargo deb --output target/debian/monitoring-agent_amd64.deb
       - uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: target/debian/*.deb
+          asset_path: target/debian/monitoring-agent_amd64.deb
           asset_name: monitoring-agent_${{ github.ref_name }}_amd64.deb
           asset_content_type: application/x-deb
         
