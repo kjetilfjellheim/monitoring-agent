@@ -33,7 +33,7 @@ impl Cpuinfo {
      * 
      * Returns error if there is an error getting the lock or reading the data.
      */
-    pub async fn get_and_set_cpuinfo(self) -> Result<(), ApplicationError> {
+    pub fn get_and_set_cpuinfo(self) -> Result<(), ApplicationError> {
         let lock = self.procsdata.lock();
         match lock {
             Ok(mut procsdata) => {
@@ -114,7 +114,7 @@ impl Cpuinfo {
                 Ok(line)
             },
             Err(err) => {
-                Err(ApplicationError::new(format!("Error reading line: {:?}", err).as_str()))
+                Err(ApplicationError::new(format!("Error reading line: {err:?}").as_str()))
             }
         }
     }
@@ -126,11 +126,11 @@ mod test {
 
     use super::*;
 
-    #[tokio::test]
-    async fn test_current_and_set_values() {
+    #[test]
+    fn test_current_and_set_values() {
         let cpuinfo = Cpuinfo::new();
         let binding = cpuinfo.get_and_set_cpuinfo();
-        assert!(binding.await.is_ok());
+        assert!(binding.is_ok());
     }
 
     #[test]

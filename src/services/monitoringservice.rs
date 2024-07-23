@@ -288,7 +288,6 @@ impl MonitoringService {
             async move {
                 let _ = moved_cpuinfo
                     .get_and_set_cpuinfo()
-                    .await
                     .map_err(|err| error!("Error: {}", err.message));
             }
         })
