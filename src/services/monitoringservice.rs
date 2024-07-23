@@ -13,6 +13,7 @@ use crate::services::monitors::CommandMonitor;
 use crate::services::monitors::HttpMonitor;
 use crate::services::monitors::TcpMonitor;
 
+use super::procs::Cpuinfo;
 use super::server::Server;
 
 /**
@@ -31,6 +32,7 @@ pub struct MonitoringService {
     tcp_monitors: Vec<TcpMonitor>,
     http_monitors: Vec<HttpMonitor>,
     command_monitors: Vec<CommandMonitor>,
+    cpuinfo: Option<Cpuinfo>,
 }
 
 impl MonitoringService {
@@ -45,6 +47,7 @@ impl MonitoringService {
             tcp_monitors: Vec::new(),
             http_monitors: Vec::new(),
             command_monitors: Vec::new(),
+            cpuinfo: None,
         }
     }
 
@@ -60,7 +63,7 @@ impl MonitoringService {
         /*
          * Load the monitoring configuration.
          */
-        let monitoring_config: MonitoringConfig = MonitoringConfig::new(config_file)?;
+        let monitoring_config: MonitoringConfig = MonitoringConfig::new(config_file)?;        
         /*
          * Start the scheduling of the monitoring jobs.
          */
@@ -109,14 +112,22 @@ impl MonitoringService {
                 .await?;
         }
         /*
+         * Add the CPU info job.
+         */
+        if monitoring_config.show_cpu {
+            let job = self.get_cpuinfo_job("*/5 * * * * *")?;
+            self.add_job(&scheduler, job).await?;
+        }              
+        /*
          * Create a new server to respond to monitoring requests.
          */
         let server = Server::new(
             &monitoring_config.server.ip,
             monitoring_config.server.port,
             &status,
+            &self.cpuinfo.as_ref().map(|cpuinfo| cpuinfo.procsdata.clone()),
         );
-        server.start();
+        server.start();  
         /*
          * Start the scheduler.
          */
@@ -239,6 +250,48 @@ impl MonitoringService {
             )),
         }
     }
+
+    /**
+     * Get the CPU info job.
+     *
+     * `schedule`: The schedule.
+     *
+     * `result`: The result of getting the CPU info job.
+     *
+     * throws: `ApplicationError`: If the job fails to be created.
+     */
+    fn get_cpuinfo_job(&mut self, schedule: &str) -> Result<Job, ApplicationError>{
+        debug!("Creating CPU job");
+        let cpuinfo = Cpuinfo::new();
+        self.cpuinfo = Some(cpuinfo.clone());
+        let moved_cpuinfo = cpuinfo.clone();
+        match Job::new_async(schedule, move |_uuid, _locked| {
+            MonitoringService::check_cpuinfo(&moved_cpuinfo)
+        }) {
+            Ok(job) => Ok(job),
+            Err(err) => Err(ApplicationError::new(
+                format!("Could not create job: {err}").as_str(),
+            )),
+        }
+    }
+
+   /**
+     * Check the cpuinfo.
+     *
+     * `cpuinfo`: The cpuinfo.
+     *
+     * result: Future of the check.
+     */
+    fn check_cpuinfo(cpuinfo: &Cpuinfo) -> std::pin::Pin<Box<impl Future<Output = ()>>> {
+        Box::pin({
+            let moved_cpuinfo = cpuinfo.clone();
+            async move {
+                let _ = moved_cpuinfo
+                    .get_and_set_cpuinfo()
+                    .map_err(|err| error!("Error: {}", err.message));
+            }
+        })
+    }    
 
     fn get_command_monitor_job(
         &mut self,
