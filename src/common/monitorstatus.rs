@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
  */
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MonitorStatus {
-    #[serde(rename = "current")]
+    #[serde(rename = "status")]
     pub status: Status,
     #[serde(skip_serializing_if = "Option::is_none", rename = "lastSuccessfulTime")]
     pub last_successful_time: Option<DateTime<Utc>>,
@@ -70,7 +70,6 @@ impl MonitorStatus {
  *
  */
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "status", content = "information")]
 pub enum Status {
     Ok,
     Unknown,
