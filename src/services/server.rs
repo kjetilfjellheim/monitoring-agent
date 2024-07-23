@@ -17,11 +17,13 @@ use warp::{
  * It is used to start the monitoring server.
  *
  */
-use crate::common::MonitorStatus;
+use crate::common::{MonitorStatus, ProcsCpuinfo};
+
 pub struct Server {
     ip: String,
     port: u16,
     status: Arc<Mutex<HashMap<String, MonitorStatus>>>,
+    cpuinfo: Option<Arc<Mutex<Vec<ProcsCpuinfo>>>>,
 }
 
 impl Server {
@@ -29,11 +31,13 @@ impl Server {
         ip: &String,
         port: u16,
         status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
+        cpuinfo: &Option<Arc<Mutex<Vec<ProcsCpuinfo>>>>,
     ) -> Server {
         Server {
             ip: ip.to_owned(),
             port,
             status: status.clone(),
+            cpuinfo: cpuinfo.clone(),
         }
     }
     /**
@@ -49,8 +53,9 @@ impl Server {
             }
         };
         let status = Arc::clone(&self.status);
+        let cpuinfo = self.cpuinfo.clone();
         tokio::spawn(async move {
-            Server::start_server(&socket_addr, status).await;
+            Server::start_server(&socket_addr, status, &cpuinfo).await;
         });
     }
 
@@ -63,7 +68,9 @@ impl Server {
     pub async fn start_server(
         socket_addr: &SocketAddrV4,
         status: Arc<Mutex<HashMap<String, MonitorStatus>>>,
+        cpuinfo: &Option<Arc<Mutex<Vec<ProcsCpuinfo>>>>,
     ) {
+        let cpuinfo = cpuinfo.clone();
         let route = warp::path!("status").map(move || {
             let status = status.lock();
             let response = match status {
@@ -71,7 +78,19 @@ impl Server {
                 Err(_) => HashMap::new(),
             };
             with_status(json(&response), warp::http::StatusCode::OK)
-        });
+        }).or(warp::path!("cpuinfo").map(move || {            
+            let response = match &cpuinfo {
+                Some(cpuinfo) => {
+                    let cpuinfo = cpuinfo.lock();
+                    match cpuinfo {
+                        Ok(cpuinfo) => cpuinfo.clone(),
+                        Err(_) => Vec::new(),
+                    }
+                },
+                None => Vec::new(),
+            };
+            with_status(json(&response), warp::http::StatusCode::OK)
+        }));
 
         warp::serve(route).run(*socket_addr).await;
     }
