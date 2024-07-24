@@ -47,4 +47,42 @@ impl ProcsCpuinfo {
     }
 }
 
+/**
+ * Memory information from /cat/meminfo
+ */
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProcsMeminfo {
+    pub memtotal: Option<u64>,
+    pub memfree: Option<u64>,
+    pub memavailable: Option<u64>,
+    pub swaptotal: Option<u64>,
+    pub swapfree: Option<u64>,
+}
 
+impl ProcsMeminfo {
+
+    /**
+     * Create a new `Meminfo`.
+     *
+     * `memtotal`: The total memory.
+     * `memfree`: The free memory.
+     * `memavailable`: The available memory.
+     * `swaptotal`: The total swap.
+     * `swapfree`: The free swap.
+     */
+    pub fn new(
+        memtotal: Option<u64>,
+        memfree: Option<u64>,
+        memavailable: Option<u64>,
+        swaptotal: Option<u64>,
+        swapfree: Option<u64>,
+    ) -> ProcsMeminfo {
+        ProcsMeminfo {
+            memtotal,
+            memfree,
+            memavailable,
+            swaptotal,
+            swapfree,
+        }
+    }
+}
