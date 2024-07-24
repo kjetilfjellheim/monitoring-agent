@@ -13,7 +13,7 @@ use crate::services::monitors::CommandMonitor;
 use crate::services::monitors::HttpMonitor;
 use crate::services::monitors::TcpMonitor;
 
-use super::procs::Cpuinfo;
+use super::procs::{Cpuinfo, Meminfo};
 use super::server::Server;
 
 /**
@@ -33,6 +33,7 @@ pub struct MonitoringService {
     http_monitors: Vec<HttpMonitor>,
     command_monitors: Vec<CommandMonitor>,
     cpuinfo: Option<Cpuinfo>,
+    meminfo: Option<Meminfo>,
 }
 
 impl MonitoringService {
@@ -48,6 +49,7 @@ impl MonitoringService {
             http_monitors: Vec::new(),
             command_monitors: Vec::new(),
             cpuinfo: None,
+            meminfo: None,
         }
     }
 
@@ -117,7 +119,14 @@ impl MonitoringService {
         if monitoring_config.show_cpu {
             let job = self.get_cpuinfo_job("*/5 * * * * *")?;
             self.add_job(&scheduler, job).await?;
-        }              
+        }     
+        /*
+         * Add the Memory info job.
+         */
+        if monitoring_config.show_mem {
+            let job = self.get_meminfo_job("*/5 * * * * *")?;
+            self.add_job(&scheduler, job).await?;
+        }                     
         /*
          * Create a new server to respond to monitoring requests.
          */
@@ -126,6 +135,7 @@ impl MonitoringService {
             monitoring_config.server.port,
             &status,
             &self.cpuinfo.as_ref().map(|cpuinfo| cpuinfo.procsdata.clone()),
+            &self.meminfo.as_ref().map(|meminfo| meminfo.procsdata.clone()),
         );
         server.start();  
         /*
@@ -275,6 +285,30 @@ impl MonitoringService {
         }
     }
 
+    /**
+     * Get the memory info job.
+     *
+     * `schedule`: The schedule.
+     *
+     * `result`: The result of getting the memory info job.
+     *
+     * throws: `ApplicationError`: If the job fails to be created.
+     */
+    fn get_meminfo_job(&mut self, schedule: &str) -> Result<Job, ApplicationError>{
+        debug!("Creating memory job");
+        let meminfo = Meminfo::new();
+        self.meminfo = Some(meminfo.clone());
+        let moved_meminfo = meminfo.clone();
+        match Job::new_async(schedule, move |_uuid, _locked| {
+            MonitoringService::check_meminfo(&moved_meminfo)
+        }) {
+            Ok(job) => Ok(job),
+            Err(err) => Err(ApplicationError::new(
+                format!("Could not create job: {err}").as_str(),
+            )),
+        }
+    }    
+
    /**
      * Check the cpuinfo.
      *
@@ -292,6 +326,24 @@ impl MonitoringService {
             }
         })
     }    
+
+   /**
+     * Check the meminfo.
+     *
+     * `meminfo`: The meminfo.
+     *
+     * result: Future of the check.
+     */
+    fn check_meminfo(meminfo: &Meminfo) -> std::pin::Pin<Box<impl Future<Output = ()>>> {
+        Box::pin({
+            let moved_meminfo = meminfo.clone();
+            async move {
+                let _ = moved_meminfo
+                    .get_and_set_meminfo()
+                    .map_err(|err| error!("Error: {}", err.message));
+            }
+        })
+    }       
 
     fn get_command_monitor_job(
         &mut self,
