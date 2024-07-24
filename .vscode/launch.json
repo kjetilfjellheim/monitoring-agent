@@ -1,12 +1,12 @@
 {
     "version": "0.2.0",
-    "configurations": [
+    "configurations": [        
         {
             "type": "lldb",
             "request": "launch",
             "name": "Debug",
-            "program": "${workspaceRoot}/target/debug/monitoring-agent",
-            "args": ["--config=/home/kjetil/code/monitoring-agent/resources/test/test_full_integration_test.json"],
+            "program": "${workspaceRoot}/target/debug/monitoring-agent-daemon",
+            "args": ["--config=/home/kjetil/code/monitoring_agent/resources/test/test_full_integration_test.json"],
             "cwd": "${workspaceRoot}",
             "sourceLanguages": [
                 "rust"
