@@ -154,9 +154,9 @@ mod test {
     async fn test_check_port_65000() {
         let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
             Arc::new(Mutex::new(HashMap::new()));
-        let mut monitor = TcpMonitor::new("localhost", 64999, "localhost", &status);
+        let mut monitor = TcpMonitor::new("localhost", 65000, "localhost", &status);
         monitor.check();
-        assert_eq!(status.lock().unwrap().get("localhost").unwrap().status, Status::Error { message: "Error connecting to localhost:64999 with error: Connection refused (os error 111)".to_string() });
+        assert_eq!(status.lock().unwrap().get("localhost").unwrap().status, Status::Error { message: "Error connecting to localhost:65000 with error: Connection refused (os error 111)".to_string() });
     }
 
     /**
