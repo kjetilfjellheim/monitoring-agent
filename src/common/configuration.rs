@@ -99,6 +99,8 @@ pub struct MonitoringConfig {
     pub monitors: Vec<Monitor>,
     #[serde(default = "default_as_true", rename = "showCpu")]
     pub show_cpu: bool,
+    #[serde(default = "default_as_true", rename = "showMem")]
+    pub show_mem: bool,    
 }
 
 impl MonitoringConfig {
