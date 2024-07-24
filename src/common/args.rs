@@ -36,6 +36,6 @@ pub struct ApplicationArguments {
     pub stderr: String,
 
     /// pid file. Only used when daemonizing the application.
-    #[arg(short = 'p', long, default_value = "/tmp/monitoring-agent.pid")]
+    #[arg(short = 'p', long, default_value = "/var/run/monitoring-agent.pid")]
     pub pidfile: String,
 }
