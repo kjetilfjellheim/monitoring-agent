@@ -21,7 +21,7 @@ impl Meminfo {
      * Create a new `Meminfo`.
      * 
      * Returns a new `Meminfo`.
-     */
+     */    
     pub fn new() -> Meminfo {
         Meminfo { 
             procsdata: Arc::new(Mutex::new(ProcsMeminfo::new(None, None, None, None, None))),
