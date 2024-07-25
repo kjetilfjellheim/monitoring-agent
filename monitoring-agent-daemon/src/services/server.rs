@@ -5,6 +5,7 @@ use std::{
 };
 
 use log::error;
+use monitoring_agent_lib::proc::{ProcsCpuinfo, ProcsMeminfo};
 use warp::{
     reply::{json, with_status},
     Filter,
@@ -17,7 +18,7 @@ use warp::{
  * It is used to start the monitoring server.
  *
  */
-use crate::common::{MonitorStatus, ProcsCpuinfo, ProcsMeminfo};
+use crate::common::MonitorStatus;
 
 pub struct Server {
     ip: String,
