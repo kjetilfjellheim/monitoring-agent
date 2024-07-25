@@ -76,7 +76,7 @@ impl ProcsProcess {
             },
             Err(err) => {
                 error!("Error reading /proc: {err:?}");
-                return Err(CommonLibError::new(&format!("Error reading /proc, err: {err:?}")));
+                Err(CommonLibError::new(&format!("Error reading /proc, err: {err:?}")))
             }
         }
     }
@@ -102,14 +102,11 @@ impl ProcsProcess {
                 Ok(path) => {
                     let dir = path.file_name();
                     if ProcsProcess::is_process_directory(&starts_with_number_regexp, &path) {
-                        let pid = match dir.to_str() {
-                            Some(pid) => pid,
-                            None => {
-                                return Err(CommonLibError::new(&format!("Error reading pid")));
-                            }
-                        };
+                        let Some(pid) = dir.to_str() else {
+                            return Err(CommonLibError::new("Error reading pid"));
+                        };                            
                         let pid = u32::from_str(pid).map_err(|err|CommonLibError::new(format!("Error reading pid: err: {err:?}").as_str()))?;
-                        let process = ProcsProcess::get_process(&pid)?;
+                        let process = ProcsProcess::get_process(pid)?;
                         processes.push(process);
                     }           
                 },
@@ -134,8 +131,8 @@ impl ProcsProcess {
      * - If there is an error reading a line from the process file.                  
      * 
      */
-    pub fn get_process(pid: &u32) -> Result<ProcsProcess, CommonLibError> {
-        ProcsProcess::get_process_status_with_dir("/proc", &pid)
+    pub fn get_process(pid: u32) -> Result<ProcsProcess, CommonLibError> {
+        ProcsProcess::get_process_status_with_dir("/proc", pid)
     }
 
     /**
@@ -151,7 +148,7 @@ impl ProcsProcess {
      * - If there is an error reading a line from the process file.                  
      * 
      */
-    fn get_process_status_with_dir(proc_dir: &str, pid: &u32) -> Result<ProcsProcess, CommonLibError> {
+    fn get_process_status_with_dir(proc_dir: &str, pid: u32) -> Result<ProcsProcess, CommonLibError> {
         let path = proc_dir.to_string() + "/" + pid.to_string().as_str() + "/status";
         let file = File::open(path);
         match file {
@@ -160,7 +157,7 @@ impl ProcsProcess {
             },
             Err(err) => {
                 error!("Error reading status: {err:?}");
-                return Err(CommonLibError::new(&format!("Error reading status, err: {err:?}")));
+                Err(CommonLibError::new(&format!("Error reading status, err: {err:?}")))
             }
         
         }
@@ -193,7 +190,7 @@ impl ProcsProcess {
             parts.get("PPid").and_then(|f| u32::from_str(f).ok()),
             parts.get("Name").cloned(),
             parts.get("Umask").cloned(),
-            ProcsProcess::get_state(&parts.get("State")),
+            ProcsProcess::get_state(parts.get("State")),
             parts.get("Threads").and_then(|f| u32::from_str(f).ok()),
             ProcsProcess::get_groups(parts.get("Groups")),
         ))
@@ -209,8 +206,8 @@ impl ProcsProcess {
      */
     fn get_groups(groups: Option<&String>) -> Option<Vec<String>> {
         match groups {
-            Some(groups) => {
-                let groups: Vec<String> = groups.split_whitespace().map(|s| s.to_string()).collect();
+            Some(groups) => {                
+                let groups: Vec<String> = groups.split_whitespace().map(std::string::ToString::to_string).collect();
                 Some(groups)
             },
             None => {
@@ -227,7 +224,7 @@ impl ProcsProcess {
      * Returns the process state.
      * 
      */
-    fn get_state(state: &Option<&String>) -> Option<ProcessState> {
+    fn get_state(state: Option<&String>) -> Option<ProcessState> {
         match state {
             Some(state) => {
                 match state.as_str().chars().nth(0) {
@@ -300,13 +297,14 @@ impl ProcsProcess {
  * 
  * This enum represents the different states a process can be in.
  * 
- * Running: The process is running.
- * UninterruptibleSleep: The process is in an uninterruptible sleep.
- * InterruptableSleep: The process is in an interruptable sleep.
- * Stopped: The process is stopped.
- * Zombie: The process is a zombie.
+ * `Running`: The process is running.
+ * `UninterruptibleSleep`: The process is in an uninterruptible sleep.
+ * `InterruptableSleep`: The process is in an interruptable sleep.
+ * `Stopped`: The process is stopped.
+ * `Zombie`: The process is a zombie.
  *
  */
+#[allow(clippy::module_name_repetitions)]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum ProcessState {
     Running,
@@ -348,7 +346,7 @@ mod test {
 
     #[test]
     fn test_read_single_2914() {
-        let process = ProcsProcess::get_process_status_with_dir("resources/test/processes", &2914).unwrap();
+        let process = ProcsProcess::get_process_status_with_dir("resources/test/processes", 2914).unwrap();
         assert_eq!(&process.pid, &Some(2914));
         assert_eq!(&process.parent_pid, &Some(2656));
         assert_eq!(&process.name, &Some("code".to_string()));
