@@ -97,16 +97,13 @@ impl ProcsProcess {
     fn read_processes(read_dir: ReadDir) -> Result<Vec<ProcsProcess>, CommonLibError> {        
         let starts_with_number_regexp = Regex::new(r"^[0-9]+$").map_err(|err|CommonLibError::new(format!("Error creating regexp: err: {err:?}").as_str()))?;
         let mut processes: Vec<ProcsProcess> = Vec::new();
-        for path in read_dir {
-            match path {
+        for path in read_dir {            
+            match &path {
                 Ok(path) => {
-                    let dir = path.file_name();
-                    if ProcsProcess::is_process_directory(&starts_with_number_regexp, &path) {
-                        let Some(pid) = dir.to_str() else {
-                            return Err(CommonLibError::new("Error reading pid"));
-                        };                            
-                        let pid = u32::from_str(pid).map_err(|err|CommonLibError::new(format!("Error reading pid: err: {err:?}").as_str()))?;
-                        let process = ProcsProcess::get_process(pid)?;
+                    if ProcsProcess::is_process_directory(&starts_with_number_regexp, path) {                          
+                        let path_buffer = path.path();
+                        let use_dir = path_buffer.to_str().ok_or(CommonLibError::new("Error reading path"))?;
+                        let process = ProcsProcess::get_process_status_with_dir(use_dir)?;
                         processes.push(process);
                     }           
                 },
@@ -132,14 +129,14 @@ impl ProcsProcess {
      * 
      */
     pub fn get_process(pid: u32) -> Result<ProcsProcess, CommonLibError> {
-        ProcsProcess::get_process_status_with_dir("/proc", pid)
+        let path = "/proc".to_string() + "/" + &pid.to_string();
+        ProcsProcess::get_process_status_with_dir(&path)
     }
 
     /**
      * Get process status.
      * 
      * `proc_dir`: The directory to get the process status from.
-     * `pid`: The process id.
      * 
      * Returns the process status or an error.
      * 
@@ -148,8 +145,8 @@ impl ProcsProcess {
      * - If there is an error reading a line from the process file.                  
      * 
      */
-    fn get_process_status_with_dir(proc_dir: &str, pid: u32) -> Result<ProcsProcess, CommonLibError> {
-        let path = proc_dir.to_string() + "/" + pid.to_string().as_str() + "/status";
+    fn get_process_status_with_dir(proc_dir: &str) -> Result<ProcsProcess, CommonLibError> {
+        let path = proc_dir.to_string() + "/status";
         let file = File::open(path);
         match file {
             Ok(file) => {
@@ -346,7 +343,7 @@ mod test {
 
     #[test]
     fn test_read_single_2914() {
-        let process = ProcsProcess::get_process_status_with_dir("resources/test/processes", 2914).unwrap();
+        let process = ProcsProcess::get_process_status_with_dir("resources/test/processes/2914").unwrap();
         assert_eq!(&process.pid, &Some(2914));
         assert_eq!(&process.parent_pid, &Some(2656));
         assert_eq!(&process.name, &Some("code".to_string()));
