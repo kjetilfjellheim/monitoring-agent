@@ -1,6 +1,4 @@
-/*
- * Common functionality for the library.
-*/
+/// Structure for handling errors in the library 
 pub mod error;
 
 #[allow(clippy::module_name_repetitions)]
