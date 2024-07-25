@@ -163,7 +163,7 @@ mod test {
         assert_eq!(&first.model.clone().unwrap(), "116");
         assert_eq!(&first.model_name.clone().unwrap(), "AMD Ryzen 7 7840HS w/ Radeon 780M Graphics");
         assert_eq!(&first.cpu_cores.unwrap(), &8);
-        assert!((first.cpu_mhz.unwrap() - 3404.518) > f32::EPSILON);
+        assert_eq!(&first.cpu_mhz.unwrap(), &3000.0);
     }
 
 }
