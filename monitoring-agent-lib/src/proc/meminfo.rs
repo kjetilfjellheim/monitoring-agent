@@ -12,10 +12,15 @@ use crate::common::CommonLibError;
 #[allow(clippy::module_name_repetitions)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProcsMeminfo {
+    /// The total memory.
     pub memtotal: Option<u64>,
+    /// The free memory.
     pub memfree: Option<u64>,
+    /// The available memory.
     pub memavailable: Option<u64>,
+    /// The total swap.
     pub swaptotal: Option<u64>,
+    /// The free swap.
     pub swapfree: Option<u64>,
 }
 

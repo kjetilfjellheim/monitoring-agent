@@ -11,11 +11,16 @@ use crate::common::CommonLibError;
 #[allow(clippy::module_name_repetitions)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Loadavg {
+    /// The load average for the last minute.    
     pub loadavg1min: Option<f32>,
+    /// The load average for the last 5 minutes.
     pub loadavg5min:  Option<f32>,
     #[allow(clippy::similar_names)]
+    /// The load average for the last 10 minutes.
     pub loadavg10min:  Option<f32>,
+    /// The number of currently running processes.
     pub current_running_processes: Option<u32>,
+    /// The total number of processes.
     pub total_number_of_processes: Option<u32>
 }
 

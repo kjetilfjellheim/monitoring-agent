@@ -1,9 +1,10 @@
-/* 
- * Common structures for reading proc files.
- */
+/// Structure and methods to read and parse /proc/cpuinfo 
 pub mod cpuinfo;
+/// Structure and methods to read and parse /proc/meminfo 
 pub mod meminfo;
+/// Structure and methods to read and parse /proc/loadavg
 pub mod loadavg;
+/// Structure and methods to read and parse /proc/*/status 
 pub mod process;
 
 pub use crate::proc::cpuinfo::ProcsCpuinfo;
