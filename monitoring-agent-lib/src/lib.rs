@@ -1,9 +1,5 @@
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-
-    }
-}
+/*
+ * Library for monitoring agent.
+*/
+pub mod common;
+pub mod proc;
