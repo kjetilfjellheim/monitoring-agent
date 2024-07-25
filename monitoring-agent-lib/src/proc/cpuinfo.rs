@@ -9,6 +9,7 @@ use crate::common::CommonLibError;
 /**
  * cpu information from /cat/cpuinfo
  */
+#[allow(clippy::module_name_repetitions)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProcsCpuinfo {
     pub apicid: Option<u8>,
@@ -31,8 +32,11 @@ impl ProcsCpuinfo {
      * `model_name`: The model name of the cpu.
      * `cpu_cores`: The number of cores in the cpu.
      * `cpu_mhz`: The speed of the cpu in mhz.
-     */
-    pub fn new(
+     * 
+     * Returns a new `ProcsCpuinfo`.
+     * 
+     */    
+     #[must_use] pub fn new(
         apicid: Option<u8>,
         vendor_id: Option<String>,
         cpu_family: Option<String>,
@@ -54,6 +58,11 @@ impl ProcsCpuinfo {
 
     /**
      * Get the apicid of the cpu.
+     * 
+     * # Errors
+     *  - If there is an error reading the cpuinfo file.
+     *  - If there is an error reading a line from the cpuinfo file.
+     *  - If there is an error parsing the data from the cpuinfo file.
      */
     pub fn get_cpuinfo() -> Result<Vec<ProcsCpuinfo>, CommonLibError> {
         let cpuinfo_file = "/proc/cpuinfo";
@@ -66,6 +75,11 @@ impl ProcsCpuinfo {
      * `file`: The file to read.
      * 
      * Returns the cpuinfo data or an error.
+     * 
+     * # Errors
+     *  - If there is an error reading the cpuinfo file.
+     *  - If there is an error reading a line from the cpuinfo file.
+     *  - If there is an error parsing the data from the cpuinfo file.
      */
     fn read_cpuinfo(file: &str) -> Result<Vec<ProcsCpuinfo>, CommonLibError> {
         let mut cpuinfo_data: Vec<ProcsCpuinfo> = Vec::new();
@@ -111,6 +125,9 @@ impl ProcsCpuinfo {
      * 
      * Returns the line or an error.
      * 
+     * # Errors
+     * - If there is an error reading a line from the cpuinfo file.
+     * 
      */
     fn get_line(line: Result<String, std::io::Error>) -> Result<String, CommonLibError> {
         match line {
@@ -146,7 +163,7 @@ mod test {
         assert_eq!(&first.model.clone().unwrap(), "116");
         assert_eq!(&first.model_name.clone().unwrap(), "AMD Ryzen 7 7840HS w/ Radeon 780M Graphics");
         assert_eq!(&first.cpu_cores.unwrap(), &8);
-        assert_eq!(&first.cpu_mhz.unwrap(), &3404.518);
+        assert!((first.cpu_mhz.unwrap() - 3404.518) > f32::EPSILON);
     }
 
 }

@@ -9,6 +9,7 @@ use crate::common::CommonLibError;
 /**
  * Memory information from /cat/meminfo
  */
+#[allow(clippy::module_name_repetitions)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProcsMeminfo {
     pub memtotal: Option<u64>,
@@ -28,8 +29,10 @@ impl ProcsMeminfo {
      * `memavailable`: The available memory.
      * `swaptotal`: The total swap.
      * `swapfree`: The free swap.
+     * 
+     * Returns a new `ProcsMeminfo`.
      */
-    pub fn new(
+    #[must_use] pub fn new(
         memtotal: Option<u64>,
         memfree: Option<u64>,
         memavailable: Option<u64>,
@@ -47,6 +50,13 @@ impl ProcsMeminfo {
 
     /**
      * Get the apicid of the cpu.
+     * 
+     * Returns the cpuinfo data or an error.
+     * 
+     * # Errors
+     *  - If there is an error reading the meminfo file.
+     *  - If there is an error reading a line from the meminfo file.
+     *  - If there is an error parsing the data from the meminfo file.
      */
     pub fn get_meminfo() -> Result<ProcsMeminfo, CommonLibError> {
         let meminfo_file = "/proc/meminfo";
@@ -59,6 +69,11 @@ impl ProcsMeminfo {
      * `file`: The file to read.
      * 
      * Returns the meminfo data or an error.
+     * 
+     * # Errors
+     *  - If there is an error reading the meminfo file.
+     *  - If there is an error reading a line from the meminfo file.
+     *  - If there is an error parsing the data from the meminfo file.
      */
     fn read_meminfo(file: &str) -> Result<ProcsMeminfo, CommonLibError> {
         let meminfo_file = File::open(file);
@@ -95,6 +110,9 @@ impl ProcsMeminfo {
      * 
      * Returns the line or an error.
      * 
+     * # Errors
+     * - If there is an error reading a line from the meminfo file.
+     * 
      */
     fn get_line(line: Result<String, std::io::Error>) -> Result<String, CommonLibError> {
         match line {
@@ -123,11 +141,11 @@ mod test {
     #[test]
     fn test_read_predefined_meminfo() {
         let binding = ProcsMeminfo::read_meminfo("resources/test/test_meminfo").unwrap();
-        assert_eq!(binding.memtotal, Some(15538476));
-        assert_eq!(binding.memfree, Some(1286156));
-        assert_eq!(binding.memavailable, Some(4491376));
-        assert_eq!(binding.swaptotal, Some(1998844));
-        assert_eq!(binding.swapfree, Some(13952));
+        assert_eq!(binding.memtotal, Some(15_538_476));
+        assert_eq!(binding.memfree, Some(1_286_156));
+        assert_eq!(binding.memavailable, Some(4_491_376));
+        assert_eq!(binding.swaptotal, Some(1_998_844));
+        assert_eq!(binding.swapfree, Some(13_952));
     }
 
 }
