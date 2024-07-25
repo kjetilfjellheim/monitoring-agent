@@ -14,6 +14,7 @@ use crate::common::CommonLibError;
 pub struct ProcsCpuinfo {
     /// Onboard apicid of the cpu.
     pub apicid: Option<u8>,
+    #[allow(clippy::doc_markdown)]
     /// Vendor id of the cpu e.g. AuthenticAMD.
     pub vendor_id:  Option<String>,
     /// Authoritatively identifies the type of processor in the system.
