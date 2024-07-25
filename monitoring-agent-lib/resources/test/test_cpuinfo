@@ -5,7 +5,7 @@ model		: 116
 model name	: AMD Ryzen 7 7840HS w/ Radeon 780M Graphics
 stepping	: 1
 microcode	: 0xa704103
-cpu MHz		: 3404.518
+cpu MHz		: 3000.0
 cache size	: 1024 KB
 physical id	: 0
 siblings	: 16
