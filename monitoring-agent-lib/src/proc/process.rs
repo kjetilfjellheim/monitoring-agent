@@ -13,12 +13,19 @@ use crate::common::CommonLibError;
 #[allow(clippy::module_name_repetitions)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProcsProcess {
+    /// The process id.
     pub pid: Option<u32>,
+    /// The parent process id.
     pub parent_pid: Option<u32>,
+    /// The name of the process.
     pub name: Option<String>,
+    /// The umask of the process.
     pub umask: Option<String>,
+    /// The state of the process.
     pub state: Option<ProcessState>,
+    /// The number of threads in the process.
     pub threads: Option<u32>,
+    /// The groups the process belongs to.
     pub groups: Option<Vec<String>>,
 }
 
@@ -134,6 +141,104 @@ impl ProcsProcess {
     }
 
     /**
+     * Get child processes.
+     * 
+     * `pid`: The process id to get the child processes from.
+     * 
+     * Returns the child processes or an error.
+     * 
+     * # Errors
+     * - If there is an error reading the directory.
+     * - If there is an error reading a process.
+     * - If there is an error reading a line from the process file.
+     * 
+     */
+    pub fn get_child_processes(pid: u32) -> Result<Vec<ProcsProcess>, CommonLibError> {
+        ProcsProcess::read_child_processes(pid, "/proc")
+    }
+
+    /**
+     * Read child processes.
+     * 
+     * `pid`: The process id to get the child processes from.
+     * `path`: The path to read the child processes from.
+     * 
+     * Returns the child processes or an error.
+     * 
+     * # Errors
+     * - If there is an error reading the directory.
+     * - If there is an error reading a process.
+     * - If there is an error reading a line from the process file.
+     * 
+     */
+    fn read_child_processes(pid: u32, path: &str) -> Result<Vec<ProcsProcess>, CommonLibError> {
+        let task_path = path.to_string() + "/" + &pid.to_string() + "/task";
+        let task_paths = fs::read_dir(task_path);
+        match task_paths {
+            Ok(paths) => {
+                let mut processes: Vec<ProcsProcess> = Vec::new();
+                ProcsProcess::loop_child_paths(paths, &mut processes)?;
+                Ok(processes)
+            },
+            Err(err) => {
+                error!("Error reading /proc: {err:?}");
+                Err(CommonLibError::new(&format!("Error reading /proc, err: {err:?}")))
+            }
+        }        
+    }
+
+    /**
+     * Loop child paths.
+     * 
+     * `paths`: The paths to loop.
+     * `processes`: The processes to add the child processes to.
+     * 
+     * Returns the child processes or an error.
+     * 
+     * # Errors
+     * - If there is an error reading the path.
+     * 
+     */
+    fn loop_child_paths(paths: ReadDir, processes: &mut Vec<ProcsProcess>) -> Result<(), CommonLibError> {
+        for path in paths {
+            let starts_with_number_regexp = Regex::new(r"^[0-9]+$").map_err(|err|CommonLibError::new(format!("Error creating regexp: err: {err:?}").as_str()))?;
+            match &path {
+                Ok(path) => {
+                    ProcsProcess::add_child_process(&starts_with_number_regexp, path, processes)?;
+                },
+                Err(err) => {
+                    error!("Error reading /proc: {err:?}");
+                    return Err(CommonLibError::new(&format!("Error reading /proc, err: {err:?}")));
+                }
+            }
+        };
+        Ok(())            
+    }
+
+    /**
+     * Add a child process.
+     * 
+     * `starts_with_number_regexp`: The regexp to check if the directory starts with a number.
+     * `path`: The directory to check.
+     * `processes`: The processes to add the child process to.
+     * 
+     * Returns the child process or an error.
+     * 
+     * # Errors
+     * - If there is an error reading the path.
+     * 
+     */
+    fn add_child_process(starts_with_number_regexp: &Regex, path: &DirEntry, processes: &mut Vec<ProcsProcess>) -> Result<(), CommonLibError> {
+        if ProcsProcess::is_process_directory(starts_with_number_regexp, path) {
+            let path_buffer = path.path();
+            let use_dir = path_buffer.to_str().ok_or(CommonLibError::new("Error reading path"))?;
+            let process = ProcsProcess::get_process_status_with_dir(use_dir)?;
+            processes.push(process);
+        }
+        Ok(())
+    }
+
+    /**
      * Get process status.
      * 
      * `proc_dir`: The directory to get the process status from.
@@ -230,6 +335,7 @@ impl ProcsProcess {
                     Some('S') => Some(ProcessState::InterruptableSleep),
                     Some('T') => Some(ProcessState::Stopped),
                     Some('Z') => Some(ProcessState::Zombie),
+                    Some('I') => Some(ProcessState::Idle),
                     None => None,
                     _ => Some(ProcessState::Unknown)
                 }
@@ -299,16 +405,24 @@ impl ProcsProcess {
  * `InterruptableSleep`: The process is in an interruptable sleep.
  * `Stopped`: The process is stopped.
  * `Zombie`: The process is a zombie.
+ * `Idle`: The process is idle.
  *
  */
 #[allow(clippy::module_name_repetitions)]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum ProcessState {
+    /// The process is running.
     Running,
+    /// The process is in an uninterruptible sleep.
     UninterruptibleSleep,
+    /// The process is in an interruptable sleep.
     InterruptableSleep,
+    /// The process is stopped.
     Stopped,
+    /// The process is a zombie.
     Zombie,
+    /// The process is idle.
+    Idle,
     Unknown
 }
 
@@ -351,6 +465,21 @@ mod test {
         assert_eq!(&process.state, &Some(ProcessState::InterruptableSleep));
         assert_eq!(&process.threads, &Some(1));
         assert_eq!(&process.groups, &Some(vec!["4".to_string(), "24".to_string(), "27".to_string(), "30".to_string(), "46".to_string(), "100".to_string(), "119".to_string(), "129".to_string(), "1000".to_string()]));
-    }      
+    }    
+
+    #[test]
+    fn test_read_children() {
+        let processes = ProcsProcess::read_child_processes(2914, "resources/test/processes");
+        println!("{:?}", processes);
+        assert!(&processes.is_ok());
+        let processes = processes.unwrap().clone();
+        assert_eq!(&processes.get(0).unwrap().pid, &Some(54112));
+        assert_eq!(&processes.get(0).unwrap().parent_pid, &Some(2));
+        assert_eq!(&processes.get(0).unwrap().umask, &Some("0000".to_string()));
+        assert_eq!(&processes.get(0).unwrap().state, &Some(ProcessState::Idle));
+        assert_eq!(&processes.get(0).unwrap().threads, &Some(1));
+        assert_eq!(&processes.get(0).unwrap().groups, &Some(vec![]));
+
+    }         
 
 }
