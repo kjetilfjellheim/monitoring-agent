@@ -12,12 +12,19 @@ use crate::common::CommonLibError;
 #[allow(clippy::module_name_repetitions)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProcsCpuinfo {
+    /// Onboard apicid of the cpu.
     pub apicid: Option<u8>,
+    /// Vendor id of the cpu e.g. AuthenticAMD.
     pub vendor_id:  Option<String>,
+    /// Authoritatively identifies the type of processor in the system.
     pub cpu_family:  Option<String>,
+    /// Model identifier of the cpu.
     pub model:  Option<String>,
+    /// Displays the common name of the processor, including its project name.
     pub model_name:  Option<String>,
+    /// Number of cores in the cpu.
     pub cpu_cores:  Option<u8>,
+    /// Speed of the cpu in Mhz.
     pub cpu_mhz:  Option<f32>,
 }
 
