@@ -8,7 +8,7 @@ use regex::Regex;
 use crate::common::CommonLibError;
 
 /**
- * Memory information from /cat/meminfo
+ * Process information from /proc/*/status */
  */
 #[allow(clippy::module_name_repetitions)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,7 +35,7 @@ impl ProcsProcess {
     * `threads`: The number of threads in the process.
     * `groups`: The groups the process belongs to.
     * 
-    * Returns a new `ProcsMeminfo`.
+    * Returns a new `ProcsProcess`.
     */
     #[must_use] pub fn new(
         pid: Option<u32>,
@@ -266,7 +266,7 @@ impl ProcsProcess {
     }
 
     /**
-     * Get a line from the cpuinfo file.
+     * Get a line from the process file.
      * 
      * `line`: The line to get.
      * 
