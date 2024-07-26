@@ -12,11 +12,11 @@ use clap::Parser;
 #[command(version, about="Monitoring agent", long_about = None)]
 pub struct ApplicationArguments {
     /// Configuration file.
-    #[arg(short = 'c', long, default_value = "/etc/monitoring-agent/config.json")]
+    #[arg(short = 'c', long, default_value = "/etc/monitoring-agent-daemon/config.json")]
     pub config: String,
 
     /// log4rs logfile.
-    #[arg(short = 'l', long, default_value = "/etc/monitoring-agent/logging.yml")]
+    #[arg(short = 'l', long, default_value = "/etc/monitoring-agent-daemon/logging.yml")]
     pub loggingfile: String,
 
     /// Daemonize the application. Will not daemonize by default.
@@ -28,14 +28,14 @@ pub struct ApplicationArguments {
     pub test: bool,
 
     /// stdout file. Only used when daemonizing the application.
-    #[arg(short = 'i', long, default_value = "/var/log/monitoring-agent.out")]
+    #[arg(short = 'i', long, default_value = "/var/log/monitoring-agent-daemon.out")]
     pub stdout: String,
 
     /// stderr file. Only used when daemonizing the application.
-    #[arg(short = 'e', long, default_value = "/var/log/monitoring-agent.err")]
+    #[arg(short = 'e', long, default_value = "/var/log/monitoring-agent-daemon.err")]
     pub stderr: String,
 
     /// pid file. Only used when daemonizing the application.
-    #[arg(short = 'p', long, default_value = "/var/run/monitoring-agent.pid")]
+    #[arg(short = 'p', long, default_value = "/var/run/monitoring-agent-daemon.pid")]
     pub pidfile: String,
 }
