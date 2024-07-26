@@ -38,14 +38,14 @@ depends = "$auto"
 section = "utility"
 priority = "optional"
 assets = [
-    ["target/release/monitoring-agent", "usr/bin/", "755"],
-    ["README.md", "usr/share/doc/monitoring-agent/README", "644"],
-    ["resources/prod/etc/config.json", "/etc/monitoring-agent/config.json", "644"],
-    ["resources/prod/etc/logging.yml", "/etc/monitoring-agent/logging.yml", "644"],
-    ["resources/prod/systemd/monitoring-agent.service", "/etc/systemd/system/monitoring-agent.service", "644"],
+    ["target/release/monitoring-agent-daemon", "usr/bin/", "755"],
+    ["README.md", "usr/share/doc/monitoring-agent-daemon/README", "644"],
+    ["resources/prod/etc/config.json", "/etc/monitoring-agent-daemon/config.json", "644"],
+    ["resources/prod/etc/logging.yml", "/etc/monitoring-agent-daemon/logging.yml", "644"],
+    ["resources/prod/systemd/monitoring-agent.service", "/etc/systemd/system/monitoring-agent-daemon.service", "644"],
 ]
 conf-files = [
-    "/etc/monitoring-agent/config.json",
-    "/etc/monitoring-agent/logging.yml",
-    "/etc/systemd/system/monitoring-agent.service",
+    "/etc/monitoring-agent-daemon/config.json",
+    "/etc/monitoring-agent-daemon/logging.yml",
+    "/etc/systemd/system/monitoring-agent-daemon.service",
 ]
