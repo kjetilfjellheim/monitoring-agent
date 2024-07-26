@@ -1,0 +1,10 @@
+[package]
+name = "monitoring-agent-lib"
+version = "0.0.12"
+edition = "2021"
+
+[dependencies]
+serde = { version = "1.0.204", features = ["derive", ] }                                # For serializing/deserializing.
+serde_json = { version = "1.0.120", features = []}                                      # For serializing/deserializing.
+log = "0.4.22"                                                                          # For logging.
+regex = "1.0.5"                                                                        # For regular expressions.
