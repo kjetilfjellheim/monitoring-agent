@@ -24,16 +24,16 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         with:
           upload_url: ${{ steps.get_release.outputs.upload_url }}
-          asset_path: ./target/release/monitoring-agent
-          asset_name: monitoring-agent
+          asset_path: ./target/release/monitoring-agent-daemon
+          asset_name: monitoring-agent-daemon
           asset_content_type: application/octet-stream
       - run: cargo install cargo-deb
-      - run: cargo deb --output target/debian/monitoring-agent_amd64.deb
+      - run: cargo deb -p monitoring-agent-daemon --output target/debian/monitoring-agent-daemon_amd64.deb
       - uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.get_release.outputs.upload_url }}
-          asset_path: target/debian/monitoring-agent_amd64.deb
-          asset_name: monitoring-agent_${{ github.ref_name }}_amd64.deb
+          asset_path: target/debian/monitoring-agent-daemon_amd64.deb
+          asset_name: monitoring-agent-daemon_${{ github.ref_name }}_amd64.deb
           asset_content_type: application/x-deb   
