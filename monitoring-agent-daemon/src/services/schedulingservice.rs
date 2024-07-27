@@ -440,49 +440,42 @@ mod test {
     /**
      * Test the monitoring service with both tcp monitors and http monitors.
      */
-    #[test]
-    fn test_monitoring_service() {
+    #[tokio::test]
+    async fn test_monitoring_service() {
         let mut scheduling_service = SchedulingService::new(&MonitoringConfig::new("./resources/test/test_full_integration_test.json").unwrap());
-        scheduling_service.start(true).unwrap();
+        let res = scheduling_service.start(true).await;
+        assert!(res.is_ok());
     }
 
     /**
      * Test the monitoring service with a tcp monitor.
      */
-    #[test]
-    fn test_monitoring_service_tcp() {
+    #[tokio::test]
+    async fn test_monitoring_service_tcp() {
         let mut scheduling_service = SchedulingService::new(&MonitoringConfig::new("./resources/test/test_simple_tcp.json").unwrap());
-        scheduling_service.start(true).unwrap();
+        let res = scheduling_service.start(true).await;
+        assert!(res.is_ok());
     }
 
     /**
      * Test the monitoring service with an http monitor.
      */
-    #[test]
-    fn test_monitoring_service_http() {
+    #[tokio::test]
+    async fn test_monitoring_service_http() {
         let mut scheduling_service = SchedulingService::new(&MonitoringConfig::new("./resources/test/test_simple_http.json").unwrap());
-        scheduling_service
-            .start(true)
-            .unwrap();
+        let res = scheduling_service.start(true).await;
+        assert!(res.is_ok());
     }
 
     /**
      * Test the monitoring service with an command monitor.
      */
-    #[test]
-    fn test_monitoring_service_command() {
+    #[tokio::test]
+    async fn test_monitoring_service_command() {
         let mut scheduling_service = SchedulingService::new(&MonitoringConfig::new("./resources/test/test_simple_command.json").unwrap());
-        scheduling_service
-            .start(true)
-            .unwrap();
+        let res = scheduling_service.start(true).await;
+        assert!(res.is_ok());
     }
 
-    /**
-     * Test the http monitoring service with a tls configuration.
-     */
-    #[test]
-    fn test_monitoring_service_with_tls_config() {
-
-    }
 }
 
