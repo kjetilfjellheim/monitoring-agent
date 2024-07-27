@@ -7,6 +7,7 @@ use common::configuration::MonitoringConfig;
 use log::{error, info};
 use log4rs::config::Deserializers;
 use actix_web::{web, App, HttpServer};
+use services::SchedulingService;
 
 use crate::common::ApplicationArguments;
 use crate::api::StateApi;
@@ -33,6 +34,15 @@ async fn main() -> Result<(), std::io::Error> {
         }
     }?;
 
+    let mut scheduling_service = SchedulingService::new(&monitoring_config);
+    match scheduling_service.start(args.test) {
+        Ok(()) => {
+            info!("Scheduling service started!");
+        }
+        Err(err) => {
+            error!("Error starting scheduling service: {:?}", err);
+        }
+    }
     /*
      * Initialize monitoring service.
      */
