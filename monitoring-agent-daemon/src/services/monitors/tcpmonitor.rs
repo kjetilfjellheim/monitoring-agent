@@ -1,4 +1,5 @@
 
+use log::info;
 use log::{debug, error};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -109,7 +110,7 @@ impl TcpMonitor {
      *
      */
     pub fn check(&mut self) {
-        debug!("Checking monitor: {}", &self.name);
+        info!("Checking monitor: {}", &self.name);
         match std::net::TcpStream::connect(format!("{}:{}", &self.host, &self.port)) {
             Ok(tcp_stream) => {
                 TcpMonitor::close_connection(&tcp_stream);
