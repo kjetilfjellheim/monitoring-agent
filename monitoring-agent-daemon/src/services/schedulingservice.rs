@@ -1,6 +1,7 @@
 use std::{collections::HashMap, future::Future, sync::{Arc, Mutex}, time::{Duration, Instant}};
 
 use log::{debug, error, info};
+use tokio::runtime::{Handle, Runtime};
 use tokio_cron_scheduler::{Job, JobScheduler};
 
 use crate::common::{configuration::MonitoringConfig, ApplicationError, HttpMethod, MonitorStatus};
@@ -40,7 +41,7 @@ impl SchedulingService {
      *
      * result: The result of starting the monitoring service.
      */
-    pub fn start(&mut self, test: bool) -> Result<(), ApplicationError> {       
+    pub async fn start(&mut self, test: bool) -> Result<(), ApplicationError> {       
         /*
          * Start the scheduling of the monitoring jobs.
          */
@@ -50,7 +51,7 @@ impl SchedulingService {
          * This is useful for testing the configuration file and for testing the code.
          */
         if !test {
-            SchedulingService::start_scheduling(future_scheduling)?;
+            future_scheduling.await?;
         }
         Ok(())
     }
@@ -428,36 +429,6 @@ impl SchedulingService {
             }
         })
     }
-
-    /**
-     * Start the scheduling.
-     *
-     * `future_scheduling`: The scheduling future.
-     *
-     * result: The result of starting the scheduling.
-     *
-     * throws: `ApplicationError`: If the scheduling fails to start.
-     *
-     */
-    fn start_scheduling(
-        future_scheduling: impl Future<Output = Result<(), ApplicationError>>,
-    ) -> Result<(), ApplicationError> {
-        match tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-        {
-            Ok(runtime) => {
-                runtime.block_on(future_scheduling)?;
-            }
-            Err(err) => {
-                return Err(ApplicationError::new(
-                    format!("Could not create runtime: {err}").as_str(),
-                ));
-            }
-        }
-        Ok(())
-    }
-
 
 }
 

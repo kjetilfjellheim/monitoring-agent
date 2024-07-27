@@ -13,7 +13,7 @@ use crate::common::ApplicationArguments;
 use crate::api::StateApi;
 use crate::services::MonitoringService;
 
-#[actix_web::main]
+#[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
     /*
      * Parse command line arguments.
@@ -35,7 +35,7 @@ async fn main() -> Result<(), std::io::Error> {
     }?;
 
     let mut scheduling_service = SchedulingService::new(&monitoring_config);
-    match scheduling_service.start(args.test) {
+    match scheduling_service.start(args.test).await {
         Ok(()) => {
             info!("Scheduling service started!");
         }
@@ -69,6 +69,9 @@ async fn main() -> Result<(), std::io::Error> {
             .service(api::get_current_meminfo)   
             .service(api::get_current_cpuinfo)   
             .service(api::get_current_loadavg)   
+            .service(api::get_processes)
+            .service(api::get_process)
+            .service(api::get_threads)
     })
     .bind((monitoring_config.server.ip, monitoring_config.server.port))?
     .run()

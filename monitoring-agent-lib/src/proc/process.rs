@@ -153,8 +153,8 @@ impl ProcsProcess {
      * - If there is an error reading a line from the process file.
      * 
      */
-    pub fn get_child_processes(pid: u32) -> Result<Vec<ProcsProcess>, CommonLibError> {
-        ProcsProcess::read_child_processes(pid, "/proc")
+    pub fn get_process_threads(pid: u32) -> Result<Vec<ProcsProcess>, CommonLibError> {
+        ProcsProcess::read_process_threads(pid, "/proc")
     }
 
     /**
@@ -171,7 +171,7 @@ impl ProcsProcess {
      * - If there is an error reading a line from the process file.
      * 
      */
-    fn read_child_processes(pid: u32, path: &str) -> Result<Vec<ProcsProcess>, CommonLibError> {
+    fn read_process_threads(pid: u32, path: &str) -> Result<Vec<ProcsProcess>, CommonLibError> {
         let task_path = path.to_string() + "/" + &pid.to_string() + "/task";
         let task_paths = fs::read_dir(task_path);
         match task_paths {
@@ -423,6 +423,7 @@ pub enum ProcessState {
     Zombie,
     /// The process is idle.
     Idle,
+    /// The process state is unknown. This probably occurs if the state is not found in the enum.
     Unknown
 }
 
@@ -469,7 +470,7 @@ mod test {
 
     #[test]
     fn test_read_children() {
-        let processes = ProcsProcess::read_child_processes(2914, "resources/test/processes");
+        let processes = ProcsProcess::read_process_threads(2914, "resources/test/processes");
         println!("{:?}", processes);
         assert!(&processes.is_ok());
         let processes = processes.unwrap().clone();
