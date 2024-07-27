@@ -2,8 +2,6 @@ name: compile-test
 on:
   push:
     branches: []
-  pull_request:
-    branches: []
 env:
     RUST_BACKTRACE: full
     CARGO_TERM_COLOR: always
