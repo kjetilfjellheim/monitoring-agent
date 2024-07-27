@@ -2,7 +2,6 @@ use std::{collections::HashMap, fs::File, io::{BufRead, BufReader}};
 use std::str::FromStr;
 
 use log::error;
-use serde::{Deserialize, Serialize};
 
 use crate::common::CommonLibError;
 
@@ -10,7 +9,7 @@ use crate::common::CommonLibError;
  * Memory information from /cat/meminfo
  */
 #[allow(clippy::module_name_repetitions)]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct ProcsMeminfo {
     /// The total memory.
     pub memtotal: Option<u64>,
