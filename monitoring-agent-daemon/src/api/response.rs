@@ -135,7 +135,7 @@ impl CpuinfoResponse {
      * 
      * Returns a new `CpuinfoResponse`.
      */
-    pub fn from_cpuinfo(procs_cpu_info: &Vec<ProcsCpuinfo>) -> Vec<CpuinfoResponse> {
+    pub fn from_cpuinfo(procs_cpu_info: &[ProcsCpuinfo]) -> Vec<CpuinfoResponse> {
         procs_cpu_info.iter().map(|cpu_info| CpuinfoResponse::new(cpu_info.apicid, cpu_info.vendor_id.clone(), cpu_info.cpu_family.clone(), cpu_info.model.clone(), cpu_info.model_name.clone(), cpu_info.cpu_cores, cpu_info.cpu_mhz)).collect()
     }    
 
