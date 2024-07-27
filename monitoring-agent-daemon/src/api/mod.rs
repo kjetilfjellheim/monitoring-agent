@@ -1,3 +1,13 @@
+/**
+ * API module. Contains the APIs made available by the monitoring agent daemon.
+ * 
+ * `meminfo`: The memory information API.
+ * `state`: The state API. This object is injected into all web service handlers.
+ * `response`: The response API.
+ * `cpuinfo`: The cpu information API.
+ * `loadavg`: The load average API.
+ * `process`: The process API.
+ */
 mod meminfo;
 mod state;
 mod response;

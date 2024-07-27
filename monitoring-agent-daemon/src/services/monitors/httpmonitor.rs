@@ -4,6 +4,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Duration;
 
+use log::info;
 use log::{debug, error};
 use reqwest::header::HeaderMap;
 use reqwest::Certificate;
@@ -27,12 +28,19 @@ use crate::common::HttpMethod;
  */
 #[derive(Debug, Clone)]
 pub struct HttpMonitor {
+    /// The name of the monitor.
     pub name: String,
+    /// The URL to monitor.
     pub url: String,
+    /// The HTTP method to use.
     pub method: HttpMethod,
+    /// The body of the request.
     pub body: Option<String>,
+    /// The headers of the request.
     pub headers: Option<HashMap<String, String>>,
+    /// The HTTP client.
     client: reqwest::Client,
+    /// The status of the monitor.
     pub status: Arc<Mutex<HashMap<String, MonitorStatus>>>,
 }
 
@@ -298,6 +306,7 @@ impl HttpMonitor {
                 if response.status().is_success() {
                     self.set_status(&Status::Ok);
                 } else {
+                    info!("Monitor status error: {} - {:?}", &self.name, response);
                     self.set_status(&Status::Error {
                         message: format!(
                             "Error connecting to {} with status code: {}",

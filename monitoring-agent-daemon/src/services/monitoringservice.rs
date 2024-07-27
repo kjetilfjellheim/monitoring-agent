@@ -17,6 +17,7 @@ use crate::common::configuration::MonitoringConfig;
  */
 #[derive(Clone)]
 pub struct MonitoringService {
+    /// The monitoring configuration.
     monitoring_config: MonitoringConfig,
 }
 

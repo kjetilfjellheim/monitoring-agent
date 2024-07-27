@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 
 /**
  * `MonitorStatus` struct
- *
- * This struct is used to represent the status of a monitor. It contains the following fields:
+ * 
+ *  This struct is used to represent the status of a monitor in the service modules. It contains the following fields:
  * - `status`: The status of the monitor
  * - `last_successful_time`: The last time the monitor was successful
  * - `last_error`: The last error message
@@ -13,12 +13,16 @@ use serde::{Deserialize, Serialize};
  */
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MonitorStatus {
+    /// The status of the monitor.
     #[serde(rename = "status")]
     pub status: Status,
+    /// The last time the monitor was successful.
     #[serde(skip_serializing_if = "Option::is_none", rename = "lastSuccessfulTime")]
     pub last_successful_time: Option<DateTime<Utc>>,
+    /// The last error message.
     #[serde(skip_serializing_if = "Option::is_none", rename = "lastError")]
     pub last_error: Option<String>,
+    /// The last time the monitor encountered an error.
     #[serde(skip_serializing_if = "Option::is_none", rename = "lastErrorTime")]
     pub last_error_time: Option<DateTime<Utc>>,
 }
@@ -71,7 +75,10 @@ impl MonitorStatus {
  */
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Status {
+    /// The monitor is working correctly.
     Ok,
+    /// The monitor status is unknown.
     Unknown,
+    /// The monitor has encountered an error. The error message is stored in the message field.
     Error { message: String },
 }

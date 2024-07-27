@@ -20,9 +20,13 @@ use crate::common::{MonitorStatus, Status};
  */
 #[derive(Debug, Clone)]
 pub struct TcpMonitor {
+    /// The name of the monitor.
     pub name: String,
+    /// The host to monitor.
     pub host: String,
+    /// The port of the host monitor.
     pub port: u16,
+    /// The status of the monitor.
     pub status: Arc<Mutex<HashMap<String, MonitorStatus>>>,
 }
 
@@ -43,7 +47,6 @@ impl TcpMonitor {
         status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
     ) -> TcpMonitor {
         debug!("Creating TCP monitor: {}", &name);
-
         let status_lock = status.lock();
         match status_lock {
             Ok(mut lock) => {
@@ -104,19 +107,15 @@ impl TcpMonitor {
 
     /**
      * Check the monitor.
-     *
-     * host: The host to monitor.
-     * port: The port to monitor.
-     *
      */
     pub fn check(&mut self) {
-        info!("Checking monitor: {}", &self.name);
         match std::net::TcpStream::connect(format!("{}:{}", &self.host, &self.port)) {
             Ok(tcp_stream) => {
                 TcpMonitor::close_connection(&tcp_stream);
                 self.set_status(&Status::Ok);
             }
             Err(err) => {
+                info!("Monitor status error: {} - {}", &self.name, err);
                 self.set_status(&Status::Error {
                     message: format!(
                         "Error connecting to {}:{} with error: {err}",
