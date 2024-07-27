@@ -495,7 +495,7 @@ mod test {
         .unwrap();
         monitor.set_status(&Status::Ok);
         assert_eq!(
-            status.lock().unwrap().get("localhost").unwrap().status,
+            status.lock().unwrap().get("Google").unwrap().status,
             Status::Ok
         );
     }
