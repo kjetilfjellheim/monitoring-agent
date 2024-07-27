@@ -63,7 +63,7 @@ async fn start_normal_application(monitoring_config: &MonitoringConfig, args: &A
     /*
      * Initialize monitoring service.
      */
-    let monitoring_service = MonitoringService::new(&monitoring_config);    
+    let monitoring_service = MonitoringService::new(monitoring_config);    
     /*
      * Start the scheduling service.
      */
@@ -151,7 +151,7 @@ async fn start_daemon_application(monitoring_config: &MonitoringConfig, args: &A
         .stderr(stderr)
         .privileged_action(move || {
             async move {                               
-                start_privileged_action(&cloned_monitoring_config.clone(), &cloned_args.clone()).await;
+                start_privileged_action(cloned_monitoring_config.clone(), &cloned_args.clone()).await;
             }
         });
     /*
@@ -170,7 +170,7 @@ async fn start_daemon_application(monitoring_config: &MonitoringConfig, args: &A
     Ok(())
 }
 
-async fn start_privileged_action(monitoring_config: &MonitoringConfig, args: &ApplicationArguments) {           
+async fn start_privileged_action(monitoring_config: MonitoringConfig, args: &ApplicationArguments) {           
     async move {            
         /*
         * Initialize monitoring service.
