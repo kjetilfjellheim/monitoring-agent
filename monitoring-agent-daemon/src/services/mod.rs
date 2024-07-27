@@ -1,6 +1,7 @@
 mod monitors;
 mod monitoringservice;
-mod server;
-mod procs;
+mod schedulingservice;
 
 pub use monitoringservice::MonitoringService;
+pub use schedulingservice::SchedulingService;
+

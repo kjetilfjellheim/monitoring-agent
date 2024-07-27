@@ -10,7 +10,7 @@ use crate::common::CommonLibError;
  */
 #[allow(clippy::module_name_repetitions)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Loadavg {
+pub struct ProcsLoadavg {
     /// The load average for the last minute.    
     pub loadavg1min: Option<f32>,
     /// The load average for the last 5 minutes.
@@ -24,10 +24,10 @@ pub struct Loadavg {
     pub total_number_of_processes: Option<u32>
 }
 
-impl Loadavg {
+impl ProcsLoadavg {
 
     /**
-     * Create a new `Loadavg`.
+     * Create a new `ProcsLoadavg`.
      *
      * `loadavg1min`: The load average for the last minute.
      * `loadavg5min`: The load average for the last 5 minutes.
@@ -35,7 +35,7 @@ impl Loadavg {
      * `current_running_processes`: The number of currently running processes.
      * `total_number_of_processes`: The total number of processes.
      * 
-     * Returns a new `Loadavg`.
+     * Returns a new `ProcsLoadavg`.
      * 
      */
     #[allow(clippy::similar_names)]
@@ -45,7 +45,7 @@ impl Loadavg {
                             current_running_processes: Option<u32>,
                             total_number_of_processes: Option<u32>
     ) -> Self {
-        Loadavg {
+        ProcsLoadavg {
             loadavg1min,
             loadavg5min,
             loadavg10min,
@@ -62,9 +62,9 @@ impl Loadavg {
      *  - If there is an error reading a line from the loadavg file.
      *  - If there is an error parsing the data from the loadavg file.
      */
-    pub fn get_loadavg() -> Result<Loadavg, CommonLibError> {
+    pub fn get_loadavg() -> Result<ProcsLoadavg, CommonLibError> {
         let loadavg_file = "/proc/loadavg";
-        Loadavg::read_loadavg(loadavg_file)
+        ProcsLoadavg::read_loadavg(loadavg_file)
     }    
 
     /**
@@ -79,7 +79,7 @@ impl Loadavg {
      *  - If there is an error reading a line from the loadavg file.
      *  - If there is an error parsing the data from the loadavg file.
      */
-    fn read_loadavg(file: &str) -> Result<Loadavg, CommonLibError> {
+    fn read_loadavg(file: &str) -> Result<ProcsLoadavg, CommonLibError> {
         let loadavg_file = File::open(file);
         match loadavg_file {
             Ok(file) => {
@@ -106,7 +106,7 @@ impl Loadavg {
   *  - If there is an error reading a line from the loadavg file.
   *  - If there is an error parsing the data from the loadavg file.
   */
-fn handle_loadavg_file(file: File) -> Result<Loadavg, CommonLibError> {
+fn handle_loadavg_file(file: File) -> Result<ProcsLoadavg, CommonLibError> {
     let mut reader = BufReader::new(file);
     let mut buffer = String::new();
     let data = reader.read_line(&mut buffer);
@@ -117,7 +117,7 @@ fn handle_loadavg_file(file: File) -> Result<Loadavg, CommonLibError> {
                 Some(process_parts) => process_parts.split('/').collect::<Vec<&str>>(),
                 None => return Err(CommonLibError::new("Error parsing loadavg")),
             };
-            Ok(Loadavg::new(
+            Ok(ProcsLoadavg::new(
                 main_cols.first().and_then(|f| f32::from_str(f).ok()),
                 main_cols.get(1).and_then(|f| f32::from_str(f).ok()),
                 main_cols.get(2).and_then(|f| f32::from_str(f).ok()),
@@ -139,13 +139,13 @@ mod test {
     
         #[test]
         fn test_current() {
-            let binding = Loadavg::get_loadavg();
+            let binding = ProcsLoadavg::get_loadavg();
             assert!(binding.is_ok());
         }
     
         #[test]
         fn test_read_predefined_cpuinfo() {
-            let binding = Loadavg::read_loadavg("resources/test/test_loadavg").unwrap();
+            let binding = ProcsLoadavg::read_loadavg("resources/test/test_loadavg").unwrap();
             assert_eq!(&binding.loadavg1min.unwrap(), &0.59);
             assert_eq!(&binding.loadavg5min.clone().unwrap(), &0.63);
             assert_eq!(&binding.loadavg10min.clone().unwrap(), &0.32);
