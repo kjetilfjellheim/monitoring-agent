@@ -1,4 +1,4 @@
-use monitoring_agent_lib::proc::ProcsMeminfo;
+use monitoring_agent_lib::proc::{ProcsCpuinfo, ProcsMeminfo};
 use serde::{Deserialize, Serialize};
 
 /**
@@ -62,4 +62,81 @@ impl MeminfoResponse {
     pub fn from_meminfo(procs_mem_info: &ProcsMeminfo) -> MeminfoResponse {
         MeminfoResponse::new(procs_mem_info.memtotal, procs_mem_info.memfree, procs_mem_info.memavailable, procs_mem_info.swaptotal, procs_mem_info.swaptotal)
     }
+}
+
+/**
+ * The `CpuinfoResponse` struct represents the response of the cpu endpoint.
+ */
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(clippy::module_name_repetitions)]
+pub struct CpuinfoResponse {
+    /// Onboard apicid of the cpu.
+    #[serde(skip_serializing_if = "Option::is_none", rename = "apicid")]    
+    pub apicid: Option<u8>,
+    #[allow(clippy::doc_markdown)]
+    /// Vendor id of the cpu e.g. AuthenticAMD.
+    #[serde(skip_serializing_if = "Option::is_none", rename = "vendorId")]        
+    pub vendor_id:  Option<String>,
+    /// Authoritatively identifies the type of processor in the system.
+    #[serde(skip_serializing_if = "Option::is_none", rename = "cpuFamily")]        
+    pub cpu_family:  Option<String>,
+    /// Model identifier of the cpu.
+    #[serde(skip_serializing_if = "Option::is_none", rename = "model")]    
+    pub model:  Option<String>,
+    /// Displays the common name of the processor, including its project name.
+    #[serde(skip_serializing_if = "Option::is_none", rename = "modelName")]    
+    pub model_name:  Option<String>,
+    /// Number of cores in the cpu.
+    #[serde(skip_serializing_if = "Option::is_none", rename = "cpuCores")]        
+    pub cpu_cores:  Option<u8>,
+    /// Speed of the cpu in Mhz.
+    #[serde(skip_serializing_if = "Option::is_none", rename = "cpuMhz")]    
+    pub cpu_mhz:  Option<f32>,
+}
+
+impl CpuinfoResponse {
+    /**
+     * Create a new `CpuinfoResponse`.
+     *
+     * `apicid`: The apicid of the cpu.
+     * `vendor_id`: The vendor id of the cpu.
+     * `cpu_family`: The cpu family.
+     * `model`: The model of the cpu.
+     * `model_name`: The model name of the cpu.
+     * `cpu_cores`: The number of cores in the cpu.
+     * `cpu_mhz`: The speed of the cpu in mhz.
+     * 
+     * Returns a new `CpuinfoResponse`.
+     */
+    pub fn new(
+        apicid: Option<u8>,
+        vendor_id: Option<String>,
+        cpu_family: Option<String>,
+        model: Option<String>,
+        model_name: Option<String>,
+        cpu_cores: Option<u8>,
+        cpu_mhz: Option<f32>,
+    ) -> CpuinfoResponse {
+        CpuinfoResponse {
+            apicid,
+            vendor_id,
+            cpu_family,
+            model,
+            model_name,
+            cpu_cores,
+            cpu_mhz,
+        }
+    }
+
+    /**
+     * Create a new `CpuinfoResponse` from a `ProcsCpuinfo`.
+     *
+     * `procs_cpu_info`: The `ProcsCpuinfo` object.
+     * 
+     * Returns a new `CpuinfoResponse`.
+     */
+    pub fn from_cpuinfo(procs_cpu_info: &Vec<ProcsCpuinfo>) -> Vec<CpuinfoResponse> {
+        procs_cpu_info.iter().map(|cpu_info| CpuinfoResponse::new(cpu_info.apicid, cpu_info.vendor_id.clone(), cpu_info.cpu_family.clone(), cpu_info.model.clone(), cpu_info.model_name.clone(), cpu_info.cpu_cores, cpu_info.cpu_mhz)).collect()
+    }    
+
 }
