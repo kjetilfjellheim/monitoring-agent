@@ -16,13 +16,31 @@ use crate::common::ApplicationArguments;
 use crate::api::StateApi;
 use crate::services::MonitoringService;
 
+/**
+ * Application entry point.
+ * 
+ * main: The main function.
+ * 
+ * Returns the result of the application.
+ * 
+ */
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
     /*
      * Parse command line arguments.
      */
     let args: ApplicationArguments = ApplicationArguments::parse();
-
+    /*
+     * Initialize logging.
+     */
+    match log4rs::init_file(&args.loggingfile, Deserializers::default()) {
+        Ok(()) => {
+            info!("Logging initialized!");
+        }
+        Err(err) => {
+            error!("Error initializing logging: {:?}", err);
+        }
+    }
     /*
      * Load configuration.
      */
@@ -37,29 +55,27 @@ async fn main() -> Result<(), std::io::Error> {
         }
     }?;
     /*
-     * Initialize logging.
-     */
-    match log4rs::init_file(&args.loggingfile, Deserializers::default()) {
-        Ok(()) => {
-            info!("Logging initialized!");
-        }
-        Err(err) => {
-            error!("Error initializing logging: {:?}", err);
-        }
-    }
-    /*
      * Start the application.
      */
     if args.daemon {
         start_daemon_application( &monitoring_config, &args).await?;
         Ok(())
     } else {
-        start_normal_application(&monitoring_config, &args).await?;
+        start_application(&monitoring_config, &args).await?;
         Ok(())
     }
 } 
 
-async fn start_normal_application(monitoring_config: &MonitoringConfig, args: &ApplicationArguments) -> Result<(), std::io::Error> {
+/**
+ * Start the application.
+ * 
+ * `monitoring_config`: The monitoring configuration.
+ * `args`: The application arguments.
+ * 
+ * Returns the result of starting the application.
+ * 
+ */
+async fn start_application(monitoring_config: &MonitoringConfig, args: &ApplicationArguments) -> Result<(), std::io::Error> {
     /*
      * Initialize monitoring service.
      */
@@ -76,7 +92,7 @@ async fn start_normal_application(monitoring_config: &MonitoringConfig, args: &A
                 info!("Scheduling service started!");
             }
             Err(err) => {
-                error!("Error starting scheduling service: {:?}", err);
+                error!("Error starting scheduling service: {err:?}");
             }
         };
     });
@@ -106,6 +122,14 @@ async fn start_normal_application(monitoring_config: &MonitoringConfig, args: &A
     .await
 }
 
+/**
+ * Start the daemon application.
+ * 
+ * `monitoring_config`: The monitoring configuration.
+ * `args`: The application arguments.
+ * 
+ * Returns the result of starting the daemon application.
+ */
 async fn start_daemon_application(monitoring_config: &MonitoringConfig, args: &ApplicationArguments) -> Result<(), std::io::Error> {
     /*
      * Open stdout for logging daemon output.
@@ -118,7 +142,7 @@ async fn start_daemon_application(monitoring_config: &MonitoringConfig, args: &A
     {
         Ok(file) => file,
         Err(err) => {
-            error!("Error opening stdout file: {:?}", err);
+            error!("Error opening stdout file: {err:?}");
             return Err(std::io::Error::new(std::io::ErrorKind::Other, "Error opening stdout file"));
         }
     };
@@ -133,7 +157,7 @@ async fn start_daemon_application(monitoring_config: &MonitoringConfig, args: &A
     {
         Ok(file) => file,
         Err(err) => {
-            error!("Error opening stderr file: {:?}", err);
+            error!("Error opening stderr file: {err:?}");
             return Err(std::io::Error::new(std::io::ErrorKind::Other, "Error opening stderr file"));
         }
     };
@@ -151,7 +175,15 @@ async fn start_daemon_application(monitoring_config: &MonitoringConfig, args: &A
         .stderr(stderr)
         .privileged_action(move || {
             async move {                               
-                start_privileged_action(cloned_monitoring_config.clone(), &cloned_args.clone()).await;
+                let result = start_application(&cloned_monitoring_config.clone(), &cloned_args.clone()).await;
+                match result {
+                    Ok(()) => {
+                        info!("Daemon started!");
+                    }
+                    Err(err) => {
+                        error!("Error starting daemon: {err:?}");
+                    }
+                }
             }
         });
     /*
@@ -166,68 +198,7 @@ async fn start_daemon_application(monitoring_config: &MonitoringConfig, args: &A
             error!("Error starting daemon: {:?}", err);
         }
     }
-
     Ok(())
-}
-
-async fn start_privileged_action(monitoring_config: MonitoringConfig, args: &ApplicationArguments) {           
-    async move {            
-        /*
-        * Initialize monitoring service.
-        */
-        let monitoring_service: MonitoringService = MonitoringService::new(&monitoring_config);    
-        /*
-        * Start the scheduling service.
-        */
-        let cloned_monitoring_config = monitoring_config.clone();
-        let cloned_args = args.clone();           
-        tokio::spawn(async move {
-            let mut scheduling_service = SchedulingService::new(&cloned_monitoring_config);
-            match scheduling_service.start(cloned_args.test).await {
-                Ok(()) => {
-                    info!("Scheduling service started!");
-                }
-                Err(err) => {
-                    error!("Error starting scheduling service: {:?}", err);
-                }
-            };
-        });
-        /*
-        * Start the HTTP server.
-        */
-        let cloned_monitoring_config = monitoring_config.clone();
-        let ip = cloned_monitoring_config.clone().server.ip.clone();
-        let port = cloned_monitoring_config.clone().server.port;
-        let http_result = HttpServer::new(move || {
-            App::new()
-                .app_data(web::Data::new(StateApi::new(monitoring_service.clone())))
-                .service(api::get_current_meminfo)   
-                .service(api::get_current_cpuinfo)   
-                .service(api::get_current_loadavg)   
-                .service(api::get_processes)
-                .service(api::get_process)
-                .service(api::get_threads)
-        })
-        .bind((ip, port));
-        /*
-         * If this is a test, return.
-         */
-        if args.test {
-            return;
-        }
-        /*
-         * Check http server setup.
-         */        
-        match http_result {
-            Ok(http_server) => {
-                info!("HTTP server started!");
-                let _ = http_server.run().await;
-            }
-            Err(err) => {
-                error!("Error starting HTTP server: {:?}", err);
-            }
-        }                  
-    }.await;
 }
 
 #[cfg(test)]
@@ -246,7 +217,8 @@ mod test {
             loggingfile: "./resources/test/logging.yml".to_string(),
         };
         let monitoring_config = MonitoringConfig::new(&args.config).unwrap();
-        super::start_normal_application(&monitoring_config, &args).await;
+        let result = super::start_application(&monitoring_config, &args).await;
+        assert!(result.is_ok());
     }
 
     #[tokio::test]
@@ -261,6 +233,7 @@ mod test {
             loggingfile: "./resources/test/logging.yml".to_string(),
         };
         let monitoring_config = MonitoringConfig::new(&args.config).unwrap();
-        super::start_daemon_application(&monitoring_config, &args);
+        let result = super::start_daemon_application(&monitoring_config, &args).await;
+        assert!(result.is_ok());
     }
 }

@@ -60,7 +60,7 @@ impl MeminfoResponse {
      * Returns a new `MeminfoResponse`.
      */
     pub fn from_meminfo(procs_mem_info: &ProcsMeminfo) -> MeminfoResponse {
-        MeminfoResponse::new(procs_mem_info.memtotal, procs_mem_info.memfree, procs_mem_info.memavailable, procs_mem_info.swaptotal, procs_mem_info.swaptotal)
+        MeminfoResponse::new(procs_mem_info.memtotal, procs_mem_info.memfree, procs_mem_info.memavailable, procs_mem_info.swaptotal, procs_mem_info.swapfree)
     }
 }
 
@@ -302,7 +302,10 @@ impl ProcessResponse {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/**
+ * The `ProcessStateResponse` enum represents the response of the process state.
+ */
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[allow(clippy::module_name_repetitions)]
 pub enum ProcessStateResponse {
     /// The process is running.
@@ -342,5 +345,130 @@ impl ProcessStateResponse {
             ProcessState::Unknown => ProcessStateResponse::Unknown
         };
         Some(new_state)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_meminfo_response_new() {
+        let meminfo_response = MeminfoResponse::new(Some(100), Some(50), Some(25), Some(200), Some(100));
+        assert_eq!(meminfo_response.total_mem, Some(100));
+        assert_eq!(meminfo_response.free_mem, Some(50));
+        assert_eq!(meminfo_response.available_mem, Some(25));
+        assert_eq!(meminfo_response.swap_total, Some(200));
+        assert_eq!(meminfo_response.swap_free, Some(100));
+    }
+
+    #[test]
+    fn test_meminfo_response_from_meminfo() {
+        let procs_meminfo = ProcsMeminfo {
+            memtotal: Some(100),
+            memfree: Some(50),
+            memavailable: Some(25),
+            swaptotal: Some(200),
+            swapfree: Some(100),
+        };
+        let meminfo_response = MeminfoResponse::from_meminfo(&procs_meminfo);
+        assert_eq!(meminfo_response.total_mem, Some(100));
+        assert_eq!(meminfo_response.free_mem, Some(50));
+        assert_eq!(meminfo_response.available_mem, Some(25));
+        assert_eq!(meminfo_response.swap_total, Some(200));
+        assert_eq!(meminfo_response.swap_free, Some(100));
+    }
+
+    #[test]
+    fn test_cpuinfo_response_new() {
+        let cpuinfo_response = CpuinfoResponse::new(Some(1), Some("AuthenticAMD".to_string()), Some("cpuFamily".to_string()), Some("model".to_string()), Some("modelName".to_string()), Some(2), Some(3.0));
+        assert_eq!(cpuinfo_response.apicid, Some(1));
+        assert_eq!(cpuinfo_response.vendor_id, Some("AuthenticAMD".to_string()));
+        assert_eq!(cpuinfo_response.cpu_family, Some("cpuFamily".to_string()));
+        assert_eq!(cpuinfo_response.model, Some("model".to_string()));
+        assert_eq!(cpuinfo_response.model_name, Some("modelName".to_string()));
+        assert_eq!(cpuinfo_response.cpu_cores, Some(2));
+        assert_eq!(cpuinfo_response.cpu_mhz, Some(3.0));
+    }
+
+    #[test]
+    fn test_cpuinfo_response_from_cpuinfo() {
+        let procs_cpuinfo = vec![ProcsCpuinfo {
+            apicid: Some(1),
+            vendor_id: Some("AuthenticAMD".to_string()),
+            cpu_family: Some("cpuFamily".to_string()),
+            model: Some("model".to_string()),
+            model_name: Some("modelName".to_string()),
+            cpu_cores: Some(2),
+            cpu_mhz: Some(3.0),
+        }];
+        let cpuinfo_response = CpuinfoResponse::from_cpuinfo(&procs_cpuinfo);
+        assert_eq!(cpuinfo_response[0].apicid, Some(1));
+        assert_eq!(cpuinfo_response[0].vendor_id, Some("AuthenticAMD".to_string()));
+        assert_eq!(cpuinfo_response[0].cpu_family, Some("cpuFamily".to_string()));
+        assert_eq!(cpuinfo_response[0].model, Some("model".to_string()));
+        assert_eq!(cpuinfo_response[0].model_name, Some("modelName".to_string()));
+        assert_eq!(cpuinfo_response[0].cpu_cores, Some(2));
+        assert_eq!(cpuinfo_response[0].cpu_mhz, Some(3.0));
+    }
+
+    #[test]
+    fn test_loadavg_response_new() {
+        let loadavg_response = LoadavgResponse::new(Some(1.0), Some(2.0), Some(3.0), Some(4), Some(5));
+        assert_eq!(loadavg_response.loadavg1min, Some(1.0));
+        assert_eq!(loadavg_response.loadavg5min, Some(2.0));
+        assert_eq!(loadavg_response.loadavg10min, Some(3.0));
+        assert_eq!(loadavg_response.current_running_processes, Some(4));
+        assert_eq!(loadavg_response.total_number_of_processes, Some(5));
+    }
+
+    #[test]
+    fn test_loadavg_response_from_loadavg() {
+        let procs_loadavg = ProcsLoadavg {
+            loadavg1min: Some(1.0),
+            loadavg5min: Some(2.0),
+            loadavg10min: Some(3.0),
+            current_running_processes: Some(4),
+            total_number_of_processes: Some(5),
+        };
+        let loadavg_response = LoadavgResponse::from_loadavg(&procs_loadavg);
+        assert_eq!(loadavg_response.loadavg1min, Some(1.0));
+        assert_eq!(loadavg_response.loadavg5min, Some(2.0));
+        assert_eq!(loadavg_response.loadavg10min, Some(3.0));
+        assert_eq!(loadavg_response.current_running_processes, Some(4));
+        assert_eq!(loadavg_response.total_number_of_processes, Some(5));
+    }
+
+    #[test]
+    fn test_process_response_new() {
+        let process_response = ProcessResponse::new(Some(1), Some(2), Some("name".to_string()), Some("umask".to_string()), Some(ProcessStateResponse::Running), Some(3), Some(vec!["group1".to_string(), "group2".to_string()]));
+        assert_eq!(process_response.pid, Some(1));
+        assert_eq!(process_response.parent_pid, Some(2));
+        assert_eq!(process_response.name, Some("name".to_string()));
+        assert_eq!(process_response.umask, Some("umask".to_string()));
+        assert_eq!(process_response.state, Some(ProcessStateResponse::Running));
+        assert_eq!(process_response.threads, Some(3));
+        assert_eq!(process_response.groups, Some(vec!["group1".to_string(), "group2".to_string()]));
+    }
+
+    #[test]
+    fn test_process_response_from_process() {
+        let procs_process = ProcsProcess {
+            pid: Some(1),
+            parent_pid: Some(2),
+            name: Some("name".to_string()),
+            umask: Some("umask".to_string()),
+            state: Some(ProcessState::Running),
+            threads: Some(3),
+            groups: Some(vec!["group1".to_string(), "group2".to_string()]),
+        };
+        let process_response = ProcessResponse::from_process(&procs_process);
+        assert_eq!(process_response.pid, Some(1));
+        assert_eq!(process_response.parent_pid, Some(2));
+        assert_eq!(process_response.name, Some("name".to_string()));
+        assert_eq!(process_response.umask, Some("umask".to_string()));
+        assert_eq!(process_response.state, Some(ProcessStateResponse::Running));
+        assert_eq!(process_response.threads, Some(3));
+        assert_eq!(process_response.groups, Some(vec!["group1".to_string(), "group2".to_string()]));
     }
 }
