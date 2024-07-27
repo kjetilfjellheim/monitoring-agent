@@ -33,16 +33,21 @@ async fn main() -> Result<(), std::io::Error> {
             Err(std::io::Error::new(std::io::ErrorKind::Other, "Error loading configuration"))
         }
     }?;
-
-    let mut scheduling_service = SchedulingService::new(&monitoring_config);
-    match scheduling_service.start(args.test).await {
-        Ok(()) => {
-            info!("Scheduling service started!");
-        }
-        Err(err) => {
-            error!("Error starting scheduling service: {:?}", err);
-        }
-    }
+    /*
+     * Start the scheduling service.
+     */
+    let cloned_monitoring_config = monitoring_config.clone();
+    tokio::spawn(async move {
+        let mut scheduling_service = SchedulingService::new(&cloned_monitoring_config);
+        match scheduling_service.start(args.test).await {
+            Ok(()) => {
+                info!("Scheduling service started!");
+            }
+            Err(err) => {
+                error!("Error starting scheduling service: {:?}", err);
+            }
+        };
+    });
     /*
      * Initialize monitoring service.
      */

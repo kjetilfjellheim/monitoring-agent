@@ -1,7 +1,6 @@
 use std::{collections::HashMap, future::Future, sync::{Arc, Mutex}, time::{Duration, Instant}};
 
 use log::{debug, error, info};
-use tokio::runtime::{Handle, Runtime};
 use tokio_cron_scheduler::{Job, JobScheduler};
 
 use crate::common::{configuration::MonitoringConfig, ApplicationError, HttpMethod, MonitorStatus};
