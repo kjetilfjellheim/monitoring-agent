@@ -58,6 +58,7 @@ async fn main() -> Result<(), std::io::Error> {
             .app_data(web::Data::new(StateApi::new(monitoring_service.clone())))
             .service(api::get_current_meminfo)   
             .service(api::get_current_cpuinfo)   
+            .service(api::get_current_loadavg)   
     })
     .bind((monitoring_config.server.ip, monitoring_config.server.port))?
     .run()

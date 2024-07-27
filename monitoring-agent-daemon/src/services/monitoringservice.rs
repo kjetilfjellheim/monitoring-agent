@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 
 use futures::Future;
 use log::{debug, error, info};
-use monitoring_agent_lib::proc::{ProcsCpuinfo, ProcsMeminfo};
+use monitoring_agent_lib::proc::{ProcsLoadavg, ProcsCpuinfo, ProcsMeminfo};
 use tokio_cron_scheduler::{Job, JobScheduler};
 
 use crate::common::{ApplicationError, MonitorStatus};
@@ -515,6 +515,23 @@ impl MonitoringService {
             }
         }
     }    
+
+    /**
+     * Get the current load average.
+     *
+     * result: The result of getting the load average information.
+     */
+    #[allow(clippy::unused_self)]
+    pub fn get_current_loadavg(&self) -> Result<ProcsLoadavg, ApplicationError> {
+        let loadavg = ProcsLoadavg::get_loadavg();
+        match loadavg {
+            Ok(loadavg) => Ok(loadavg),
+            Err(err) => {
+                error!("Error: {}", err.message);
+                Err(ApplicationError::new("Error getting loadavg"))                
+            }
+        }
+    }        
 }
 
 #[cfg(test)]
