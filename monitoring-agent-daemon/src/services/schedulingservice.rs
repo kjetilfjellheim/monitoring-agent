@@ -40,7 +40,7 @@ impl SchedulingService {
      *
      * result: The result of starting the monitoring service.
      */
-    pub fn start(&mut self, test: bool) -> Result<(), ApplicationError> {       
+    pub async fn start(&mut self, test: bool) -> Result<(), ApplicationError> {       
         /*
          * Start the scheduling of the monitoring jobs.
          */
@@ -50,7 +50,7 @@ impl SchedulingService {
          * This is useful for testing the configuration file and for testing the code.
          */
         if !test {
-            SchedulingService::start_scheduling(future_scheduling)?;
+            future_scheduling.await?;
         }
         Ok(())
     }
@@ -429,36 +429,6 @@ impl SchedulingService {
         })
     }
 
-    /**
-     * Start the scheduling.
-     *
-     * `future_scheduling`: The scheduling future.
-     *
-     * result: The result of starting the scheduling.
-     *
-     * throws: `ApplicationError`: If the scheduling fails to start.
-     *
-     */
-    fn start_scheduling(
-        future_scheduling: impl Future<Output = Result<(), ApplicationError>>,
-    ) -> Result<(), ApplicationError> {
-        match tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-        {
-            Ok(runtime) => {
-                runtime.block_on(future_scheduling)?;
-            }
-            Err(err) => {
-                return Err(ApplicationError::new(
-                    format!("Could not create runtime: {err}").as_str(),
-                ));
-            }
-        }
-        Ok(())
-    }
-
-
 }
 
 
@@ -470,49 +440,42 @@ mod test {
     /**
      * Test the monitoring service with both tcp monitors and http monitors.
      */
-    #[test]
-    fn test_monitoring_service() {
+    #[tokio::test]
+    async fn test_monitoring_service() {
         let mut scheduling_service = SchedulingService::new(&MonitoringConfig::new("./resources/test/test_full_integration_test.json").unwrap());
-        scheduling_service.start(true).unwrap();
+        let res = scheduling_service.start(true).await;
+        assert!(res.is_ok());
     }
 
     /**
      * Test the monitoring service with a tcp monitor.
      */
-    #[test]
-    fn test_monitoring_service_tcp() {
+    #[tokio::test]
+    async fn test_monitoring_service_tcp() {
         let mut scheduling_service = SchedulingService::new(&MonitoringConfig::new("./resources/test/test_simple_tcp.json").unwrap());
-        scheduling_service.start(true).unwrap();
+        let res = scheduling_service.start(true).await;
+        assert!(res.is_ok());
     }
 
     /**
      * Test the monitoring service with an http monitor.
      */
-    #[test]
-    fn test_monitoring_service_http() {
+    #[tokio::test]
+    async fn test_monitoring_service_http() {
         let mut scheduling_service = SchedulingService::new(&MonitoringConfig::new("./resources/test/test_simple_http.json").unwrap());
-        scheduling_service
-            .start(true)
-            .unwrap();
+        let res = scheduling_service.start(true).await;
+        assert!(res.is_ok());
     }
 
     /**
      * Test the monitoring service with an command monitor.
      */
-    #[test]
-    fn test_monitoring_service_command() {
+    #[tokio::test]
+    async fn test_monitoring_service_command() {
         let mut scheduling_service = SchedulingService::new(&MonitoringConfig::new("./resources/test/test_simple_command.json").unwrap());
-        scheduling_service
-            .start(true)
-            .unwrap();
+        let res = scheduling_service.start(true).await;
+        assert!(res.is_ok());
     }
 
-    /**
-     * Test the http monitoring service with a tls configuration.
-     */
-    #[test]
-    fn test_monitoring_service_with_tls_config() {
-
-    }
 }
 

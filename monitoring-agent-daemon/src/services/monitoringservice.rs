@@ -1,5 +1,5 @@
 use log::error;
-use monitoring_agent_lib::proc::{ProcsLoadavg, ProcsCpuinfo, ProcsMeminfo};
+use monitoring_agent_lib::proc::{ProcsCpuinfo, ProcsLoadavg, ProcsMeminfo, ProcsProcess};
 
 use crate::common::ApplicationError;
 use crate::common::configuration::MonitoringConfig;
@@ -81,5 +81,70 @@ impl MonitoringService {
                 Err(ApplicationError::new("Error getting loadavg"))                
             }
         }
-    }        
+    }
+
+    /**
+     * Get the current processes.
+     * 
+     * result: The result of getting the current processes.
+     * 
+     * # Errors
+     * - If there is an error getting the processes.
+     */
+    #[allow(clippy::unused_self)]
+    pub fn get_processes(&self) -> Result<Vec<ProcsProcess>, ApplicationError> {
+        let processes = ProcsProcess::get_all_processes();
+        match processes {
+            Ok(processes) => Ok(processes),
+            Err(err) => {
+                error!("Error: {}", err.message);
+                Err(ApplicationError::new("Error getting processes"))                
+            }
+        }
+    }
+
+    /**
+     * Get the current process.
+     * 
+     * `pid`: The process id.
+     * 
+     * result: The result of getting the current process.
+     * 
+     * # Errors
+     * - If there is an error getting the process.
+     */
+    #[allow(clippy::unused_self)]
+    pub fn get_process(&self, pid: u32) -> Result<ProcsProcess, ApplicationError> {
+        let process = ProcsProcess::get_process(pid);
+        match process {
+            Ok(process) => Ok(process),
+            Err(err) => {
+                error!("Error: {}", err.message);
+                Err(ApplicationError::new("Error getting process"))                
+            }
+        }
+    }
+
+    /**
+     * Get the process threads.
+     * 
+     * `pid`: The process id.
+     * 
+     * result: The result of getting the current process.
+     * 
+     * # Errors
+     * - If there is an error getting the process.
+     */
+    #[allow(clippy::unused_self)]
+    pub fn get_process_threads(&self, pid: u32) -> Result<Vec<ProcsProcess>, ApplicationError> {
+        let threads = ProcsProcess::get_process_threads(pid);
+        match threads {
+            Ok(threads) => Ok(threads),
+            Err(err) => {
+                error!("Error: {}", err.message);
+                Err(ApplicationError::new("Error getting threads"))                
+            }
+        }
+    } 
+
 }

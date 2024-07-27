@@ -1,4 +1,4 @@
-use monitoring_agent_lib::proc::{ProcsLoadavg, ProcsCpuinfo, ProcsMeminfo};
+use monitoring_agent_lib::proc::{process::ProcessState, ProcsCpuinfo, ProcsLoadavg, ProcsMeminfo, ProcsProcess};
 use serde::{Deserialize, Serialize};
 
 /**
@@ -205,4 +205,142 @@ impl LoadavgResponse {
             procs_loadavg.total_number_of_processes)
     }    
 
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(clippy::module_name_repetitions)]
+pub struct ProcessResponse {
+    /// The process id.
+    #[serde(skip_serializing_if = "Option::is_none", rename = "pid")]   
+    pub pid: Option<u32>,
+    /// The parent process id.
+    #[serde(skip_serializing_if = "Option::is_none", rename = "parentPid")]  
+    pub parent_pid: Option<u32>,
+    /// The name of the process.
+    #[serde(skip_serializing_if = "Option::is_none", rename = "name")]      
+    pub name: Option<String>,
+    /// The umask of the process.
+    #[serde(skip_serializing_if = "Option::is_none", rename = "umask")]          
+    pub umask: Option<String>,
+    /// The state of the process.
+    #[serde(skip_serializing_if = "Option::is_none", rename = "processState")]              
+    pub state: Option<ProcessStateResponse>,
+    /// The number of threads in the process.
+    #[serde(skip_serializing_if = "Option::is_none", rename = "numThreads")]          
+    pub threads: Option<u32>,
+    /// The groups the process belongs to.
+    #[serde(skip_serializing_if = "Option::is_none", rename = "groups")]          
+    pub groups: Option<Vec<String>>,
+}
+
+impl ProcessResponse {
+
+    /**
+     * Create a new `ProcessResponse`.
+     * 
+     * `pid`: The process id.
+     * `parent_pid`: The parent process id.
+     * `name`: The name of the process.
+     * `umask`: The umask of the process.
+     * `state`: The state of the process.
+     * `threads`: The number of threads in the process.
+     * `groups`: The groups the process belongs to.
+     * 
+     * Returns a new `ProcessResponse`.
+     * 
+     */
+    pub fn new(
+        pid: Option<u32>,
+        parent_pid: Option<u32>,
+        name: Option<String>,
+        umask: Option<String>,
+        state: Option<ProcessStateResponse>,
+        threads: Option<u32>,
+        groups: Option<Vec<String>>,
+    ) -> ProcessResponse {
+        ProcessResponse {
+            pid,
+            parent_pid,
+            name,
+            umask,
+            state,
+            threads,
+            groups,
+        }
+    }
+
+    /**
+     * Create a new `ProcessResponse` from a `ProcsProcess`.
+     * 
+     * `proc`: The `ProcsProcess` object.
+     * 
+     * Returns a new `ProcessResponse`.
+     * 
+     */
+    pub fn from_process(proc: &ProcsProcess) -> ProcessResponse {
+        ProcessResponse::new(
+            proc.pid,
+            proc.parent_pid,
+            proc.name.clone(),
+            proc.umask.clone(),
+            ProcessStateResponse::from_state(&proc.state),
+            proc.threads,
+            proc.groups.clone()
+        )
+    }
+
+   /** 
+    * Create a new `ProcessResponse` from a `ProcsProcess`.
+    * 
+    * `proc`: The `ProcsProcess` object.
+    * 
+    * Returns a new `ProcessResponse`.
+    * 
+    */
+    pub fn from_processes(proc: &[ProcsProcess]) -> Vec<ProcessResponse> {
+            proc.iter().map(ProcessResponse::from_process).collect()
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(clippy::module_name_repetitions)]
+pub enum ProcessStateResponse {
+    /// The process is running.
+    Running,
+    /// The process is in an uninterruptible sleep.
+    UninterruptibleSleep,
+    /// The process is in an interruptable sleep.
+    InterruptableSleep,
+    /// The process is stopped.
+    Stopped,
+    /// The process is a zombie.
+    Zombie,
+    /// The process is idle.
+    Idle,
+    /// The process state is unknown. This probably occurs if the state is not found in the enum.
+    Unknown
+}
+
+impl ProcessStateResponse {
+    /**
+     * Create a new `ProcessStateResponse`.
+     * 
+     * `state`: The process state.
+     * 
+     * Returns a new `ProcessStateResponse`.
+     * 
+     */
+    pub fn from_state(state: &Option<ProcessState>) -> Option<ProcessStateResponse> {
+        let Some(state) = state else { return None };
+        let new_state = match state {
+            ProcessState::Running => ProcessStateResponse::Running,
+            ProcessState::UninterruptibleSleep => ProcessStateResponse::UninterruptibleSleep,
+            ProcessState::InterruptableSleep => ProcessStateResponse::InterruptableSleep,
+            ProcessState::Stopped => ProcessStateResponse::Stopped,
+            ProcessState::Zombie => ProcessStateResponse::Zombie,
+            ProcessState::Idle => ProcessStateResponse::Idle,
+            ProcessState::Unknown => ProcessStateResponse::Unknown
+        };
+        Some(new_state)
+    }
 }
