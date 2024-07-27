@@ -1,4 +1,4 @@
-use monitoring_agent_lib::proc::{ProcsCpuinfo, ProcsMeminfo};
+use monitoring_agent_lib::proc::{ProcsLoadavg, ProcsCpuinfo, ProcsMeminfo};
 use serde::{Deserialize, Serialize};
 
 /**
@@ -137,6 +137,72 @@ impl CpuinfoResponse {
      */
     pub fn from_cpuinfo(procs_cpu_info: &[ProcsCpuinfo]) -> Vec<CpuinfoResponse> {
         procs_cpu_info.iter().map(|cpu_info| CpuinfoResponse::new(cpu_info.apicid, cpu_info.vendor_id.clone(), cpu_info.cpu_family.clone(), cpu_info.model.clone(), cpu_info.model_name.clone(), cpu_info.cpu_cores, cpu_info.cpu_mhz)).collect()
+    }    
+
+}
+
+/**
+ * The `LoadavgResponse` struct represents the response of the loadavg endpoint.
+ */
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(clippy::module_name_repetitions)]
+pub struct LoadavgResponse {
+    /// Load average last 1 minute.
+    #[serde(skip_serializing_if = "Option::is_none", rename = "loadAvg1Min")]    
+    pub loadavg1min: Option<f32>,
+    /// Load average last 5 minutes.
+    #[serde(skip_serializing_if = "Option::is_none", rename = "loadAvg5Min")]        
+    pub loadavg5min:  Option<f32>,
+    /// Load average last 10 minutes.
+    #[serde(skip_serializing_if = "Option::is_none", rename = "loadAvg10Min")]        
+    pub loadavg10min:  Option<f32>,
+    /// The number of currently running processes.
+    pub current_running_processes: Option<u32>,
+    /// The total number of processes.
+    pub total_number_of_processes: Option<u32> 
+}
+
+impl LoadavgResponse {
+    /**
+     * Create a new `LoadavgResponse`.
+     *
+     * `loadavg1min`: The 1 minute load average.
+     * `loadavg5min`: The 5 minute load average.
+     * `loadavg10min`: The 10 minute load average.
+     * 
+     * Returns a new `CpuinfoResponse`.
+     */
+    #[allow(clippy::similar_names)]
+    pub fn new(        
+        loadavg1min: Option<f32>,
+        loadavg5min: Option<f32>,
+        loadavg10min: Option<f32>,
+        current_running_processes: Option<u32>,
+        total_number_of_processes: Option<u32>,
+    ) -> LoadavgResponse {
+        LoadavgResponse {
+            loadavg1min,
+            loadavg5min,
+            loadavg10min,
+            current_running_processes,
+            total_number_of_processes,
+        }
+    }
+
+    /**
+     * Create a new `LoadavgResponse` from a `Loadavg`.
+     *
+     * `procs_loadavg`: The `Loadavg` object.
+     * 
+     * Returns a new `LoadavgResponse`.
+     */
+    pub fn from_loadavg(procs_loadavg: &ProcsLoadavg) -> LoadavgResponse {
+        LoadavgResponse::new(
+            procs_loadavg.loadavg1min, 
+            procs_loadavg.loadavg5min, 
+            procs_loadavg.loadavg10min, 
+            procs_loadavg.current_running_processes, 
+            procs_loadavg.total_number_of_processes)
     }    
 
 }
