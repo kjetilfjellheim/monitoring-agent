@@ -1,21 +1,61 @@
 mod common;
 mod services;
+mod api;
 
 use clap::Parser;
-use daemonize::Daemonize;
+use common::configuration::MonitoringConfig;
 use log::{error, info};
 use log4rs::config::Deserializers;
-use std::fs::OpenOptions;
+use actix_web::{web, App, HttpServer};
+use services::SchedulingService;
 
 use crate::common::ApplicationArguments;
+use crate::api::StateApi;
 use crate::services::MonitoringService;
 
-fn main() {
+#[tokio::main]
+async fn main() -> Result<(), std::io::Error> {
     /*
      * Parse command line arguments.
      */
     let args: ApplicationArguments = ApplicationArguments::parse();
 
+    /*
+     * Load configuration.
+     */
+    let monitoring_config = match MonitoringConfig::new(&args.config) {
+        Ok(monitoring_config) => {
+            info!("Configuration loaded!");
+            Ok(monitoring_config)
+        }
+        Err(err) => {
+            error!("Error loading configuration: {:?}", err);
+            Err(std::io::Error::new(std::io::ErrorKind::Other, "Error loading configuration"))
+        }
+    }?;
+    /*
+     * Start the scheduling service.
+     */
+    let cloned_monitoring_config = monitoring_config.clone();
+    tokio::spawn(async move {
+        let mut scheduling_service = SchedulingService::new(&cloned_monitoring_config);
+        match scheduling_service.start(args.test).await {
+            Ok(()) => {
+                info!("Scheduling service started!");
+            }
+            Err(err) => {
+                error!("Error starting scheduling service: {:?}", err);
+            }
+        };
+    });
+    /*
+     * Initialize monitoring service.
+     */
+    let monitoring_service = MonitoringService::new(&monitoring_config);
+
+    /*
+     * Initialize logging.
+     */
     match log4rs::init_file(&args.loggingfile, Deserializers::default()) {
         Ok(()) => {
             info!("Logging initialized!");
@@ -24,131 +64,24 @@ fn main() {
             error!("Error initializing logging: {:?}", err);
         }
     }
-    /*
-     * Start appliction in daemon or non daemon mode.
-     */
-    if args.daemon {
-        daemonize_application(args);
-    } else {
-        normal_application(&args);
-    }
-}
-/**
- * Start the application in non daemon mode.
- *
- * @param args Application arguments.
- *
- */
-fn normal_application(args: &ApplicationArguments) {
-    let mut monitoring_service = MonitoringService::new();
-    match monitoring_service.start(&args.config, args.test) {
-        Ok(()) => {
-            info!("Monitoring service started!");
-        }
-        Err(err) => {
-            error!("Error starting monitoring service: {:?}", err.message);
-        }
-    }
-}
-/**
- * Daemonize the application.
- *
- * @param args Application arguments.
- */
-fn daemonize_application(args: ApplicationArguments) {
-    /*
-     * Open stdout for logging daemon output.
-     */
-    let stdout = match OpenOptions::new()
-        .read(true)
-        .append(true)
-        .create(true)
-        .open(&args.stdout)
-    {
-        Ok(file) => file,
-        Err(err) => {
-            error!("Error opening stdout file: {:?}", err);
-            return;
-        }
-    };
-    /*
-     * Open stderr for logging daemon errors.
-     */
-    let stderr = match OpenOptions::new()
-        .read(true)
-        .append(true)
-        .create(true)
-        .open(&args.stderr)
-    {
-        Ok(file) => file,
-        Err(err) => {
-            error!("Error opening stderr file: {:?}", err);
-            return;
-        }
-    };
-    /*
-     * Create daemonize object.
-     */
-    let daemonize = Daemonize::new()
-        .pid_file(&args.pidfile)
-        .chown_pid_file(true)
-        .umask(770)
-        .stdout(stdout)
-        .stderr(stderr)
-        .privileged_action(move || {
-            let mut monitoring_service = MonitoringService::new();
-            match monitoring_service.start(&args.config, args.test) {
-                Ok(()) => {
-                    info!("Monitoring service started!");
-                }
-                Err(err) => {
-                    error!("Error starting monitoring service: {:?}", err.message);
-                }
-            }
-        });
 
     /*
-     * Start the daemon.
+     * Start the HTTP server.
      */
-    match daemonize.start() {
-        Ok(()) => {
-            info!("Started daemon!");
-        }
-        Err(err) => {
-            error!("Error starting daemon: {:?}", err);
-        }
-    }
-}
+    HttpServer::new(move || {
+        App::new()
+            .app_data(web::Data::new(StateApi::new(monitoring_service.clone())))
+            .service(api::get_current_meminfo)   
+            .service(api::get_current_cpuinfo)   
+            .service(api::get_current_loadavg)   
+            .service(api::get_processes)
+            .service(api::get_process)
+            .service(api::get_threads)
+    })
+    .bind((monitoring_config.server.ip, monitoring_config.server.port))?
+    .run()
+    .await
 
-#[cfg(test)]
-mod test {
-    use super::*;
+} 
 
-    #[test]
-    fn test_normal_application() {
-        let args = ApplicationArguments {
-            config: "./resources/test/test_full_integration_test.json".to_string(),
-            daemon: false,
-            test: true,
-            stdout: String::new(),
-            stderr: String::new(),
-            pidfile: String::new(),
-            loggingfile: "./resources/test/logging.yml".to_string(),
-        };
-        super::normal_application(&args);
-    }
 
-    #[test]
-    fn test_daemonize_application() {
-        let args = ApplicationArguments {
-            config: "./resources/test/test_full_integration_test.json".to_string(),
-            daemon: true,
-            test: true,
-            stdout: "/tmp/monitoring-agent.out".to_string(),
-            stderr: "/tmp/monitoring-agent.err".to_string(),
-            pidfile: "/tmp/monitoring-agent.pid".to_string(),
-            loggingfile: "./resources/test/logging.yml".to_string(),
-        };
-        super::daemonize_application(args);
-    }
-}

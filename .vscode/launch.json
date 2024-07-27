@@ -6,7 +6,7 @@
             "request": "launch",
             "name": "Debug",
             "program": "${workspaceRoot}/target/debug/monitoring-agent-daemon",
-            "args": ["--config=/home/kjetil/code/monitoring_agent/resources/test/test_full_integration_test.json"],
+            "args": ["--config=/home/kjetil/code/monitoring_agent/monitoring-agent-daemon/resources/test/test_full_integration_test.json"],
             "cwd": "${workspaceRoot}",
             "sourceLanguages": [
                 "rust"

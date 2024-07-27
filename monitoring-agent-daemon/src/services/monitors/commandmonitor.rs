@@ -163,7 +163,7 @@ mod test {
         );
         monitor.check().await.unwrap();
         assert_eq!(
-            status.lock().unwrap().get("localhost").unwrap().status,
+            status.lock().unwrap().get("test").unwrap().status,
             Status::Ok
         );
     }
@@ -200,7 +200,7 @@ mod test {
         );
         let _ = monitor.check().await;
         assert_eq!(
-            status.lock().unwrap().get("localhost").unwrap().status,
+            status.lock().unwrap().get("test").unwrap().status,
             Status::Ok
         );
     }

@@ -22,9 +22,9 @@ futures = "0.3.30"                                                              
 native-tls = "0.2.12"                                                                   # Use native tls for reqwest.
 log4rs = { version = "1.3.0" }                                                          # For logging.
 log = "0.4.22"                                                                          # For logging.
-warp = "0.3.7"                                                                          # For creating a web server.
+actix-web = { version = "4.8.0" }                                                       # For handling http requests.
 chrono = { version = "0.4.38", features = ["serde"]}                                    # For handling time.
-monitoring-agent-lib = { path = "../monitoring-agent-lib" }
+monitoring-agent-lib = { path = "../monitoring-agent-lib" }                             # For reading system information.
 
 [package.metadata.deb]
 maintainer = "Kjetil Fjellheim <kjetil@forgottendonkey.net>"
@@ -38,14 +38,14 @@ depends = "$auto"
 section = "utility"
 priority = "optional"
 assets = [
-    ["target/release/monitoring-agent", "usr/bin/", "755"],
-    ["README.md", "usr/share/doc/monitoring-agent/README", "644"],
-    ["resources/prod/etc/config.json", "/etc/monitoring-agent/config.json", "644"],
-    ["resources/prod/etc/logging.yml", "/etc/monitoring-agent/logging.yml", "644"],
-    ["resources/prod/systemd/monitoring-agent.service", "/etc/systemd/system/monitoring-agent.service", "644"],
+    ["target/release/monitoring-agent-daemon", "usr/bin/", "755"],
+    ["README.md", "usr/share/doc/monitoring-agent-daemon/README", "644"],
+    ["resources/prod/etc/config.json", "/etc/monitoring-agent-daemon/config.json", "644"],
+    ["resources/prod/etc/logging.yml", "/etc/monitoring-agent-daemon/logging.yml", "644"],
+    ["resources/prod/systemd/monitoring-agent.service", "/etc/systemd/system/monitoring-agent-daemon.service", "644"],
 ]
 conf-files = [
-    "/etc/monitoring-agent/config.json",
-    "/etc/monitoring-agent/logging.yml",
-    "/etc/systemd/system/monitoring-agent.service",
+    "/etc/monitoring-agent-daemon/config.json",
+    "/etc/monitoring-agent-daemon/logging.yml",
+    "/etc/systemd/system/monitoring-agent-daemon.service",
 ]
