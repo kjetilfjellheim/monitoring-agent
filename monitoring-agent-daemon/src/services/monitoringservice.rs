@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 
 use futures::Future;
 use log::{debug, error, info};
-use monitoring_agent_lib::proc::ProcsMeminfo;
+use monitoring_agent_lib::proc::{ProcsCpuinfo, ProcsMeminfo};
 use tokio_cron_scheduler::{Job, JobScheduler};
 
 use crate::common::{ApplicationError, MonitorStatus};
@@ -498,6 +498,23 @@ impl MonitoringService {
             }
         }
     }
+
+    /**
+     * Get the current cpu information.
+     *
+     * result: The result of getting the current cpu information.
+     */
+    #[allow(clippy::unused_self)]
+    pub fn get_current_cpuinfo(&self) -> Result<Vec<ProcsCpuinfo>, ApplicationError> {
+        let cpuinfo = ProcsCpuinfo::get_cpuinfo();
+        match cpuinfo {
+            Ok(cpuinfo) => Ok(cpuinfo),
+            Err(err) => {
+                error!("Error: {}", err.message);
+                Err(ApplicationError::new("Error getting cpuinfo"))                
+            }
+        }
+    }    
 }
 
 #[cfg(test)]
