@@ -7,12 +7,28 @@ use crate::common::{configuration::MonitoringConfig, ApplicationError, HttpMetho
 
 use super::monitors::{CommandMonitor, HttpMonitor, TcpMonitor};
 
-
+/**
+ * Scheduling Service.
+ * 
+ * This struct represents the scheduling service.
+ * 
+ * `scheduler`: The job scheduler.
+ * `tcp_monitors`: The TCP monitors.
+ * `http_monitors`: The HTTP monitors.
+ * `command_monitors`: The command monitors.
+ * `monitoring_config`: The monitoring configuration.
+ * 
+ */
 pub struct SchedulingService {
+    /// The job scheduler. Handles starting the jobs.
     scheduler: Option<JobScheduler>,
+    /// The TCP monitors.
     tcp_monitors: Vec<TcpMonitor>,
+    /// The HTTP monitors.
     http_monitors: Vec<HttpMonitor>,
+    /// The command monitors.
     command_monitors: Vec<CommandMonitor>,    
+    /// The monitoring configuration.
     monitoring_config: MonitoringConfig,
 }
 
@@ -68,6 +84,7 @@ impl SchedulingService {
         /*
          * Create a new job scheduler.
          */
+        info!("Creating job scheduler");
         let scheduler: JobScheduler = match JobScheduler::new().await {
             Ok(scheduler) => scheduler,
             Err(err) => {
@@ -89,8 +106,10 @@ impl SchedulingService {
         /*
          * Start the scheduler.
          */
+        info!("Starting scheduler");
         match scheduler.start().await {
             Ok(()) => {
+                info!("Scheduler started");
                 self.scheduler = Some(scheduler);
             }
             Err(err) => {
@@ -178,7 +197,7 @@ impl SchedulingService {
      * Log the monitors.
      */
     fn log_monitors(&self) {
-        info!("Logging monitors {:?}", Instant::now());
+        debug!("Logging monitors {:?}", Instant::now());
         for tcp_monitor in &*self.tcp_monitors {
             SchedulingService::log_tcp_monitor(tcp_monitor);
         }
@@ -209,6 +228,20 @@ impl SchedulingService {
         }
     }      
 
+    /**
+     * Get a command monitor job.
+     * 
+     * `schedule`: The schedule.
+     * `name`: The name of the monitor.
+     * `command`: The command to monitor.
+     * `args`: The arguments.
+     * `expected`: The expected result.
+     * `status`: The status.
+     * 
+     * `result`: The result of getting the command monitor job.
+     * 
+     * throws: `ApplicationError`: If the job fails to be created.
+     */
     fn get_command_monitor_job(
         &mut self,
         schedule: &str,
@@ -218,7 +251,7 @@ impl SchedulingService {
         expected: &Option<String>,
         status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
     ) -> Result<Job, ApplicationError> {
-        debug!("Creating Command monitor: {}", &name);
+        info!("Creating Command monitor: {}", &name);
         let command_monitor =
             CommandMonitor::new(name, command, args.clone(), expected.clone(), status);
         self.command_monitors.push(command_monitor.clone());
@@ -250,7 +283,7 @@ impl SchedulingService {
         port: u16,
         status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
     ) -> Result<Job, ApplicationError> {
-        debug!("Creating Tcp monitor: {}", &name);
+        info!("Creating Tcp monitor: {}", &name);
         let tcp_monitor = TcpMonitor::new(host, port, name, status);
         self.tcp_monitors.push(tcp_monitor.clone());
         match Job::new_async(schedule, move |_uuid, _locked| {
@@ -294,7 +327,7 @@ impl SchedulingService {
         identity_password: Option<String>,
         status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
     ) -> Result<Job, ApplicationError> {
-        debug!("Creating http monitor: {}", &name);
+        info!("Creating http monitor: {}", &name);
         let http_monitor = HttpMonitor::new(
             url,
             method,
@@ -329,7 +362,7 @@ impl SchedulingService {
         let lock = http_monitor.status.lock();
         match lock {
             Ok(lock) => {
-                info!("Job {}: Status: {:?}", http_monitor.name, lock);
+                debug!("Job {}: Status: {:?}", http_monitor.name, lock);
             }
             Err(err) => {
                 error!("Error getting lock: {:?}", err);
@@ -346,7 +379,7 @@ impl SchedulingService {
         let lock = tcp_monitor.status.lock();
         match lock {
             Ok(lock) => {
-                info!("Job {}: Status: {:?}", tcp_monitor.name, lock);
+                debug!("Job {}: Status: {:?}", tcp_monitor.name, lock);
             }
             Err(err) => {
                 error!("Error getting lock: {:?}", err);
@@ -363,7 +396,7 @@ impl SchedulingService {
         let lock = command_monitor.status.lock();
         match lock {
             Ok(lock) => {
-                info!("Job {}: Status: {:?}", command_monitor.name, lock);
+                debug!("Job {}: Status: {:?}", command_monitor.name, lock);
             }
             Err(err) => {
                 error!("Error getting lock: {:?}", err);
