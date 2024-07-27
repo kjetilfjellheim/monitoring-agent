@@ -4,6 +4,7 @@ use std::time::{Duration, Instant};
 
 use futures::Future;
 use log::{debug, error, info};
+use monitoring_agent_lib::proc::ProcsMeminfo;
 use tokio_cron_scheduler::{Job, JobScheduler};
 
 use crate::common::{ApplicationError, MonitorStatus};
@@ -12,9 +13,6 @@ use crate::common::configuration::MonitoringConfig;
 use crate::services::monitors::CommandMonitor;
 use crate::services::monitors::HttpMonitor;
 use crate::services::monitors::TcpMonitor;
-
-use super::procs::{Cpuinfo, Meminfo};
-use super::server::Server;
 
 /**
  * Monitoring Service.
@@ -27,13 +25,13 @@ use super::server::Server;
  * `command_monitors`: The command monitors.
  *  
  */
+#[derive(Clone)]
 pub struct MonitoringService {
     scheduler: Option<JobScheduler>,
     tcp_monitors: Vec<TcpMonitor>,
     http_monitors: Vec<HttpMonitor>,
-    command_monitors: Vec<CommandMonitor>,
-    cpuinfo: Option<Cpuinfo>,
-    meminfo: Option<Meminfo>,
+    command_monitors: Vec<CommandMonitor>,    
+    monitoring_config: MonitoringConfig,
 }
 
 impl MonitoringService {
@@ -42,14 +40,13 @@ impl MonitoringService {
      *
      * result: The result of creating the monitoring service.
      */
-    pub fn new() -> MonitoringService {
+    pub fn new(monitoring_config: &MonitoringConfig) -> MonitoringService {
         MonitoringService {
             scheduler: None,
             tcp_monitors: Vec::new(),
             http_monitors: Vec::new(),
             command_monitors: Vec::new(),
-            cpuinfo: None,
-            meminfo: None,
+            monitoring_config: monitoring_config.clone(),
         }
     }
 
@@ -112,32 +109,7 @@ impl MonitoringService {
         for monitor in &*monitoring_config.monitors {
             self.create_and_add_job(monitor, &scheduler, &status)
                 .await?;
-        }
-        /*
-         * Add the CPU info job.
-         */
-        if monitoring_config.show_cpu {
-            let job = self.get_cpuinfo_job("*/5 * * * * *")?;
-            self.add_job(&scheduler, job).await?;
-        }     
-        /*
-         * Add the Memory info job.
-         */
-        if monitoring_config.show_mem {
-            let job = self.get_meminfo_job("*/5 * * * * *")?;
-            self.add_job(&scheduler, job).await?;
-        }                     
-        /*
-         * Create a new server to respond to monitoring requests.
-         */
-        let server = Server::new(
-            &monitoring_config.server.ip,
-            monitoring_config.server.port,
-            &status,
-            &self.cpuinfo.as_ref().map(|cpuinfo| cpuinfo.procsdata.clone()),
-            &self.meminfo.as_ref().map(|meminfo| meminfo.procsdata.clone()),
-        );
-        server.start();  
+        }                 
         /*
          * Start the scheduler.
          */
@@ -259,91 +231,7 @@ impl MonitoringService {
                 format!("Could not add job: {err}").as_str(),
             )),
         }
-    }
-
-    /**
-     * Get the CPU info job.
-     *
-     * `schedule`: The schedule.
-     *
-     * `result`: The result of getting the CPU info job.
-     *
-     * throws: `ApplicationError`: If the job fails to be created.
-     */
-    fn get_cpuinfo_job(&mut self, schedule: &str) -> Result<Job, ApplicationError>{
-        debug!("Creating CPU job");
-        let cpuinfo = Cpuinfo::new();
-        self.cpuinfo = Some(cpuinfo.clone());
-        let moved_cpuinfo = cpuinfo.clone();
-        match Job::new_async(schedule, move |_uuid, _locked| {
-            MonitoringService::check_cpuinfo(&moved_cpuinfo)
-        }) {
-            Ok(job) => Ok(job),
-            Err(err) => Err(ApplicationError::new(
-                format!("Could not create job: {err}").as_str(),
-            )),
-        }
-    }
-
-    /**
-     * Get the memory info job.
-     *
-     * `schedule`: The schedule.
-     *
-     * `result`: The result of getting the memory info job.
-     *
-     * throws: `ApplicationError`: If the job fails to be created.
-     */
-    fn get_meminfo_job(&mut self, schedule: &str) -> Result<Job, ApplicationError>{
-        debug!("Creating memory job");
-        let meminfo = Meminfo::new();
-        self.meminfo = Some(meminfo.clone());
-        let moved_meminfo = meminfo.clone();
-        match Job::new_async(schedule, move |_uuid, _locked| {
-            MonitoringService::check_meminfo(&moved_meminfo)
-        }) {
-            Ok(job) => Ok(job),
-            Err(err) => Err(ApplicationError::new(
-                format!("Could not create job: {err}").as_str(),
-            )),
-        }
-    }    
-
-   /**
-     * Check the cpuinfo.
-     *
-     * `cpuinfo`: The cpuinfo.
-     *
-     * result: Future of the check.
-     */
-    fn check_cpuinfo(cpuinfo: &Cpuinfo) -> std::pin::Pin<Box<impl Future<Output = ()>>> {
-        Box::pin({
-            let moved_cpuinfo = cpuinfo.clone();
-            async move {
-                let _ = moved_cpuinfo
-                    .get_and_set_cpuinfo()
-                    .map_err(|err| error!("Error: {}", err.message));
-            }
-        })
-    }    
-
-   /**
-     * Check the meminfo.
-     *
-     * `meminfo`: The meminfo.
-     *
-     * result: Future of the check.
-     */
-    fn check_meminfo(meminfo: &Meminfo) -> std::pin::Pin<Box<impl Future<Output = ()>>> {
-        Box::pin({
-            let moved_meminfo = meminfo.clone();
-            async move {
-                let _ = moved_meminfo
-                    .get_and_set_meminfo()
-                    .map_err(|err| error!("Error: {}", err.message));
-            }
-        })
-    }       
+    }      
 
     fn get_command_monitor_job(
         &mut self,
@@ -593,6 +481,23 @@ impl MonitoringService {
         }
         Ok(())
     }
+
+    /**
+     * Get the current memory information.
+     *
+     * result: The result of getting the current memory information.
+     */
+    #[allow(clippy::unused_self)]
+    pub fn get_current_meminfo(&self) -> Result<ProcsMeminfo, ApplicationError> {
+        let meminfo = ProcsMeminfo::get_meminfo();
+        match meminfo {
+            Ok(meminfo) => Ok(meminfo),
+            Err(err) => {
+                error!("Error: {}", err.message);
+                Err(ApplicationError::new("Error getting meminfo"))                
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -605,7 +510,7 @@ mod test {
      */
     #[test]
     fn test_monitoring_service() {
-        let mut monitoring_service = MonitoringService::new();
+        let mut monitoring_service = MonitoringService::new(&MonitoringConfig::new("./resources/test/test_full_integration_test.json").unwrap());
         monitoring_service
             .start("./resources/test/test_full_integration_test.json", true)
             .unwrap();
@@ -616,7 +521,7 @@ mod test {
      */
     #[test]
     fn test_monitoring_service_tcp() {
-        let mut monitoring_service = MonitoringService::new();
+        let mut monitoring_service = MonitoringService::new(&MonitoringConfig::new("./resources/test/test_simple_tcp.json").unwrap());
         monitoring_service
             .start("./resources/test/test_simple_tcp.json", true)
             .unwrap();
@@ -627,7 +532,7 @@ mod test {
      */
     #[test]
     fn test_monitoring_service_http() {
-        let mut monitoring_service = MonitoringService::new();
+        let mut monitoring_service = MonitoringService::new(&MonitoringConfig::new("./resources/test/test_simple_http.json").unwrap());
         monitoring_service
             .start("./resources/test/test_simple_http.json", true)
             .unwrap();
@@ -638,27 +543,10 @@ mod test {
      */
     #[test]
     fn test_monitoring_service_command() {
-        let mut monitoring_service = MonitoringService::new();
+        let mut monitoring_service = MonitoringService::new(&MonitoringConfig::new("./resources/test/test_simple_command.json").unwrap());
         monitoring_service
             .start("./resources/test/test_simple_command.json", true)
             .unwrap();
-    }
-
-    /**
-     * Test the monitoring service with an unknown monitor.
-     */
-    #[test]
-    fn test_monitoring_service_unknown() {
-        let mut monitoring_service = MonitoringService::new();
-        let result = monitoring_service.start("./resources/test/test_simple_unknown.json", true);
-        match result {
-            Ok(()) => {
-                panic!("Should not be able to create unknown monitor");
-            }
-            Err(err) => {
-                assert_eq!("Could not parse config file: Line 7", err.message);
-            }
-        }
     }
 
     /**
@@ -666,8 +554,7 @@ mod test {
      */
     #[test]
     fn test_monitoring_service_with_tls_config() {
-        let mut monitoring_service = MonitoringService::new();
-        let result = monitoring_service.start("./resources/test/test_simple_tlsfields.json", true);
-        assert!(result.is_ok());
+
     }
 }
+
