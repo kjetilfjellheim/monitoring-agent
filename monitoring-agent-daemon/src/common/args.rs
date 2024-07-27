@@ -8,7 +8,7 @@ use clap::Parser;
  * config: Configuration file. Not required.
  *
  */
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 #[command(version, about="Monitoring agent", long_about = None)]
 pub struct ApplicationArguments {
     /// Configuration file.
