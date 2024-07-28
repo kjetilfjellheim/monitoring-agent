@@ -1,5 +1,4 @@
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
 
 /**
  * `MonitorStatus` struct
@@ -11,19 +10,15 @@ use serde::{Deserialize, Serialize};
  * - `last_error_time`: The last time the monitor encountered an error
  *
  */
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct MonitorStatus {
     /// The status of the monitor.
-    #[serde(rename = "status")]
     pub status: Status,
     /// The last time the monitor was successful.
-    #[serde(skip_serializing_if = "Option::is_none", rename = "lastSuccessfulTime")]
     pub last_successful_time: Option<DateTime<Utc>>,
     /// The last error message.
-    #[serde(skip_serializing_if = "Option::is_none", rename = "lastError")]
     pub last_error: Option<String>,
     /// The last time the monitor encountered an error.
-    #[serde(skip_serializing_if = "Option::is_none", rename = "lastErrorTime")]
     pub last_error_time: Option<DateTime<Utc>>,
 }
 
@@ -73,7 +68,7 @@ impl MonitorStatus {
  * - Error: The monitor has encountered an error. The error message is stored in the message field
  *
  */
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Status {
     /// The monitor is working correctly.
     Ok,

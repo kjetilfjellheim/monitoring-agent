@@ -79,14 +79,15 @@ async fn start_application(monitoring_config: &MonitoringConfig, args: &Applicat
     /*
      * Initialize monitoring service.
      */
-    let monitoring_service = MonitoringService::new(monitoring_config);    
+    let monitoring_service = MonitoringService::new();    
     /*
      * Start the scheduling service.
      */
     let cloned_monitoring_config = monitoring_config.clone();
     let cloned_args = args.clone();
+    let monitor_statuses = monitoring_service.get_status();
     tokio::spawn(async move {
-        let mut scheduling_service = SchedulingService::new(&cloned_monitoring_config);
+        let mut scheduling_service = SchedulingService::new(&cloned_monitoring_config, &monitor_statuses);
         match scheduling_service.start(cloned_args.test).await {
             Ok(()) => {
                 info!("Scheduling service started!");
@@ -107,6 +108,7 @@ async fn start_application(monitoring_config: &MonitoringConfig, args: &Applicat
     if args.test {
         return Ok(());
     }
+    info!("Starting HTTP server on {}:{}", ip, port);
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(StateApi::new(monitoring_service.clone())))
@@ -116,6 +118,7 @@ async fn start_application(monitoring_config: &MonitoringConfig, args: &Applicat
             .service(api::get_processes)
             .service(api::get_process)
             .service(api::get_threads)
+            .service(api::get_monitor_status)
     })
     .bind((ip, port))?
     .run()
