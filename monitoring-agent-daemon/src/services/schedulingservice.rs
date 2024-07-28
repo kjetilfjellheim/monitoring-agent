@@ -475,7 +475,8 @@ mod test {
      */
     #[tokio::test]
     async fn test_monitoring_service() {
-        let mut scheduling_service = SchedulingService::new(&MonitoringConfig::new("./resources/test/test_full_integration_test.json").unwrap());
+        let status = Arc::new(Mutex::new(HashMap::new()));
+        let mut scheduling_service = SchedulingService::new(&MonitoringConfig::new("./resources/test/test_full_integration_test.json").unwrap(), &status);
         let res = scheduling_service.start(true).await;
         assert!(res.is_ok());
     }
@@ -485,7 +486,8 @@ mod test {
      */
     #[tokio::test]
     async fn test_monitoring_service_tcp() {
-        let mut scheduling_service = SchedulingService::new(&MonitoringConfig::new("./resources/test/test_simple_tcp.json").unwrap());
+        let status = Arc::new(Mutex::new(HashMap::new()));
+        let mut scheduling_service = SchedulingService::new(&MonitoringConfig::new("./resources/test/test_simple_tcp.json").unwrap(), &status);
         let res = scheduling_service.start(true).await;
         assert!(res.is_ok());
     }
@@ -495,7 +497,8 @@ mod test {
      */
     #[tokio::test]
     async fn test_monitoring_service_http() {
-        let mut scheduling_service = SchedulingService::new(&MonitoringConfig::new("./resources/test/test_simple_http.json").unwrap());
+        let status = Arc::new(Mutex::new(HashMap::new()));
+        let mut scheduling_service = SchedulingService::new(&MonitoringConfig::new("./resources/test/test_simple_http.json").unwrap(), &status);
         let res = scheduling_service.start(true).await;
         assert!(res.is_ok());
     }
@@ -505,7 +508,8 @@ mod test {
      */
     #[tokio::test]
     async fn test_monitoring_service_command() {
-        let mut scheduling_service = SchedulingService::new(&MonitoringConfig::new("./resources/test/test_simple_command.json").unwrap());
+        let status = Arc::new(Mutex::new(HashMap::new()));
+        let mut scheduling_service = SchedulingService::new(&MonitoringConfig::new("./resources/test/test_simple_command.json").unwrap(), &status);
         let res = scheduling_service.start(true).await;
         assert!(res.is_ok());
     }
