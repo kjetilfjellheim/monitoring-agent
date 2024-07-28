@@ -150,7 +150,6 @@ impl CommandMonitor {
 #[cfg(test)]
 mod test {
     use std::os::unix::process::ExitStatusExt;
-    use std::borrow::Cow;
 
     use super::*;
 
