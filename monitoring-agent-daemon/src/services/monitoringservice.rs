@@ -1,8 +1,10 @@
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+
 use log::error;
 use monitoring_agent_lib::proc::{ProcsCpuinfo, ProcsLoadavg, ProcsMeminfo, ProcsProcess};
 
-use crate::common::ApplicationError;
-use crate::common::configuration::MonitoringConfig;
+use crate::common::{ApplicationError, MonitorStatus};
 
 /**
  * Monitoring Service.
@@ -17,8 +19,8 @@ use crate::common::configuration::MonitoringConfig;
  */
 #[derive(Clone)]
 pub struct MonitoringService {
-    /// The monitoring configuration.
-    monitoring_config: MonitoringConfig,
+    /// The status of the monitors.
+    status: Arc<Mutex<HashMap<String, MonitorStatus>>>,
 }
 
 impl MonitoringService {
@@ -27,9 +29,9 @@ impl MonitoringService {
      *
      * result: The result of creating the monitoring service.
      */
-    pub fn new(monitoring_config: &MonitoringConfig) -> MonitoringService {
+    pub fn new() -> MonitoringService {
         MonitoringService {
-            monitoring_config: monitoring_config.clone(),
+            status: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -148,4 +150,28 @@ impl MonitoringService {
         }
     } 
 
+    /**
+     * Get the status.
+     * 
+     * result: The result of getting the status.
+     */
+    pub fn get_status(&self) -> Arc<Mutex<HashMap<String, MonitorStatus>>> {
+        self.status.clone()
+    }
+
+    /**
+     * Get all monitor statuses.
+     * 
+     * result: The result of getting all monitor statuses.
+     */
+    pub fn get_all_monitorstatuses(&self) -> Vec<MonitorStatus> {
+        let status_lock = self.status.lock();
+        match status_lock {
+            Ok(lock) => lock.values().cloned().collect(),
+            Err(err) => {
+                error!("Error getting monitor statuses: {:?}", err);
+                Vec::new()
+            }
+        }
+    }
 }

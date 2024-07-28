@@ -30,6 +30,8 @@ pub struct SchedulingService {
     command_monitors: Vec<CommandMonitor>,    
     /// The monitoring configuration.
     monitoring_config: MonitoringConfig,
+    /// The status of the monitors.
+    status: Arc<Mutex<HashMap<String, MonitorStatus>>>,
 }
 
 impl SchedulingService {
@@ -39,13 +41,14 @@ impl SchedulingService {
      *
      * result: The result of creating the scheduling service.
      */
-    pub fn new(monitoring_config: &MonitoringConfig) -> SchedulingService {
+    pub fn new(monitoring_config: &MonitoringConfig, status: &Arc<Mutex<HashMap<String, MonitorStatus>>>) -> SchedulingService {
         SchedulingService {
             scheduler: None,
             tcp_monitors: Vec::new(),
             http_monitors: Vec::new(),
             command_monitors: Vec::new(),
             monitoring_config: monitoring_config.clone(),
+            status: status.clone(),
         }
     }
 
@@ -93,14 +96,12 @@ impl SchedulingService {
                 ));
             }
         };
-        let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
-            Arc::new(Mutex::new(HashMap::new()));
         /*
          * Create and add jobs to the scheduler.
          */
         let monitors = self.monitoring_config.clone().monitors;
         for monitor in monitors {
-            self.create_and_add_job(&monitor, &scheduler, &status)
+            self.create_and_add_job(&monitor, &scheduler)
                 .await?;
         }                 
         /*
@@ -138,8 +139,7 @@ impl SchedulingService {
     async fn create_and_add_job(
         &mut self,
         monitor: &crate::common::Monitor,
-        scheduler: &JobScheduler,
-        status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
+        scheduler: &JobScheduler,        
     ) -> Result<(), ApplicationError> {
         let monitor_type = monitor.details.clone();
         let job = match monitor_type {
@@ -148,7 +148,7 @@ impl SchedulingService {
                 monitor.name.as_str(),
                 host.as_str(),
                 port,
-                status,
+                &self.status.clone(),
             )?,
             crate::common::MonitorType::Http {
                 url,
@@ -174,7 +174,7 @@ impl SchedulingService {
                 root_certificate,
                 identity,
                 identity_password,
-                status,
+                &self.status.clone(),
             )?,
             crate::common::MonitorType::Command {
                 command,
@@ -186,7 +186,7 @@ impl SchedulingService {
                 &command,
                 &args,
                 &expected,
-                status,
+                &self.status.clone(),
             )?,
         };
         self.add_job(scheduler, job).await?;
@@ -475,7 +475,8 @@ mod test {
      */
     #[tokio::test]
     async fn test_monitoring_service() {
-        let mut scheduling_service = SchedulingService::new(&MonitoringConfig::new("./resources/test/test_full_integration_test.json").unwrap());
+        let status = Arc::new(Mutex::new(HashMap::new()));
+        let mut scheduling_service = SchedulingService::new(&MonitoringConfig::new("./resources/test/test_full_integration_test.json").unwrap(), &status);
         let res = scheduling_service.start(true).await;
         assert!(res.is_ok());
     }
@@ -485,7 +486,8 @@ mod test {
      */
     #[tokio::test]
     async fn test_monitoring_service_tcp() {
-        let mut scheduling_service = SchedulingService::new(&MonitoringConfig::new("./resources/test/test_simple_tcp.json").unwrap());
+        let status = Arc::new(Mutex::new(HashMap::new()));
+        let mut scheduling_service = SchedulingService::new(&MonitoringConfig::new("./resources/test/test_simple_tcp.json").unwrap(), &status);
         let res = scheduling_service.start(true).await;
         assert!(res.is_ok());
     }
@@ -495,7 +497,8 @@ mod test {
      */
     #[tokio::test]
     async fn test_monitoring_service_http() {
-        let mut scheduling_service = SchedulingService::new(&MonitoringConfig::new("./resources/test/test_simple_http.json").unwrap());
+        let status = Arc::new(Mutex::new(HashMap::new()));
+        let mut scheduling_service = SchedulingService::new(&MonitoringConfig::new("./resources/test/test_simple_http.json").unwrap(), &status);
         let res = scheduling_service.start(true).await;
         assert!(res.is_ok());
     }
@@ -505,7 +508,8 @@ mod test {
      */
     #[tokio::test]
     async fn test_monitoring_service_command() {
-        let mut scheduling_service = SchedulingService::new(&MonitoringConfig::new("./resources/test/test_simple_command.json").unwrap());
+        let status = Arc::new(Mutex::new(HashMap::new()));
+        let mut scheduling_service = SchedulingService::new(&MonitoringConfig::new("./resources/test/test_simple_command.json").unwrap(), &status);
         let res = scheduling_service.start(true).await;
         assert!(res.is_ok());
     }

@@ -1,5 +1,8 @@
+use chrono::{DateTime, Utc};
 use monitoring_agent_lib::proc::{process::ProcessState, ProcsCpuinfo, ProcsLoadavg, ProcsMeminfo, ProcsProcess};
 use serde::{Deserialize, Serialize};
+
+use crate::common::{MonitorStatus, Status};
 
 /**
  * The `MeminfoResponse` struct represents the response of the meminfo endpoint.
@@ -345,6 +348,106 @@ impl ProcessStateResponse {
             ProcessState::Unknown => ProcessStateResponse::Unknown
         };
         Some(new_state)
+    }
+}
+
+#[allow(clippy::module_name_repetitions)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MonitorResponse {
+    /// The status of the monitor.
+    #[serde(rename = "status")]
+    status: MonitorStatusResponse,
+    /// The last time the monitor was successful.
+    #[serde(skip_serializing_if = "Option::is_none", rename = "lastSuccessfulTime")]
+    last_successful_time: Option<DateTime<Utc>>,
+    /// The last error message.
+    #[serde(skip_serializing_if = "Option::is_none", rename = "lastError")]
+    last_error: Option<String>,
+    /// The last time the monitor encountered an error.
+    #[serde(skip_serializing_if = "Option::is_none", rename = "lastErrorTime")]
+    last_error_time: Option<DateTime<Utc>>,
+}
+
+impl MonitorResponse {
+    /**
+     * Create a new `MonitorResponse`.
+     * 
+     * `status`: The status of the monitor.
+     * `last_successful_time`: The last time the monitor was successful.
+     * `last_error`: The last error message.
+     * `last_error_time`: The last time the monitor encountered an error.
+     * 
+     */
+    pub fn new(
+        status: MonitorStatusResponse,
+        last_successful_time: Option<DateTime<Utc>>,
+        last_error: Option<String>,
+        last_error_time: Option<DateTime<Utc>>,
+    ) -> MonitorResponse {
+        MonitorResponse {
+            status,
+            last_successful_time,
+            last_error,
+            last_error_time,
+        }
+    }
+
+    /**
+     * Create a new `MonitorResponse` from a `MonitorStatus`.
+     * 
+     * `monitor_status`: The `MonitorStatus` object.
+     * 
+     * Returns a new `MonitorResponse`.
+     * 
+     */
+    pub fn from_monitor_status_message(monitor_status: &MonitorStatus) -> MonitorResponse {
+        MonitorResponse::new(
+            MonitorStatusResponse::from_status(&monitor_status.status),
+            monitor_status.last_successful_time,
+            monitor_status.last_error.clone(),
+            monitor_status.last_error_time,
+        )
+    }
+
+    /**
+     * Create a new `MonitorResponse` from a `MonitorStatus`.
+     * 
+     * `monitor_statuses`: The `MonitorStatus` object.
+     * 
+     * Returns a new `MonitorResponse`.
+     * 
+     */
+    pub fn from_monitor_status_messages(monitor_statuses: &[MonitorStatus]) -> Vec<MonitorResponse> {
+        monitor_statuses.iter().map(MonitorResponse::from_monitor_status_message).collect()
+    }
+}
+
+#[allow(clippy::module_name_repetitions)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum MonitorStatusResponse {
+    /// The monitor is ok.
+    Ok,
+    /// The monitor status is unknown.
+    Unknown,
+    /// The monitor has an error.
+    Error,
+}
+
+impl MonitorStatusResponse {
+    /**
+     * Create a new `MonitorStatusResponse`.
+     * 
+     * `status`: The status of the monitor.
+     * 
+     * Returns a new `MonitorStatusResponse`.
+     * 
+     */
+    pub fn from_status(status: &Status) -> MonitorStatusResponse {
+        match status {
+            Status::Ok => MonitorStatusResponse::Ok,
+            Status::Unknown => MonitorStatusResponse::Unknown,
+            Status::Error { message: _ } => MonitorStatusResponse::Error,
+        }
     }
 }
 
