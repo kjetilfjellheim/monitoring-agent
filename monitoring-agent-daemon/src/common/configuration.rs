@@ -78,11 +78,30 @@ pub enum HttpMethod {
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct Monitor {
     /// The name of the monitor.
+    #[serde(rename = "name")]
     pub name: String,
     /// The schedule of the monitor.
+    #[serde(rename = "schedule")]
     pub schedule: String,
     /// The details of the monitor.
+    #[serde(rename = "details")]
     pub details: MonitorType,
+    /// The database store configuration.
+    #[serde(rename = "store", default = "default_database_store_level")]
+    pub store: DatabaseStoreLevel,
+}
+
+/**
+ * Database store level.
+ */
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub enum DatabaseStoreLevel {
+    /// Store nothing.
+    None,
+    /// Store all.
+    All,
+    /// Store only errors.
+    Errors,
 }
 
 /**
@@ -99,9 +118,14 @@ pub struct MonitoringConfig {
     /// The server configuration. Example ip and port where web services are made available.
     #[serde(rename = "server", default = "default_server")]
     pub server: ServerConfig,
+    /// The database configuration. If non is provided, then no storage is used.
+    #[serde(rename = "database")]
+    pub database: Option<DatabaseConfig>,
     /// The list of monitors.
     #[serde(rename = "monitors")]
-    pub monitors: Vec<Monitor>,   
+    pub monitors: Vec<Monitor>,
+
+
 }
 
 impl MonitoringConfig {
@@ -164,6 +188,15 @@ pub struct ServerConfig {
 }
 
 /**
+ * Database configuration.
+ */
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+pub struct DatabaseConfig {
+    /// The database url. Example <mysql://root:password@localhost:3307/db_name>
+    pub url: String,
+}
+
+/**
  * Default server configuration.
  * 
  * result: The default server configuration.
@@ -200,6 +233,12 @@ fn default_server_port() -> u16 {
  */
 fn default_server_ip() -> String {
     "127.0.0.1".to_string()
+}
+/**
+ * Default database store level.
+ */
+fn default_database_store_level() -> DatabaseStoreLevel {
+    DatabaseStoreLevel::Errors
 }
 
 #[cfg(test)]

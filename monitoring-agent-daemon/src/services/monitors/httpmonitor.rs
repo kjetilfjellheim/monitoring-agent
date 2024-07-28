@@ -13,6 +13,7 @@ use reqwest::Identity;
 use crate::common::ApplicationError;
 use crate::common::{MonitorStatus, Status};
 use crate::common::HttpMethod;
+use crate::services::MariaDbService;
 
 /**
  * HTTP Monitor.
@@ -42,6 +43,8 @@ pub struct HttpMonitor {
     client: reqwest::Client,
     /// The status of the monitor.
     pub status: Arc<Mutex<HashMap<String, MonitorStatus>>>,
+    /// The database service.
+    database_service: Arc<Option<MariaDbService>>    
 }
 
 impl HttpMonitor {
@@ -76,6 +79,7 @@ impl HttpMonitor {
         identity: Option<String>,
         identity_password: Option<String>,
         status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
+        database_service: &Arc<Option<MariaDbService>>,
     ) -> Result<HttpMonitor, ApplicationError> {
         debug!("Creating HTTP monitor: {}", &name);
         /*
@@ -145,6 +149,7 @@ impl HttpMonitor {
             headers: headers.clone(),
             status: status.clone(),
             client,
+            database_service: database_service.clone(),
         })
     }
 
@@ -229,6 +234,7 @@ impl HttpMonitor {
      *
      */
     fn set_status(&mut self, status: &Status) {
+        self.insert_monitor_status(status);
         match self.status.lock() {
             Ok(mut monitor_lock) => {
                 debug!(
@@ -246,6 +252,30 @@ impl HttpMonitor {
             }
         }
     }
+
+   /**
+     * Insert the monitor status into the database.
+     *
+     * status: The status to insert.
+     *
+     */
+    fn insert_monitor_status(&mut self, status: &Status) {
+        if self.database_service.is_some() {
+            let database_service = self.database_service.as_ref();
+            if database_service.is_some() {
+                let database_service = database_service.as_ref().unwrap();
+                match database_service.insert_monitor_status(
+                    self.name.as_str(),
+                    &status.clone(),
+                ) {
+                    Ok(()) => {}
+                    Err(err) => {
+                        error!("Error inserting monitor status: {:?}", err);
+                    }
+                }
+            }
+        }
+    }  
 
     /**
      * Check the monitor.
@@ -432,6 +462,7 @@ mod test {
             None,
             None,
             &status,
+            &Arc::new(None),
         )
         .unwrap();
         monitor.check().await.unwrap();
@@ -458,6 +489,7 @@ mod test {
             Some("./resources/test/client_cert/client.p12".to_string()),
             Some("test".to_string()),
             &status,
+            &Arc::new(None),
         )
         .unwrap();
         monitor.check().await.unwrap();
@@ -500,6 +532,7 @@ mod test {
             None,
             None,
             &status,
+            &Arc::new(None),
         )
         .unwrap();
         monitor.set_status(&Status::Ok);
