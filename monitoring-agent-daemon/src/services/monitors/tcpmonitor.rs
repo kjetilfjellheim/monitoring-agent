@@ -6,6 +6,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use crate::common::{MonitorStatus, Status};
+use crate::services::MariaDbService;
 
 /**
  * TCP Monitor.
@@ -28,6 +29,8 @@ pub struct TcpMonitor {
     pub port: u16,
     /// The status of the monitor.
     pub status: Arc<Mutex<HashMap<String, MonitorStatus>>>,
+    /// The database service.
+    database_service: Arc<Option<MariaDbService>>,
 }
 
 impl TcpMonitor {
@@ -45,6 +48,7 @@ impl TcpMonitor {
         port: u16,
         name: &str,
         status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
+        database_service: &Arc<Option<MariaDbService>>,
     ) -> TcpMonitor {
         debug!("Creating TCP monitor: {}", &name);
         let status_lock = status.lock();
@@ -62,6 +66,7 @@ impl TcpMonitor {
             host: host.to_string(),
             port,
             status: status.clone(),
+            database_service: database_service.clone(),
         }
     }
 
@@ -87,6 +92,7 @@ impl TcpMonitor {
      *
      */
     fn set_status(&mut self, status: &Status) {
+        self.insert_monitor_status(status);
         match self.status.lock() {
             Ok(mut monitor_lock) => {
                 debug!(
@@ -105,6 +111,30 @@ impl TcpMonitor {
         }
     }
 
+    /**
+     * Insert the monitor status into the database.
+     *
+     * status: The status to insert.
+     *
+     */
+    fn insert_monitor_status(&mut self, status: &Status) {
+        if self.database_service.is_some() {
+            let database_service = self.database_service.as_ref();
+            if database_service.is_some() {
+                let database_service = database_service.as_ref().unwrap();
+                match database_service.insert_monitor_status(
+                    self.name.as_str(),
+                    &status.clone(),
+                ) {
+                    Ok(()) => {}
+                    Err(err) => {
+                        error!("Error inserting monitor status: {:?}", err);
+                    }
+                }
+            }
+        }
+    }
+    
     /**
      * Check the monitor.
      */
@@ -140,7 +170,7 @@ mod test {
     #[tokio::test]
     async fn test_check_port_139() {
         let status = Arc::new(Mutex::new(HashMap::new()));
-        let mut monitor = TcpMonitor::new("localhost", 139, "localhost", &status);
+        let mut monitor = TcpMonitor::new("localhost", 139, "localhost", &status, &Arc::new(None));
         monitor.check();
         assert_eq!(
             status.lock().unwrap().get("localhost").unwrap().status,
@@ -155,7 +185,7 @@ mod test {
     async fn test_check_port_65000() {
         let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
             Arc::new(Mutex::new(HashMap::new()));
-        let mut monitor = TcpMonitor::new("localhost", 65000, "localhost", &status);
+        let mut monitor = TcpMonitor::new("localhost", 65000, "localhost", &status, &Arc::new(None));
         monitor.check();
         assert_eq!(status.lock().unwrap().get("localhost").unwrap().status, Status::Error { message: "Error connecting to localhost:65000 with error: Connection refused (os error 111)".to_string() });
     }
@@ -167,7 +197,7 @@ mod test {
     fn test_set_status() {
         let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
             Arc::new(Mutex::new(HashMap::new()));
-        let mut monitor = TcpMonitor::new("localhost", 65000, "localhost", &status);
+        let mut monitor = TcpMonitor::new("localhost", 65000, "localhost", &status, &Arc::new(None));
         monitor.set_status(&Status::Ok);
         assert_eq!(
             status.lock().unwrap().get("localhost").unwrap().status,

@@ -3,9 +3,10 @@ mod services;
 mod api;
 
 use std::fs::OpenOptions;
+use std::sync::Arc;
 
 use clap::Parser;
-use common::configuration::MonitoringConfig;
+use common::configuration::{DatabaseConfig, MonitoringConfig};
 use daemonize::Daemonize;
 use log::{error, info};
 use log4rs::config::Deserializers;
@@ -14,7 +15,7 @@ use services::SchedulingService;
 
 use crate::common::ApplicationArguments;
 use crate::api::StateApi;
-use crate::services::MonitoringService;
+use crate::services::{MonitoringService, MariaDbService};
 
 /**
  * Application entry point.
@@ -77,6 +78,17 @@ async fn main() -> Result<(), std::io::Error> {
  */
 async fn start_application(monitoring_config: &MonitoringConfig, args: &ApplicationArguments) -> Result<(), std::io::Error> {
     /*
+     * Initialize database service.
+     */
+    let database_config = monitoring_config.database.clone();
+    let database_service: Arc<Option<MariaDbService>> = if let Some(database_config) = database_config {
+        Arc::new(initialize_database(&database_config))
+    } else {
+        info!("No database configuration found!");
+        Arc::new(None)
+    };
+        
+    /*
      * Initialize monitoring service.
      */
     let monitoring_service = MonitoringService::new();    
@@ -87,7 +99,7 @@ async fn start_application(monitoring_config: &MonitoringConfig, args: &Applicat
     let cloned_args = args.clone();
     let monitor_statuses = monitoring_service.get_status();
     tokio::spawn(async move {
-        let mut scheduling_service = SchedulingService::new(&cloned_monitoring_config, &monitor_statuses);
+        let mut scheduling_service = SchedulingService::new(&cloned_monitoring_config, &monitor_statuses, &database_service.clone());
         match scheduling_service.start(cloned_args.test).await {
             Ok(()) => {
                 info!("Scheduling service started!");
@@ -123,6 +135,27 @@ async fn start_application(monitoring_config: &MonitoringConfig, args: &Applicat
     .bind((ip, port))?
     .run()
     .await
+}
+
+/**
+ * Initialize the database service.
+ * 
+ * `database_config`: The database configuration.
+ * 
+ * Returns the database service.
+ * 
+ */
+fn initialize_database(database_config: &DatabaseConfig) -> Option<MariaDbService> {
+    match MariaDbService::new(database_config) {
+        Ok(database_service) => {
+            info!("Database service initialized!");
+            Some(database_service)
+        }
+        Err(err) => {
+            error!("Error initializing database service: {:?}", err);
+            None
+        }
+    }
 }
 
 /**

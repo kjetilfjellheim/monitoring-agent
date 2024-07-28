@@ -1,4 +1,7 @@
 {
+    "database": {
+        "url": "mysql://monitor-agent-rw:[vKsoUcgY0CqHfKU@planescape.forgottendonkey.com:3306/monitor-agent"
+    },
     "server": {
 	    "ip": "127.0.0.1",
 	    "port":65000
@@ -6,7 +9,7 @@
     "monitors":[
         {
             "name":"Apache TCP",
-            "schedule": "*/1 * * * * *",
+            "schedule": "*/5 * * * * *",
             "details": {
                 "type": "tcp",
                 "host": "127.0.0.1",
@@ -15,7 +18,7 @@
         },
         {
             "name":"Netbios TCP",
-            "schedule": "*/1 * * * * *",
+            "schedule": "*/5 * * * * *",
             "details": {
                 "type": "tcp",
                 "host": "127.0.0.1",
@@ -24,7 +27,7 @@
         },
         {
             "name":"Apache Http",
-            "schedule": "*/1 * * * * *",
+            "schedule": "*/5 * * * * *",
             "details": {
                 "type": "http",
                 "url": "http://localhost",
@@ -33,7 +36,7 @@
         },
         {
             "name":"Systemctl memcached",
-            "schedule": "*/1 * * * * *",
+            "schedule": "*/5 * * * * *",
             "details": {
                 "type": "command",
                 "command": "systemctl",

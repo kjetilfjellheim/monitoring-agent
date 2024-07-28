@@ -4,7 +4,7 @@ use log::{debug, error, info};
 use tokio_cron_scheduler::{Job, JobScheduler};
 
 use crate::common::{configuration::MonitoringConfig, ApplicationError, HttpMethod, MonitorStatus};
-
+use crate::services::MariaDbService;
 use super::monitors::{CommandMonitor, HttpMonitor, TcpMonitor};
 
 /**
@@ -32,6 +32,8 @@ pub struct SchedulingService {
     monitoring_config: MonitoringConfig,
     /// The status of the monitors.
     status: Arc<Mutex<HashMap<String, MonitorStatus>>>,
+    /// The database service.
+    database_service: Arc<Option<MariaDbService>>,
 }
 
 impl SchedulingService {
@@ -41,7 +43,7 @@ impl SchedulingService {
      *
      * result: The result of creating the scheduling service.
      */
-    pub fn new(monitoring_config: &MonitoringConfig, status: &Arc<Mutex<HashMap<String, MonitorStatus>>>) -> SchedulingService {
+    pub fn new(monitoring_config: &MonitoringConfig, status: &Arc<Mutex<HashMap<String, MonitorStatus>>>, database_service: &Arc<Option<MariaDbService>>) -> SchedulingService {
         SchedulingService {
             scheduler: None,
             tcp_monitors: Vec::new(),
@@ -49,6 +51,7 @@ impl SchedulingService {
             command_monitors: Vec::new(),
             monitoring_config: monitoring_config.clone(),
             status: status.clone(),
+            database_service: database_service.clone(),
         }
     }
 
@@ -253,7 +256,7 @@ impl SchedulingService {
     ) -> Result<Job, ApplicationError> {
         info!("Creating Command monitor: {}", &name);
         let command_monitor =
-            CommandMonitor::new(name, command, args.clone(), expected.clone(), status);
+            CommandMonitor::new(name, command, args.clone(), expected.clone(), status, &self.database_service.clone());
         self.command_monitors.push(command_monitor.clone());
         match Job::new_async(schedule, move |_uuid, _locked| {
             SchedulingService::check_command_monitor(&command_monitor)
@@ -284,7 +287,7 @@ impl SchedulingService {
         status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
     ) -> Result<Job, ApplicationError> {
         info!("Creating Tcp monitor: {}", &name);
-        let tcp_monitor = TcpMonitor::new(host, port, name, status);
+        let tcp_monitor = TcpMonitor::new(host, port, name, status, &self.database_service.clone());
         self.tcp_monitors.push(tcp_monitor.clone());
         match Job::new_async(schedule, move |_uuid, _locked| {
             SchedulingService::check_tcp_monitor(&tcp_monitor)
@@ -341,6 +344,7 @@ impl SchedulingService {
             identity,
             identity_password,
             status,
+            &self.database_service.clone()
         )?;
         self.http_monitors.push(http_monitor.clone());
         match Job::new_async(schedule, move |_uuid, _locked| {
@@ -468,6 +472,8 @@ impl SchedulingService {
 #[cfg(test)]
 mod test {
 
+    use std::sync::Arc;
+
     use super::*;
 
     /**
@@ -476,7 +482,7 @@ mod test {
     #[tokio::test]
     async fn test_monitoring_service() {
         let status = Arc::new(Mutex::new(HashMap::new()));
-        let mut scheduling_service = SchedulingService::new(&MonitoringConfig::new("./resources/test/test_full_integration_test.json").unwrap(), &status);
+        let mut scheduling_service = SchedulingService::new(&MonitoringConfig::new("./resources/test/test_full_integration_test.json").unwrap(), &status, &Arc::new(None));
         let res = scheduling_service.start(true).await;
         assert!(res.is_ok());
     }
@@ -487,7 +493,7 @@ mod test {
     #[tokio::test]
     async fn test_monitoring_service_tcp() {
         let status = Arc::new(Mutex::new(HashMap::new()));
-        let mut scheduling_service = SchedulingService::new(&MonitoringConfig::new("./resources/test/test_simple_tcp.json").unwrap(), &status);
+        let mut scheduling_service = SchedulingService::new(&MonitoringConfig::new("./resources/test/test_simple_tcp.json").unwrap(), &status, &Arc::new(None));
         let res = scheduling_service.start(true).await;
         assert!(res.is_ok());
     }
@@ -498,7 +504,7 @@ mod test {
     #[tokio::test]
     async fn test_monitoring_service_http() {
         let status = Arc::new(Mutex::new(HashMap::new()));
-        let mut scheduling_service = SchedulingService::new(&MonitoringConfig::new("./resources/test/test_simple_http.json").unwrap(), &status);
+        let mut scheduling_service = SchedulingService::new(&MonitoringConfig::new("./resources/test/test_simple_http.json").unwrap(), &status, &Arc::new(None));
         let res = scheduling_service.start(true).await;
         assert!(res.is_ok());
     }
@@ -509,7 +515,7 @@ mod test {
     #[tokio::test]
     async fn test_monitoring_service_command() {
         let status = Arc::new(Mutex::new(HashMap::new()));
-        let mut scheduling_service = SchedulingService::new(&MonitoringConfig::new("./resources/test/test_simple_command.json").unwrap(), &status);
+        let mut scheduling_service = SchedulingService::new(&MonitoringConfig::new("./resources/test/test_simple_command.json").unwrap(), &status, &Arc::new(None));
         let res = scheduling_service.start(true).await;
         assert!(res.is_ok());
     }
