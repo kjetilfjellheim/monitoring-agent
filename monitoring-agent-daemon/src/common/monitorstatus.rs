@@ -12,6 +12,8 @@ use chrono::{DateTime, Utc};
  */
 #[derive(Debug, Clone, PartialEq)]
 pub struct MonitorStatus {
+    /// The name of the monitor.
+    pub name: String,
     /// The status of the monitor.
     pub status: Status,
     /// The last time the monitor was successful.
@@ -29,8 +31,9 @@ impl MonitorStatus {
      * `status`: The status of the monitor.
      *
      */
-    pub fn new(status: Status) -> MonitorStatus {
+    pub fn new(name: String, status: Status) -> MonitorStatus {
         MonitorStatus {
+            name,
             status,
             last_successful_time: None,
             last_error: None,
