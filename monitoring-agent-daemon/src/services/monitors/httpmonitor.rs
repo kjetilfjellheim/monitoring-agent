@@ -10,6 +10,7 @@ use reqwest::header::HeaderMap;
 use reqwest::Certificate;
 use reqwest::Identity;
 
+use crate::common::configuration::DatabaseStoreLevel;
 use crate::common::ApplicationError;
 use crate::common::{MonitorStatus, Status};
 use crate::common::HttpMethod;
@@ -45,7 +46,9 @@ pub struct HttpMonitor {
     /// The status of the monitor.
     pub status: Arc<Mutex<HashMap<String, MonitorStatus>>>,
     /// The database service.
-    database_service: Arc<Option<MariaDbService>>    
+    database_service: Arc<Option<MariaDbService>>,
+    /// The database store level.
+    database_store_level: DatabaseStoreLevel,         
 }
 
 impl HttpMonitor {
@@ -64,6 +67,9 @@ impl HttpMonitor {
      * `identity`: The identity.
      * `identity_password`: The password for the identity.
      * `status`: The status of the monitor.
+     * `database_service`: The database service.
+     * 
+     * Returns: A new HTTP monitor.
      *
      */
     #[allow(clippy::too_many_arguments)]
@@ -81,6 +87,7 @@ impl HttpMonitor {
         identity_password: Option<String>,
         status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
         database_service: &Arc<Option<MariaDbService>>,
+        database_store_level: DatabaseStoreLevel,
     ) -> Result<HttpMonitor, ApplicationError> {
         debug!("Creating HTTP monitor: {}", &name);
         /*
@@ -151,6 +158,7 @@ impl HttpMonitor {
             status: status.clone(),
             client,
             database_service: database_service.clone(),
+            database_store_level,
         })
     }
 
@@ -414,7 +422,16 @@ impl super::Monitor for HttpMonitor {
     fn get_database_service(&self) -> Arc<Option<MariaDbService>> {
         self.database_service.clone()
     }
- 
+
+    /**
+     * Get the database store level.
+     *
+     * Returns: The database store level.
+     */
+    fn get_database_store_level(&self) -> DatabaseStoreLevel {
+        self.database_store_level.clone()
+    }
+     
 }
 
 #[cfg(test)]
@@ -447,6 +464,7 @@ mod test {
             None,
             &status,
             &Arc::new(None),
+            DatabaseStoreLevel::None
         )
         .unwrap();
         monitor.check().await.unwrap();
@@ -474,6 +492,7 @@ mod test {
             Some("test".to_string()),
             &status,
             &Arc::new(None),
+            DatabaseStoreLevel::None
         )
         .unwrap();
         monitor.check().await.unwrap();
@@ -517,6 +536,7 @@ mod test {
             None,
             &status,
             &Arc::new(None),
+            DatabaseStoreLevel::None
         )
         .unwrap();
         monitor.set_status(&Status::Ok);
