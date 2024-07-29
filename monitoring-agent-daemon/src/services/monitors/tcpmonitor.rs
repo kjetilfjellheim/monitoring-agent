@@ -60,7 +60,7 @@ impl TcpMonitor {
         let status_lock = status.lock();
         match status_lock {
             Ok(mut lock) => {
-                lock.insert(name.to_string(), MonitorStatus::new(Status::Unknown));
+                lock.insert(name.to_string(), MonitorStatus::new(name.to_string(), Status::Unknown));
             }
             Err(err) => {
                 error!("Error creating command monitor: {:?}", err);
