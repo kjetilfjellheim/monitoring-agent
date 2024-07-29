@@ -1,0 +1,392 @@
+openapi: '3.0.3'
+info:
+  title: Monitoring-Agent API
+  description: Monitoring Agent API for monitoring system resources. This API provides information about 
+    CPU, memory, and load average. 
+    <h4>Endpoints</h4>
+    - /cpuinfo/current - *Get current cpuinformation.*<br>
+    - /loadavg/current - *Get current load average.*<br>
+    - /meminfo/current - *Get current memory use.*<br>
+    - /processes - *List all processes.*<br>
+    - /processes/$pid - *Get specific process information.*<br>
+    - /processes/$pid/threads - *List a processes threads.*<br>
+    - /monitors/status - *List all monitor statuses.*<br></br>
+    
+    This project is a currently in early development and will change often. The code is free to use as you will.
+  license:
+    name: Apache 2.0
+    url: 'https://www.apache.org/licenses/LICENSE-2.0.html'
+  version: '0.0.14'
+  contact:
+    name: Kjetil Fjellheim
+    email: kjetil@forgottendonkey.net
+    url: https://github.com/kjetilfjellheim/monitoring-agent
+tags:
+  - name: Process
+    description: Process information
+  - name: System
+    description: System information
+  - name: Monitor 
+    description: Monitor information
+servers:
+  - url: http://localhost/
+paths:
+  "/cpuinfo/current":
+    get:
+      summary: Get current CPU usage
+      tags:
+        - System
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CpuResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:                
+                $ref: '#/components/schemas/Error'
+  "/loadavg/current":
+    get:
+      summary: Get current load average
+      tags:
+        - System
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoadAvgResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:                
+                $ref: '#/components/schemas/Error'
+  "/meminfo/current":
+    get:
+      summary: Get current memory usage
+      tags:
+        - System      
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemInfoResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:                
+                $ref: '#/components/schemas/Error'
+  "/monitors/status":
+    get:
+      summary: Get the current monitor statuses.
+      tags:
+        - Monitor      
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonitorStatusResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:                
+                $ref: '#/components/schemas/Error'
+  "/processes":
+    get:
+      summary: List all systems processes.
+      tags:
+        - Process      
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessesResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:                
+                $ref: '#/components/schemas/Error'    
+  "/processes/{PidParam}":
+    get:
+      summary: Get process information.
+      tags:
+        - Process        
+      parameters:
+        - $ref: '#/components/parameters/PidParam'      
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:                
+                $ref: '#/components/schemas/Error'
+  "/processes/{PidParam}/threads":
+    get:
+      summary: Get process threads.
+      tags:
+        - Process        
+      parameters:
+        - $ref: '#/components/parameters/PidParam'            
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessesResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:                
+                $ref: '#/components/schemas/Error'                  
+components:
+  schemas:
+    CpuResponse:
+      type: array
+      items:
+        $ref: '#/components/schemas/CpuInfo'
+    CpuInfo:
+      type: object
+      required:
+        - apicid
+        - vendorId
+        - cpuFamily
+        - model
+        - modelName
+        - cpuCores
+        - cpuMhz
+      properties:
+        apicid:
+          type: number
+          format: i32
+          example: 0
+          description: 'APIC ID'
+        vendorId:
+          type: string
+          example: 'AuthenticAMD'
+          description: 'Vendor ID'
+        cpuFamily:
+          type: string
+          example: '25'
+          description: 'CPU Family'
+        model:
+          type: string
+          example: '116'
+          description: 'Model identifier'
+        modelName:
+          type: string
+          example: 'AMD Ryzen 7 7840HS w/ Radeon 780M Graphics'
+          description: 'Model name'
+        cpuCores:
+          type: number
+          format: int32
+          example: 8
+          description: 'Number of CPU cores'
+        cpuMhz:
+          type: number
+          format: float
+          example: 3792.000       
+          description: 'CPU frequency in MHz'
+    LoadAvgResponse:
+      type: object
+      required:
+        - loadavg1min
+        - loadavg5min
+        - loadAvg10Min
+        - currentRunningProcesses
+        - totalNumberOfProcesses
+      properties:
+        loadavg1min:
+          type: number
+          format: float
+          example: 0.42
+          description: 'Load average for the last 1 minute'
+        loadavg5min:
+          type: number
+          format: float
+          example: 0.42
+          description: 'Load average for the last 5 minutes'          
+        loadAvg10Min:
+          type: number
+          format: float
+          example: 0.42
+          description: 'Load average for the last 10 minutes'
+        currentRunningProcesses:
+          type: number
+          format: int32
+          example: 10
+          description: 'Number of currently running processes'      
+        totalNumberOfProcesses:
+          type: number
+          format: int32
+          example: 10
+          description: 'Number of currently running processes'
+    MemInfoResponse:
+      type: object
+      required:
+        - totalMem
+        - freeMem
+        - availableMem
+        - swapTotal
+        - swapFree
+      properties:
+        totalMem:
+          type: number
+          format: int32
+          example: 16384
+          description: 'Total memory in MB'
+        freeMem:
+          type: number
+          format: int32
+          example: 8192
+          description: 'Free memory in MB'
+        availableMem:
+          type: number
+          format: int32
+          example: 8192
+          description: 'Used memory in MB'
+        swapTotal:
+          type: number
+          format: int32
+          example: 500
+          description: 'Swap total in MB'
+        swapFree:
+          type: number
+          format: int32
+          example: 500
+          description: 'Swap free in MB'
+    ProcessResponse:
+      type: object
+      required:
+        - pid
+        - parentPid
+        - state
+        - processState
+        - groups
+      properties:
+        pid:
+          type: number
+          format: int32
+          example: 2257
+          description: 'Process ID'
+        parentPid:
+          type: number
+          format: int32
+          example: 1984
+          description: 'Parent process ID'          
+        name:
+          type: string
+          example: 'ksmserver'
+          description: 'Process name'
+        state:
+          type: string
+          example: 'S'
+          description: 'Process state'
+        umask:
+          type: string
+          example: '0002'
+          description: 'Process umask'
+        processState:
+          type: string
+          example: 'InterruptableSleep'
+          description: 'Process state. Can be either\n
+            Running - The process is running.
+            UninterruptibleSleep - The process is in an uninterruptible sleep.
+            InterruptableSleep - The process is in an interruptable sleep.
+            Stopped - The process is stopped.
+            Zombie - The process is a zombie.
+            Idle - The process is idle.
+            Unknown - The process state is unknown.'
+        numThreads:
+          type: number
+          format: int32
+          example: 3
+          description: 'Number of threads'
+        groups:
+          type: array
+          items:
+            type: string
+          example: 
+            - '4'
+            - '24'
+            - '27'
+            - '30'
+            - '46'
+            - '100'
+            - '119'
+            - '129'
+            - '1000'
+          description: 'Groups'
+    ProcessesResponse:
+      type: array
+      items:
+        $ref: '#/components/schemas/ProcessResponse'
+    MonitorStatusResponse:
+      type: object
+      required:
+        - monitorName
+        - status
+      properties:
+        monitorName:
+          type: string
+          example: 'cpuinfo'
+          description: 'Monitor name given in the configuration file'
+        status:
+          type: string
+          example: 'Error'
+          description: 'Monitor status. Can be either\n
+            Active - Monitor is active.
+            Unknown - Monitor status is currently Unknown.
+            Error - Monitor is in error state.'
+        lastSuccessfulTime:
+          type: string
+          example: '2024-07-29T13:39:36.625507576Z'
+          description: 'Last successful time'
+        lastError:
+          type: string
+          example: 'Error running command: Output { status: ExitStatus(unix_wait_status(0)), stdout: \"ActiveState=inactive\\n\", stderr: \"\" }'
+          description: 'Last error'
+        lastErrorTime:
+          type: string
+          example: '2024-07-29T13:39:46.356298822Z'
+          description: 'Last error time'
+    Error:
+      type: object
+      description: Error response. This is a todo issue and will be updated later.
+      properties:
+        message:
+          type: string
+          example: 'Internal Server Error'
+          description: 'Error message'
+  parameters:
+    PidParam:
+      in: path
+      name: PidParam
+      required: true
+      schema:
+        type: integer
+        format: int32
+        example: 2257
+      description: 'Process ID'

@@ -1,25 +1,24 @@
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
 
 /**
  * `MonitorStatus` struct
- *
- * This struct is used to represent the status of a monitor. It contains the following fields:
+ * 
+ *  This struct is used to represent the status of a monitor in the service modules. It contains the following fields:
  * - `status`: The status of the monitor
  * - `last_successful_time`: The last time the monitor was successful
  * - `last_error`: The last error message
  * - `last_error_time`: The last time the monitor encountered an error
  *
  */
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct MonitorStatus {
-    #[serde(rename = "status")]
+    /// The status of the monitor.
     pub status: Status,
-    #[serde(skip_serializing_if = "Option::is_none", rename = "lastSuccessfulTime")]
+    /// The last time the monitor was successful.
     pub last_successful_time: Option<DateTime<Utc>>,
-    #[serde(skip_serializing_if = "Option::is_none", rename = "lastError")]
+    /// The last error message.
     pub last_error: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", rename = "lastErrorTime")]
+    /// The last time the monitor encountered an error.
     pub last_error_time: Option<DateTime<Utc>>,
 }
 
@@ -69,9 +68,12 @@ impl MonitorStatus {
  * - Error: The monitor has encountered an error. The error message is stored in the message field
  *
  */
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Status {
+    /// The monitor is working correctly.
     Ok,
+    /// The monitor status is unknown.
     Unknown,
+    /// The monitor has encountered an error. The error message is stored in the message field.
     Error { message: String },
 }
