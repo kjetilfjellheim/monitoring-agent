@@ -5,10 +5,12 @@
  * `httpmonitor`: Monitor that checks the status of an HTTP service.
  * `tcpmonitor`: Monitor that checks the status of a TCP service. 
  */
+mod common;
 mod commandmonitor;
 mod httpmonitor;
 mod tcpmonitor;
 
+pub use common::Monitor;
 pub use commandmonitor::CommandMonitor;
 pub use httpmonitor::HttpMonitor;
 pub use tcpmonitor::TcpMonitor;

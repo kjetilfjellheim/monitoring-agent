@@ -6,6 +6,8 @@ use std::{
 use log::{debug, error, info};
 
 use crate::{common::{ApplicationError, MonitorStatus, Status}, services::MariaDbService};
+use crate::services::monitors::Monitor;
+
 /**
  * Command Monitor.
  *
@@ -38,6 +40,8 @@ impl CommandMonitor {
      * expected: The expected output of the command.
      * status: The status of the monitor.
      *
+     * Returns: A new command monitor.
+     * 
      */
     pub fn new(
         name: &str,
@@ -65,60 +69,14 @@ impl CommandMonitor {
             status: status.clone(),
             database_service: database_service.clone(),
         }
-    }
-
-    /**
-     * Set the status of the monitor.
-     *
-     * status: The new status.
-     *
-     */
-    fn set_status(&mut self, status: &Status) {
-        self.insert_monitor_status(status);
-        match self.status.lock() {
-            Ok(mut monitor_lock) => {
-                debug!(
-                    "Setting monitor status for {} to: {:?}",
-                    &self.name, &status
-                );
-                let Some(monitor_status) = monitor_lock.get_mut(&self.name) else {
-                    error!("Monitor status not found for: {}", &self.name);
-                    return;
-                };
-                monitor_status.set_status(status);
-            }
-            Err(err) => {
-                error!("Error updating monitor status: {:?}", err);
-            }
-        }
-    }
-
-    /**
-     * Insert the monitor status into the database.
-     *
-     * status: The status to insert.
-     *
-     */
-    fn insert_monitor_status(&mut self, status: &Status) {
-        if self.database_service.is_some() {
-            let database_service = self.database_service.as_ref();
-            if database_service.is_some() {
-                let database_service = database_service.as_ref().unwrap();
-                match database_service.insert_monitor_status(
-                    self.name.as_str(),
-                    &status.clone(),
-                ) {
-                    Ok(()) => {}
-                    Err(err) => {
-                        error!("Error inserting monitor status: {:?}", err);
-                    }
-                }
-            }
-        }
-    }          
+    } 
 
     /**
      * Check the monitor.
+     * 
+     * This method runs the command and checks the output.
+     * 
+     * Returns: Ok if the monitor ran successfully, an error otherwise.
      *
      */
     pub async fn check(&mut self) -> Result<(), ApplicationError> {
@@ -173,8 +131,42 @@ impl CommandMonitor {
                             .as_ref()
                             .unwrap_or(&String::new())
                             .eq(output_resp)))
-        }
     }
+}
+
+
+/**
+ * Implement the `Monitor` trait for `HttpMonitor`.
+ */
+impl super::Monitor for CommandMonitor {
+    /**
+     * Get the name of the monitor.
+     *
+     * Returns: The name of the monitor.
+     */
+    fn get_name(&self) -> &str {
+        &self.name
+    }
+
+    /**
+     * Get the status of the monitor.
+     *
+     * Returns: The status of the monitor.
+     */
+    fn get_status(&self) -> Arc<Mutex<HashMap<String, MonitorStatus>>> {
+        self.status.clone()
+    }
+
+    /**
+     * Get the database service.
+     *
+     * Returns: The database service.
+     */
+    fn get_database_service(&self) -> Arc<Option<MariaDbService>> {
+        self.database_service.clone()
+    }
+ 
+}
 
 #[cfg(test)]
 mod test {
