@@ -354,6 +354,9 @@ impl ProcessStateResponse {
 #[allow(clippy::module_name_repetitions)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MonitorResponse {
+    /// Name of the monitor.
+    #[serde(rename = "name")]
+    name: String,
     /// The status of the monitor.
     #[serde(rename = "status")]
     status: MonitorStatusResponse,
@@ -372,6 +375,7 @@ impl MonitorResponse {
     /**
      * Create a new `MonitorResponse`.
      * 
+     * `name`: The name of the monitor.
      * `status`: The status of the monitor.
      * `last_successful_time`: The last time the monitor was successful.
      * `last_error`: The last error message.
@@ -379,12 +383,14 @@ impl MonitorResponse {
      * 
      */
     pub fn new(
+        name: String,
         status: MonitorStatusResponse,
         last_successful_time: Option<DateTime<Utc>>,
         last_error: Option<String>,
         last_error_time: Option<DateTime<Utc>>,
     ) -> MonitorResponse {
         MonitorResponse {
+            name,
             status,
             last_successful_time,
             last_error,
@@ -402,6 +408,7 @@ impl MonitorResponse {
      */
     pub fn from_monitor_status_message(monitor_status: &MonitorStatus) -> MonitorResponse {
         MonitorResponse::new(
+            monitor_status.name.clone(),
             MonitorStatusResponse::from_status(&monitor_status.status),
             monitor_status.last_successful_time,
             monitor_status.last_error.clone(),

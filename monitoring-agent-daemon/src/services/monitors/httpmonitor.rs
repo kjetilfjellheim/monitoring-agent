@@ -139,7 +139,7 @@ impl HttpMonitor {
         let monitor_lock = status.lock();
         match monitor_lock {
             Ok(mut lock) => {
-                lock.insert(name.to_string(), MonitorStatus::new(Status::Unknown));
+                lock.insert(name.to_string(), MonitorStatus::new(name.to_string(), Status::Unknown));
             }
             Err(err) => {
                 error!("Error creating HTTP monitor: {:?}", err);
