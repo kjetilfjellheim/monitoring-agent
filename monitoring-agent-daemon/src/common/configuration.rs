@@ -77,9 +77,31 @@ pub enum HttpMethod {
  */
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct Monitor {
+    /// The name of the monitor.
+    #[serde(rename = "name")]
     pub name: String,
+    /// The schedule of the monitor.
+    #[serde(rename = "schedule")]
     pub schedule: String,
+    /// The details of the monitor.
+    #[serde(rename = "details")]
     pub details: MonitorType,
+    /// The database store configuration.
+    #[serde(rename = "store", default = "default_database_store_level")]
+    pub store: DatabaseStoreLevel,
+}
+
+/**
+ * Database store level.
+ */
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub enum DatabaseStoreLevel {
+    /// Store nothing.
+    None,
+    /// Store all.
+    All,
+    /// Store only errors.
+    Errors,
 }
 
 /**
@@ -93,17 +115,27 @@ pub struct Monitor {
  */
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 pub struct MonitoringConfig {
+    /// The server configuration. Example ip and port where web services are made available.
     #[serde(rename = "server", default = "default_server")]
     pub server: ServerConfig,
+    /// The database configuration. If non is provided, then no storage is used.
+    #[serde(rename = "database")]
+    pub database: Option<DatabaseConfig>,
+    /// The list of monitors.
     #[serde(rename = "monitors")]
     pub monitors: Vec<Monitor>,
-    #[serde(default = "default_as_true", rename = "showCpu")]
-    pub show_cpu: bool,
-    #[serde(default = "default_as_true", rename = "showMem")]
-    pub show_mem: bool,    
+
+
 }
 
 impl MonitoringConfig {
+    /**
+     * Create a new monitoring configuration.
+     * 
+     * input: The input file.
+     * 
+     * result: The result of creating the monitoring configuration.
+     */
     pub fn new(input: &str) -> Result<MonitoringConfig, ApplicationError> {
         let monitor_data: String = MonitoringConfig::get_monitor_data(input)?;
         MonitoringConfig::get_monitor_config(monitor_data.as_str())
@@ -111,6 +143,10 @@ impl MonitoringConfig {
 
     /**
      * Get monitor data.
+     * 
+     * path: The path to the monitor data.
+     * 
+     * result: The result of getting the monitor data.
      */
     fn get_monitor_data(path: &str) -> Result<String, ApplicationError> {
         match fs::read_to_string(path) {
@@ -123,6 +159,10 @@ impl MonitoringConfig {
 
     /**
      * Get monitor configuration.
+     * 
+     * data: The monitor data.
+     * 
+     * result: The result of getting the monitor configuration.
      */
     fn get_monitor_config(data: &str) -> Result<MonitoringConfig, ApplicationError> {
         match serde_json::from_str(data) {
@@ -139,14 +179,27 @@ impl MonitoringConfig {
  */
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct ServerConfig {
+    /// The port of the server.
     #[serde(rename = "port", default = "default_server_port")]
     pub port: u16,
+    /// The ip of the server.
     #[serde(rename = "ip", default = "default_server_ip")]
     pub ip: String,
 }
 
 /**
+ * Database configuration.
+ */
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+pub struct DatabaseConfig {
+    /// The database url. Example <mysql://root:password@localhost:3307/db_name>
+    pub url: String,
+}
+
+/**
  * Default server configuration.
+ * 
+ * result: The default server configuration.
  */
 fn default_server() -> ServerConfig {
     ServerConfig {
@@ -180,6 +233,12 @@ fn default_server_port() -> u16 {
  */
 fn default_server_ip() -> String {
     "127.0.0.1".to_string()
+}
+/**
+ * Default database store level.
+ */
+fn default_database_store_level() -> DatabaseStoreLevel {
+    DatabaseStoreLevel::Errors
 }
 
 #[cfg(test)]

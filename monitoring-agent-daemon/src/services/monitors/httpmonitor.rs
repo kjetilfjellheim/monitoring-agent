@@ -4,6 +4,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Duration;
 
+use log::info;
 use log::{debug, error};
 use reqwest::header::HeaderMap;
 use reqwest::Certificate;
@@ -12,6 +13,8 @@ use reqwest::Identity;
 use crate::common::ApplicationError;
 use crate::common::{MonitorStatus, Status};
 use crate::common::HttpMethod;
+use crate::services::monitors::Monitor;
+use crate::services::MariaDbService;
 
 /**
  * HTTP Monitor.
@@ -27,13 +30,22 @@ use crate::common::HttpMethod;
  */
 #[derive(Debug, Clone)]
 pub struct HttpMonitor {
+    /// The name of the monitor.
     pub name: String,
+    /// The URL to monitor.
     pub url: String,
+    /// The HTTP method to use.
     pub method: HttpMethod,
+    /// The body of the request.
     pub body: Option<String>,
+    /// The headers of the request.
     pub headers: Option<HashMap<String, String>>,
+    /// The HTTP client.
     client: reqwest::Client,
+    /// The status of the monitor.
     pub status: Arc<Mutex<HashMap<String, MonitorStatus>>>,
+    /// The database service.
+    database_service: Arc<Option<MariaDbService>>    
 }
 
 impl HttpMonitor {
@@ -68,6 +80,7 @@ impl HttpMonitor {
         identity: Option<String>,
         identity_password: Option<String>,
         status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
+        database_service: &Arc<Option<MariaDbService>>,
     ) -> Result<HttpMonitor, ApplicationError> {
         debug!("Creating HTTP monitor: {}", &name);
         /*
@@ -137,6 +150,7 @@ impl HttpMonitor {
             headers: headers.clone(),
             status: status.clone(),
             client,
+            database_service: database_service.clone(),
         })
     }
 
@@ -215,31 +229,6 @@ impl HttpMonitor {
     }
 
     /**
-     * Set the status of the monitor.
-     *
-     * `status`: The new status.
-     *
-     */
-    fn set_status(&mut self, status: &Status) {
-        match self.status.lock() {
-            Ok(mut monitor_lock) => {
-                debug!(
-                    "Setting monitor status for {} to: {:?}",
-                    &self.name, &status
-                );
-                let Some(monitor_status) = monitor_lock.get_mut(&self.name) else {
-                    error!("Monitor status not found for: {}", &self.name);
-                    return;
-                };
-                monitor_status.set_status(status);
-            }
-            Err(err) => {
-                error!("Error updating monitor status: {:?}", err);
-            }
-        }
-    }
-
-    /**
      * Check the monitor.
      *
      */
@@ -298,6 +287,7 @@ impl HttpMonitor {
                 if response.status().is_success() {
                     self.set_status(&Status::Ok);
                 } else {
+                    info!("Monitor status error: {} - {:?}", &self.name, response);
                     self.set_status(&Status::Error {
                         message: format!(
                             "Error connecting to {} with status code: {}",
@@ -394,6 +384,39 @@ impl HttpMonitor {
     }
 }
 
+/**
+ * Implement the `Monitor` trait for `HttpMonitor`.
+ */
+impl super::Monitor for HttpMonitor {
+    /**
+     * Get the name of the monitor.
+     *
+     * Returns: The name of the monitor.
+     */
+    fn get_name(&self) -> &str {
+        &self.name
+    }
+
+    /**
+     * Get the status of the monitor.
+     *
+     * Returns: The status of the monitor.
+     */
+    fn get_status(&self) -> Arc<Mutex<HashMap<String, MonitorStatus>>> {
+        self.status.clone()
+    }
+
+    /**
+     * Get the database service.
+     *
+     * Returns: The database service.
+     */
+    fn get_database_service(&self) -> Arc<Option<MariaDbService>> {
+        self.database_service.clone()
+    }
+ 
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -423,6 +446,7 @@ mod test {
             None,
             None,
             &status,
+            &Arc::new(None),
         )
         .unwrap();
         monitor.check().await.unwrap();
@@ -449,6 +473,7 @@ mod test {
             Some("./resources/test/client_cert/client.p12".to_string()),
             Some("test".to_string()),
             &status,
+            &Arc::new(None),
         )
         .unwrap();
         monitor.check().await.unwrap();
@@ -491,6 +516,7 @@ mod test {
             None,
             None,
             &status,
+            &Arc::new(None),
         )
         .unwrap();
         monitor.set_status(&Status::Ok);

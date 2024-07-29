@@ -25,6 +25,8 @@ log = "0.4.22"                                                                  
 actix-web = { version = "4.8.0" }                                                       # For handling http requests.
 chrono = { version = "0.4.38", features = ["serde"]}                                    # For handling time.
 monitoring-agent-lib = { path = "../monitoring-agent-lib" }                             # For reading system information.
+mysql = "25.0.1"                                                                        # For handling mysql connections.
+mysql_common = { version = "0.32.4" }                                                   # For handling mysql connections.
 
 [package.metadata.deb]
 maintainer = "Kjetil Fjellheim <kjetil@forgottendonkey.net>"
