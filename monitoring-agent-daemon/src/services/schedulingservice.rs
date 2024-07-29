@@ -3,7 +3,7 @@ use std::{collections::HashMap, future::Future, sync::{Arc, Mutex}, time::{Durat
 use log::{debug, error, info};
 use tokio_cron_scheduler::{Job, JobScheduler};
 
-use crate::common::{configuration::MonitoringConfig, ApplicationError, HttpMethod, MonitorStatus};
+use crate::common::{configuration::{DatabaseStoreLevel, MonitoringConfig}, ApplicationError, HttpMethod, MonitorStatus};
 use crate::services::MariaDbService;
 use super::monitors::{CommandMonitor, HttpMonitor, TcpMonitor};
 
@@ -152,6 +152,7 @@ impl SchedulingService {
                 host.as_str(),
                 port,
                 &self.status.clone(),
+                monitor.store.clone(),
             )?,
             crate::common::MonitorType::Http {
                 url,
@@ -178,6 +179,7 @@ impl SchedulingService {
                 identity,
                 identity_password,
                 &self.status.clone(),
+                monitor.store.clone(),
             )?,
             crate::common::MonitorType::Command {
                 command,
@@ -190,6 +192,7 @@ impl SchedulingService {
                 &args,
                 &expected,
                 &self.status.clone(),
+                monitor.store.clone(),
             )?,
         };
         self.add_job(scheduler, job).await?;
@@ -240,11 +243,13 @@ impl SchedulingService {
      * `args`: The arguments.
      * `expected`: The expected result.
      * `status`: The status.
+     * `database_store_level`: The database store level.
      * 
      * `result`: The result of getting the command monitor job.
      * 
      * throws: `ApplicationError`: If the job fails to be created.
      */
+    #[allow(clippy::too_many_arguments)]
     fn get_command_monitor_job(
         &mut self,
         schedule: &str,
@@ -253,10 +258,11 @@ impl SchedulingService {
         args: &Option<Vec<String>>,
         expected: &Option<String>,
         status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
+        database_store_level: DatabaseStoreLevel,
     ) -> Result<Job, ApplicationError> {
         info!("Creating Command monitor: {}", &name);
         let command_monitor =
-            CommandMonitor::new(name, command, args.clone(), expected.clone(), status, &self.database_service.clone());
+            CommandMonitor::new(name, command, args.clone(), expected.clone(), status, &self.database_service.clone(), database_store_level);
         self.command_monitors.push(command_monitor.clone());
         match Job::new_async(schedule, move |_uuid, _locked| {
             SchedulingService::check_command_monitor(&command_monitor)
@@ -285,9 +291,10 @@ impl SchedulingService {
         host: &str,
         port: u16,
         status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
+        database_store_level: DatabaseStoreLevel,
     ) -> Result<Job, ApplicationError> {
         info!("Creating Tcp monitor: {}", &name);
-        let tcp_monitor = TcpMonitor::new(host, port, name, status, &self.database_service.clone());
+        let tcp_monitor = TcpMonitor::new(host, port, name, status, &self.database_service.clone(), database_store_level);
         self.tcp_monitors.push(tcp_monitor.clone());
         match Job::new_async(schedule, move |_uuid, _locked| {
             SchedulingService::check_tcp_monitor(&tcp_monitor)
@@ -329,6 +336,7 @@ impl SchedulingService {
         identity: Option<String>,
         identity_password: Option<String>,
         status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
+        database_store_level: DatabaseStoreLevel,
     ) -> Result<Job, ApplicationError> {
         info!("Creating http monitor: {}", &name);
         let http_monitor = HttpMonitor::new(
@@ -344,7 +352,8 @@ impl SchedulingService {
             identity,
             identity_password,
             status,
-            &self.database_service.clone()
+            &self.database_service.clone(),
+            database_store_level            
         )?;
         self.http_monitors.push(http_monitor.clone());
         match Job::new_async(schedule, move |_uuid, _locked| {

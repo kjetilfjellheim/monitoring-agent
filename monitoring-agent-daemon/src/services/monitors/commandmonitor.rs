@@ -5,7 +5,7 @@ use std::{
 
 use log::{debug, error, info};
 
-use crate::{common::{ApplicationError, MonitorStatus, Status}, services::MariaDbService};
+use crate::{common::{configuration::DatabaseStoreLevel, ApplicationError, MonitorStatus, Status}, services::MariaDbService};
 use crate::services::monitors::Monitor;
 
 /**
@@ -27,7 +27,9 @@ pub struct CommandMonitor {
     /// The current status of the monitor.
     pub status: Arc<Mutex<HashMap<String, MonitorStatus>>>,
     /// The database service.
-    database_service: Arc<Option<MariaDbService>>,    
+    database_service: Arc<Option<MariaDbService>>,   
+    /// The database store level.
+    database_store_level: DatabaseStoreLevel, 
 }
 
 impl CommandMonitor {
@@ -39,6 +41,8 @@ impl CommandMonitor {
      * args: The arguments to the command.
      * expected: The expected output of the command.
      * status: The status of the monitor.
+     * `database_service`: The database service.
+     * `database_store_level`: The database store level.
      *
      * Returns: A new command monitor.
      * 
@@ -50,6 +54,7 @@ impl CommandMonitor {
         expected: Option<String>,
         status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
         database_service: &Arc<Option<MariaDbService>>,
+        database_store_level: DatabaseStoreLevel
     ) -> CommandMonitor {
         let status_lock = status.lock();
         match status_lock {
@@ -68,6 +73,7 @@ impl CommandMonitor {
             expected,
             status: status.clone(),
             database_service: database_service.clone(),
+            database_store_level,
         }
     } 
 
@@ -166,6 +172,15 @@ impl super::Monitor for CommandMonitor {
         self.database_service.clone()
     }
  
+    /**
+     * Get the database store level.
+     *
+     * Returns: The database store level.
+     */
+    fn get_database_store_level(&self) -> DatabaseStoreLevel {
+        self.database_store_level.clone()
+    }
+
 }
 
 #[cfg(test)]
@@ -181,7 +196,7 @@ mod test {
     async fn test_check_ls() {
         let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
             Arc::new(Mutex::new(HashMap::new()));
-        let mut monitor = CommandMonitor::new("test", "ls", None, None, &status, &Arc::new(None));
+        let mut monitor = CommandMonitor::new("test", "ls", None, None, &status, &Arc::new(None), DatabaseStoreLevel::None);
         monitor.check().await.unwrap();
         assert_eq!(
             status.lock().unwrap().get("test").unwrap().status,
@@ -202,7 +217,8 @@ mod test {
             Some(vec!["status".to_string(), "dbus.service".to_string()]),
             None,
             &status,
-            &Arc::new(None),
+            &Arc::new(None), 
+            DatabaseStoreLevel::None
         );
         monitor.check().await.unwrap();
         assert_eq!(
@@ -218,7 +234,7 @@ mod test {
     async fn test_check_non_existing_command() {
         let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
             Arc::new(Mutex::new(HashMap::new()));
-        let mut monitor = CommandMonitor::new("test", "grumpy", None, None, &status, &Arc::new(None));
+        let mut monitor = CommandMonitor::new("test", "grumpy", None, None, &status, &Arc::new(None), DatabaseStoreLevel::None);
         let _ = monitor.check().await;
         assert_eq!(status.lock().unwrap().get("test").unwrap().status, Status::Error { message: "Error running command: Os { code: 2, kind: NotFound, message: \"No such file or directory\" }".to_string() });
     }
@@ -241,6 +257,7 @@ mod test {
             Some("ActiveState=active\n".to_string()),
             &status,
             &Arc::new(None),
+            DatabaseStoreLevel::None
         );
         let _ = monitor.check().await;
         assert_eq!(
@@ -253,7 +270,7 @@ mod test {
     fn test_is_command_success_exitstatus_0() {
         let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
             Arc::new(Mutex::new(HashMap::new()));
-        let mut monitor = CommandMonitor::new("test", "ls", None, None, &status, &Arc::new(None),);
+        let mut monitor = CommandMonitor::new("test", "ls", None, None, &status, &Arc::new(None), DatabaseStoreLevel::None);
         let output = std::process::Output {
             status: std::process::ExitStatus::from_raw(0),
             stdout: Vec::new(),
@@ -266,7 +283,7 @@ mod test {
     fn test_is_command_success_exitstatus_1() {
         let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
             Arc::new(Mutex::new(HashMap::new()));
-        let mut monitor = CommandMonitor::new("test", "ls", None, None, &status, &Arc::new(None),);
+        let mut monitor = CommandMonitor::new("test", "ls", None, None, &status, &Arc::new(None), DatabaseStoreLevel::None);
         let output = std::process::Output {
             status: std::process::ExitStatus::from_raw(1),
             stdout: Vec::new(),
