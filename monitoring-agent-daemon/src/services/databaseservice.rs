@@ -1,3 +1,4 @@
+use monitoring_agent_lib::proc::ProcsLoadavg;
 use mysql::{self, Pool, TxOpts }; // Import the `query` function and the `exec` function
 use mysql::params;
 use mysql::prelude::Queryable;
@@ -99,5 +100,28 @@ impl MariaDbService {
             Status::Error { message } => Some(message.clone()),
             _ => None,
         }
-    }    
+    }
+    /**
+     * Store the load average in the database.
+     * 
+     * `loadavg`: The load average to store.
+     * 
+     * Returns: Ok if the load average was stored successfully.
+     * 
+     * Errors:
+     * - If there is an error storing the load average.
+     * - If there is an error starting a transaction.
+     */
+    pub fn store_loadavg(&self, loadavg: &ProcsLoadavg) -> Result<(), ApplicationError> {
+        let mut tx = self.pool.start_transaction(TxOpts::default()).map_err(|err| ApplicationError::new(&err.to_string()))?;
+        tx.exec_drop("INSERT INTO loadavg (loadavg1min, loadavg5min, loadavg10min, num_processes, num_running_processes, log_time) VALUES (:loadavg1min, :loadavg5min, :loadavg10min, :num_processes, :num_running_processes, now(3))", params! {
+            "loadavg1min" => loadavg.loadavg1min,
+            "loadavg5min" => loadavg.loadavg5min,
+            "loadavg10min" => loadavg.loadavg10min,
+            "num_processes" => loadavg.total_number_of_processes,
+            "num_running_processes" => loadavg.current_running_processes,
+        }).map_err(|err| ApplicationError::new(&err.to_string()))?;
+        tx.commit().map_err(|err| ApplicationError::new(&err.to_string()))?;
+        Ok(())
+    }
 }

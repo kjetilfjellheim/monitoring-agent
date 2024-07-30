@@ -237,50 +237,6 @@ impl HttpMonitor {
     }
 
     /**
-     * Check the monitor.
-     *
-     */
-    pub async fn check(&mut self) -> Result<(), ApplicationError> {
-        debug!("Checking monitor: {}", &self.name);
-        /*
-         * Set http method.
-         */
-        let request_builder = match &self.method {
-            HttpMethod::Get => self.client.get(&self.url),
-            HttpMethod::Post => self.client.post(&self.url),
-            HttpMethod::Put => self.client.put(&self.url),
-            HttpMethod::Delete => self.client.delete(&self.url),
-            HttpMethod::Option => self.client.request(reqwest::Method::OPTIONS, &self.url),
-            HttpMethod::Head => self.client.head(&self.url),
-        };
-        /*
-         * Set headers.
-         */
-        let request_builder = request_builder.headers(HttpMonitor::get_headers(&self.headers)?);
-        /*
-         * Set body.
-         */
-        let request_builder = match &self.body {
-            Some(body) => request_builder.body(body.clone()),
-            None => request_builder,
-        };
-        /*
-         * Set timeout.
-         */
-        let request_builder = request_builder.timeout(Duration::from_secs(5));
-        /*
-         * Send request.
-         */
-        let req_response = request_builder.send().await;
-        /*
-         * Check response and set status in the monitor.
-         */
-        self.check_response_and_set_status(req_response);
-        debug!("Monitor checked: {}", &self.name);
-        Ok(())
-    }
-
-    /**
      * Check the response and set the status of the monitor.
      *
      * `response`: The response from the request.
@@ -431,12 +387,58 @@ impl super::Monitor for HttpMonitor {
     fn get_database_store_level(&self) -> DatabaseStoreLevel {
         self.database_store_level.clone()
     }
+
+    /**
+     * Check the monitor.
+     *
+     */
+    async fn check(&mut self) -> Result<(), ApplicationError> {
+        debug!("Checking monitor: {}", &self.name);
+        /*
+         * Set http method.
+         */
+        let request_builder = match &self.method {
+            HttpMethod::Get => self.client.get(&self.url),
+            HttpMethod::Post => self.client.post(&self.url),
+            HttpMethod::Put => self.client.put(&self.url),
+            HttpMethod::Delete => self.client.delete(&self.url),
+            HttpMethod::Option => self.client.request(reqwest::Method::OPTIONS, &self.url),
+            HttpMethod::Head => self.client.head(&self.url),
+        };
+        /*
+         * Set headers.
+         */
+        let request_builder = request_builder.headers(HttpMonitor::get_headers(&self.headers)?);
+        /*
+         * Set body.
+         */
+        let request_builder = match &self.body {
+            Some(body) => request_builder.body(body.clone()),
+            None => request_builder,
+        };
+        /*
+         * Set timeout.
+         */
+        let request_builder = request_builder.timeout(Duration::from_secs(5));
+        /*
+         * Send request.
+         */
+        let req_response = request_builder.send().await;
+        /*
+         * Check response and set status in the monitor.
+         */
+        self.check_response_and_set_status(req_response);
+        debug!("Monitor checked: {}", &self.name);
+        Ok(())
+    }    
      
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
+
+    use crate::services::monitors::Monitor;
 
     use reqwest::header::HeaderValue;
 

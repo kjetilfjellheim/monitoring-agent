@@ -6,7 +6,6 @@ use std::{
 use log::{debug, error, info};
 
 use crate::{common::{configuration::DatabaseStoreLevel, ApplicationError, MonitorStatus, Status}, services::MariaDbService};
-use crate::services::monitors::Monitor;
 
 /**
  * Command Monitor.
@@ -78,49 +77,6 @@ impl CommandMonitor {
     } 
 
     /**
-     * Check the monitor.
-     * 
-     * This method runs the command and checks the output.
-     * 
-     * Returns: Ok if the monitor ran successfully, an error otherwise.
-     *
-     */
-    pub async fn check(&mut self) -> Result<(), ApplicationError> {
-        debug!("Checking monitor: {}", &self.name);
-        let mut command = tokio::process::Command::new(&self.command);
-        let command = match &self.args {
-            Some(args) => command.args(args),
-            None => &mut command,
-        };
-        let command_result = command.output().await;
-        match command_result {
-            Ok(output) => {
-                let output_resp = String::from_utf8_lossy(&output.stdout);
-                debug!("Command output: {}", output_resp);
-                if self.is_command_success(&output, &output_resp)
-                {
-                    self.set_status(&Status::Ok);
-                } else {
-                    info!("Monitor status error: {} - {:?}", &self.name, output);
-                    self.set_status(&Status::Error {
-                        message: format!("Error running command: {output:?}"),
-                    });
-                }
-                Ok(())
-            }
-            Err(err) => {
-                info!("Monitor status error: {} - {:?}", &self.name, err);
-                self.set_status(&Status::Error {
-                    message: format!("Error running command: {err:?}"),
-                });
-                Err(ApplicationError::new(&format!(
-                    "Error running command: {err:?}"
-                )))
-            }
-        }        
-    }
-
-    /**
      * Check if the command ran successfully.
      *
      * `output`: The output of the command.
@@ -181,11 +137,56 @@ impl super::Monitor for CommandMonitor {
         self.database_store_level.clone()
     }
 
+    /**
+     * Check the monitor.
+     * 
+     * This method runs the command and checks the output.
+     * 
+     * Returns: Ok if the monitor ran successfully, an error otherwise.
+     *
+     */
+    async fn check(&mut self) -> Result<(), ApplicationError> {
+        debug!("Checking monitor: {}", &self.name);
+        let mut command = tokio::process::Command::new(&self.command);
+        let command = match &self.args {
+            Some(args) => command.args(args),
+            None => &mut command,
+        };
+        let command_result = command.output().await;
+        match command_result {
+            Ok(output) => {
+                let output_resp = String::from_utf8_lossy(&output.stdout);
+                debug!("Command output: {}", output_resp);
+                if self.is_command_success(&output, &output_resp)
+                {
+                    self.set_status(&Status::Ok);
+                } else {
+                    info!("Monitor status error: {} - {:?}", &self.name, output);
+                    self.set_status(&Status::Error {
+                        message: format!("Error running command: {output:?}"),
+                    });
+                }
+                Ok(())
+            }
+            Err(err) => {
+                info!("Monitor status error: {} - {:?}", &self.name, err);
+                self.set_status(&Status::Error {
+                    message: format!("Error running command: {err:?}"),
+                });
+                Err(ApplicationError::new(&format!(
+                    "Error running command: {err:?}"
+                )))
+            }
+        }        
+    }
+
 }
 
 #[cfg(test)]
 mod test {
     use std::os::unix::process::ExitStatusExt;
+
+    use crate::services::monitors::Monitor;
 
     use super::*;
 
