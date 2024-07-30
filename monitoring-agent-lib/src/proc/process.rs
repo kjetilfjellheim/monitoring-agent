@@ -324,18 +324,19 @@ impl ProcsProcess {
      * `state`: The state to get.
      * 
      * Returns the process state.
-     * 
      */
     fn get_state(state: Option<&String>) -> Option<ProcessState> {
         match state {
             Some(state) => {
                 match state.as_str().chars().nth(0) {
                     Some('R') => Some(ProcessState::Running),
-                    Some('D') => Some(ProcessState::UninterruptibleSleep),
+                    Some('D') => Some(ProcessState::DiskSleep),
                     Some('S') => Some(ProcessState::InterruptableSleep),
                     Some('T') => Some(ProcessState::Stopped),
+                    Some('t') => Some(ProcessState::TracingStop),
                     Some('Z') => Some(ProcessState::Zombie),
                     Some('I') => Some(ProcessState::Idle),
+                    Some('X') => Some(ProcessState::Dead),
                     None => None,
                     _ => Some(ProcessState::Unknown)
                 }
@@ -414,8 +415,6 @@ pub enum ProcessState {
     /// The process is running.
     Running,
     /// The process is in an uninterruptible sleep.
-    UninterruptibleSleep,
-    /// The process is in an interruptable sleep.
     InterruptableSleep,
     /// The process is stopped.
     Stopped,
@@ -423,6 +422,12 @@ pub enum ProcessState {
     Zombie,
     /// The process is idle.
     Idle,
+    /// The process is in disk sleep.
+    DiskSleep,
+    /// The process is dead.
+    Dead,
+    /// The process is in tracing stop.
+    TracingStop,
     /// The process state is unknown. This probably occurs if the state is not found in the enum.
     Unknown
 }
