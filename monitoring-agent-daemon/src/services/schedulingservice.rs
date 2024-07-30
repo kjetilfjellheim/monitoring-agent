@@ -5,7 +5,7 @@ use tokio_cron_scheduler::{Job, JobScheduler};
 
 use crate::common::{configuration::{DatabaseStoreLevel, MonitoringConfig}, ApplicationError, HttpMethod, MonitorStatus};
 use crate::services::MariaDbService;
-use super::monitors::{CommandMonitor, HttpMonitor, TcpMonitor};
+use super::monitors::{CommandMonitor, HttpMonitor, LoadAvgMonitor, Monitor, TcpMonitor};
 
 /**
  * Scheduling Service.
@@ -28,6 +28,8 @@ pub struct SchedulingService {
     http_monitors: Vec<HttpMonitor>,
     /// The command monitors.
     command_monitors: Vec<CommandMonitor>,    
+    /// Loadaverage monitor.
+    loadaverage_monitor: Option<LoadAvgMonitor>,
     /// The monitoring configuration.
     monitoring_config: MonitoringConfig,
     /// The status of the monitors.
@@ -49,6 +51,7 @@ impl SchedulingService {
             tcp_monitors: Vec::new(),
             http_monitors: Vec::new(),
             command_monitors: Vec::new(),
+            loadaverage_monitor: None,
             monitoring_config: monitoring_config.clone(),
             status: status.clone(),
             database_service: database_service.clone(),
@@ -194,9 +197,68 @@ impl SchedulingService {
                 &self.status.clone(),
                 monitor.store.clone(),
             )?,
+            crate::common::MonitorType::LoadAvg {  
+                threshold_1min,
+                threshold_5min,
+                threshold_10min,
+                store_values,
+            } => {               
+                self.get_loadavg_monitor_job(
+                    monitor.schedule.as_str(),
+                    monitor.name.as_str(),
+                    threshold_1min,
+                    threshold_5min,
+                    threshold_10min,
+                    store_values,                     
+                    &self.status.clone(), 
+                    monitor.store.clone())    
+            }?,
         };
         self.add_job(scheduler, job).await?;
         Ok(())
+    }
+
+    /**
+     * Get a loadavg monitor job.
+     * 
+     * `schedule`: The schedule.
+     * `name`: The name of the monitor.
+     * `threshold_1min`: The threshold for the 1 minute load average.
+     * `threshold_5min`: The threshold for the 5 minute load average.
+     * `threshold_10min`: The threshold for the 10 minute load average.
+     * `store_values`: Store the values in the database.
+     * `status`: The status.
+     * `database_store_level`: The database store level.
+     * 
+     * `result`: The result of getting the loadavg monitor job.
+     * 
+     * throws: `ApplicationError`: If the job fails to be created.
+     * 
+     */
+    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::similar_names)]    
+    fn get_loadavg_monitor_job(
+        &mut self,
+        schedule: &str,
+        name: &str,
+        threshold_1min: Option<f32>,
+        threshold_5min: Option<f32>,
+        threshold_10min: Option<f32>,
+        store_values: bool,
+        status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
+        database_store_level: DatabaseStoreLevel,
+    ) -> Result<Job, ApplicationError> {
+        info!("Creating Tcp monitor: {}", &name);
+        let loadavg_monitor = LoadAvgMonitor::new(name, threshold_1min, threshold_5min, threshold_10min, status, &self.database_service.clone(), database_store_level, store_values);
+        self.loadaverage_monitor = Some(loadavg_monitor.clone());
+        match Job::new_async(schedule, move |_uuid, _locked| {
+            SchedulingService::check(loadavg_monitor.clone())
+        }) {
+            Ok(job) => Ok(job),
+            Err(err) => Err(ApplicationError::new(
+                format!("Could not create job: {err}").as_str(),
+            )),
+        }
     }
 
     /**
@@ -265,7 +327,7 @@ impl SchedulingService {
             CommandMonitor::new(name, command, args.clone(), expected.clone(), status, &self.database_service.clone(), database_store_level);
         self.command_monitors.push(command_monitor.clone());
         match Job::new_async(schedule, move |_uuid, _locked| {
-            SchedulingService::check_command_monitor(&command_monitor)
+            SchedulingService::check(command_monitor.clone())
         }) {
             Ok(job) => Ok(job),
             Err(err) => Err(ApplicationError::new(
@@ -297,7 +359,7 @@ impl SchedulingService {
         let tcp_monitor = TcpMonitor::new(host, port, name, status, &self.database_service.clone(), database_store_level);
         self.tcp_monitors.push(tcp_monitor.clone());
         match Job::new_async(schedule, move |_uuid, _locked| {
-            SchedulingService::check_tcp_monitor(&tcp_monitor)
+            SchedulingService::check(tcp_monitor.clone())
         }) {
             Ok(job) => Ok(job),
             Err(err) => Err(ApplicationError::new(
@@ -357,7 +419,7 @@ impl SchedulingService {
         )?;
         self.http_monitors.push(http_monitor.clone());
         match Job::new_async(schedule, move |_uuid, _locked| {
-            SchedulingService::check_http_monitor(&http_monitor)
+            SchedulingService::check(http_monitor.clone())
         }) {
             Ok(job) => Ok(job),
             Err(err) => Err(ApplicationError::new(
@@ -418,59 +480,18 @@ impl SchedulingService {
     }
 
     /**
-     * Check the HTTP monitor.
+     * Check the monitor.
      *
-     * `http_monitor`: The HTTP monitor.
-     *
-     * result: Future of the check.
-     */
-    fn check_http_monitor(
-        http_monitor: &HttpMonitor,
-    ) -> std::pin::Pin<Box<impl Future<Output = ()>>> {
-        Box::pin({
-            let mut moved_http_monitor = http_monitor.clone();
-            async move {
-                let _ = moved_http_monitor
-                    .check()
-                    .await
-                    .map_err(|err| error!("Error: {}", err.message));
-            }
-        })
-    }
-
-    /**
-     * Check the TCP monitor.
-     *
-     * `tcp_monitor`: The TCP monitor.
+     * `monitor`: The monitor.
      *
      * result: Future of the check.
      */
-    fn check_tcp_monitor(tcp_monitor: &TcpMonitor) -> std::pin::Pin<Box<impl Future<Output = ()>>> {
+    fn check(mut monitor: impl Monitor) -> std::pin::Pin<Box<impl Future<Output = ()>>> {
         Box::pin({
-            let mut moved_tcp_monitor = tcp_monitor.clone();
             async move {
-                let () = moved_tcp_monitor.check();
-            }
-        })
-    }
-
-    /**
-     * Check the command monitor.
-     *
-     * `command_monitor`: The command monitor.
-     *
-     * result: Future of the check.
-     */
-    fn check_command_monitor(
-        command_monitor: &CommandMonitor,
-    ) -> std::pin::Pin<Box<impl Future<Output = ()>>> {
-        Box::pin({
-            let mut moved_command_monitor = command_monitor.clone();
-            async move {
-                let _ = moved_command_monitor
-                    .check()
-                    .await
-                    .map_err(|err| error!("Error: {}", err.message));
+                let () = monitor.check().await.unwrap_or_else(|err| {
+                    error!("Error checking monitor: {:?}", err);
+                });
             }
         })
     }
