@@ -299,7 +299,7 @@ components:
         name:
           type: string
           example: 'ksmserver'
-          description: 'Process name'
+          description: 'Command run by this process. Strings longer than 16 characters (including the terminating null byte) are silently truncated.'
         state:
           type: string
           example: 'S'
@@ -307,17 +307,19 @@ components:
         umask:
           type: string
           example: '0002'
-          description: 'Process umask'
+          description: 'Process umask, expressed in octal with a leading zero.'
         processState:
           type: string
           example: 'InterruptableSleep'
           description: 'Process state. Can be either\n
             Running - The process is running.
-            UninterruptibleSleep - The process is in an uninterruptible sleep.
             InterruptableSleep - The process is in an interruptable sleep.
+            DiskSleep - The process is in a disk sleep.
+            TracingStop - The process is in a tracing stop.
             Stopped - The process is stopped.
             Zombie - The process is a zombie.
             Idle - The process is idle.
+            Dead - The process is dead.
             Unknown - The process state is unknown.'
         numThreads:
           type: number
