@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::{Arc, Mutex}};
 
 use log::{debug, error};
 
-use crate::{common::{configuration::DatabaseStoreLevel, ApplicationError, MonitorStatus, Status}, services::MariaDbService};
+use crate::{common::{configuration::DatabaseStoreLevel, MonitorStatus, Status}, services::MariaDbService};
 
 pub trait Monitor {
     
@@ -33,16 +33,6 @@ pub trait Monitor {
      * Returns: The database store level.
      */
     fn get_database_store_level(&self) -> DatabaseStoreLevel;
-    
-    /**
-     * Check the status of the monitor.
-     * 
-     * Returns: Ok if the monitor is running successfully.
-     * 
-     * Errors:
-     * - If there is an error checking the monitor.
-     */
-    async fn check(&mut self) -> Result<(), ApplicationError>;
 
     /**
      * Set the status of the monitor.

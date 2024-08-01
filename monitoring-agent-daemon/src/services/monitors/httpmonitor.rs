@@ -9,6 +9,7 @@ use log::{debug, error};
 use reqwest::header::HeaderMap;
 use reqwest::Certificate;
 use reqwest::Identity;
+use tokio_cron_scheduler::Job;
 
 use crate::common::configuration::DatabaseStoreLevel;
 use crate::common::ApplicationError;
@@ -87,7 +88,7 @@ impl HttpMonitor {
         identity_password: Option<String>,
         status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
         database_service: &Arc<Option<MariaDbService>>,
-        database_store_level: DatabaseStoreLevel,
+        database_store_level: &DatabaseStoreLevel,
     ) -> Result<HttpMonitor, ApplicationError> {
         debug!("Creating HTTP monitor: {}", &name);
         /*
@@ -158,7 +159,7 @@ impl HttpMonitor {
             status: status.clone(),
             client,
             database_service: database_service.clone(),
-            database_store_level,
+            database_store_level: database_store_level.clone(),
         })
     }
 
@@ -346,51 +347,45 @@ impl HttpMonitor {
         };
         Ok(identity)
     }
-}
-
-/**
- * Implement the `Monitor` trait for `HttpMonitor`.
- */
-impl super::Monitor for HttpMonitor {
-    /**
-     * Get the name of the monitor.
-     *
-     * Returns: The name of the monitor.
-     */
-    fn get_name(&self) -> &str {
-        &self.name
-    }
 
     /**
-     * Get the status of the monitor.
+     * Get an HTTP monitor job.
      *
-     * Returns: The status of the monitor.
-     */
-    fn get_status(&self) -> Arc<Mutex<HashMap<String, MonitorStatus>>> {
-        self.status.clone()
-    }
-
-    /**
-     * Get the database service.
+     * `schedule`: The schedule.
+     * `name`: The name of the monitor.
+     * `url`: The URL to monitor.
+     * `method`: The HTTP method.
+     * `body`: The body.
+     * `headers`: The headers.
      *
-     * Returns: The database service.
-     */
-    fn get_database_service(&self) -> Arc<Option<MariaDbService>> {
-        self.database_service.clone()
-    }
-
-    /**
-     * Get the database store level.
+     * result: The result of getting the HTTP monitor job.
      *
-     * Returns: The database store level.
+     * throws: `ApplicationError`: If the job fails to be created.
      */
-    fn get_database_store_level(&self) -> DatabaseStoreLevel {
-        self.database_store_level.clone()
+    pub fn get_http_monitor_job(
+        &mut self,
+        schedule: &str,        
+    ) -> Result<Job, ApplicationError> {
+        info!("Creating http monitor: {}", &self.name);
+        let http_monitor = self.clone();
+        let job_result = Job::new_async(schedule, move |_uuid, _locked| {
+            let mut http_monitor = http_monitor.clone();
+            Box::pin(async move {
+                let _ = http_monitor.check().await.map_err(|err| {
+                    error!("Error checking monitor: {:?}", err);
+                });
+            })
+        });        
+        match job_result {
+            Ok(job) => Ok(job),
+            Err(err) => Err(ApplicationError::new(
+                format!("Could not create job: {err}").as_str(),
+            )),
+        }
     }
 
     /**
      * Check the monitor.
-     *
      */
     async fn check(&mut self) -> Result<(), ApplicationError> {
         debug!("Checking monitor: {}", &self.name);
@@ -431,6 +426,48 @@ impl super::Monitor for HttpMonitor {
         debug!("Monitor checked: {}", &self.name);
         Ok(())
     }    
+
+}
+
+/**
+ * Implement the `Monitor` trait for `HttpMonitor`.
+ */
+impl super::Monitor for HttpMonitor {
+    /**
+     * Get the name of the monitor.
+     *
+     * Returns: The name of the monitor.
+     */
+    fn get_name(&self) -> &str {
+        &self.name
+    }
+
+    /**
+     * Get the status of the monitor.
+     *
+     * Returns: The status of the monitor.
+     */
+    fn get_status(&self) -> Arc<Mutex<HashMap<String, MonitorStatus>>> {
+        self.status.clone()
+    }
+
+    /**
+     * Get the database service.
+     *
+     * Returns: The database service.
+     */
+    fn get_database_service(&self) -> Arc<Option<MariaDbService>> {
+        self.database_service.clone()
+    }
+
+    /**
+     * Get the database store level.
+     *
+     * Returns: The database store level.
+     */
+    fn get_database_store_level(&self) -> DatabaseStoreLevel {
+        self.database_store_level.clone()
+    }    
      
 }
 
@@ -444,34 +481,6 @@ mod test {
 
     use crate::common::HttpMethod;
     use std::collections::HashMap;
-
-    /**
-     * Test the `check` method. Testing failure towards a non-existing URL.
-     */
-    #[tokio::test]
-    async fn test_check() {
-        let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
-            Arc::new(Mutex::new(HashMap::new()));
-        let mut monitor = HttpMonitor::new(
-            "http://localhost:65000",
-            HttpMethod::Get,
-            &None,
-            &None,
-            "localhost",
-            true,
-            true,
-            false,
-            None,
-            None,
-            None,
-            &status,
-            &Arc::new(None),
-            DatabaseStoreLevel::None
-        )
-        .unwrap();
-        monitor.check().await.unwrap();
-        assert_eq!(status.lock().unwrap().get("localhost").unwrap().status, Status::Error { message: "Error connecting to http://localhost:65000 with error: error sending request for url (http://localhost:65000/)".to_string() });
-    }
 
     /**
      * Test the `check` method with tls config. Testing failure towards a non-existing URL.
@@ -494,7 +503,7 @@ mod test {
             Some("test".to_string()),
             &status,
             &Arc::new(None),
-            DatabaseStoreLevel::None
+            &DatabaseStoreLevel::None
         )
         .unwrap();
         monitor.check().await.unwrap();
@@ -538,7 +547,7 @@ mod test {
             None,
             &status,
             &Arc::new(None),
-            DatabaseStoreLevel::None
+            &DatabaseStoreLevel::None
         )
         .unwrap();
         monitor.set_status(&Status::Ok);

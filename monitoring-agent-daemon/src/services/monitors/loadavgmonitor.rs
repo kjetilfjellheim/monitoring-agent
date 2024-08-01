@@ -1,9 +1,10 @@
 use std::{collections::HashMap, sync::{Arc, Mutex}};
 
-use log::error;
+use log::{error, info};
 use monitoring_agent_lib::proc::ProcsLoadavg;
+use tokio_cron_scheduler::Job;
 
-use crate::{common::{configuration::DatabaseStoreLevel, ApplicationError, MonitorStatus, Status}, services::MariaDbService};
+use crate::{common::{configuration::DatabaseStoreLevel, ApplicationError, MonitorStatus, Status}, MariaDbService};
 
 use super::Monitor;
 
@@ -53,7 +54,7 @@ impl LoadAvgMonitor {
         loadavg10min_max: Option<f32>,
         status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
         database_service: &Arc<Option<MariaDbService>>,
-        database_store_level: DatabaseStoreLevel,
+        database_store_level: &DatabaseStoreLevel,
         store_current_loadavg: bool,
     ) -> LoadAvgMonitor {
 
@@ -74,7 +75,7 @@ impl LoadAvgMonitor {
             loadavg10min_max,
             status: status.clone(),
             database_service: database_service.clone(),
-            database_store_level,
+            database_store_level: database_store_level.clone(),
             store_current_loadavg,
         }
     }
@@ -156,6 +157,59 @@ impl LoadAvgMonitor {
             None => {}
         }        
     }
+
+    /**
+     * Get a loadavg monitor job.
+     * 
+     * `schedule`: The schedule.
+     * `name`: The name of the monitor.
+     * `threshold_1min`: The threshold for the 1 minute load average.
+     * `threshold_5min`: The threshold for the 5 minute load average.
+     * `threshold_10min`: The threshold for the 10 minute load average.
+     * `store_values`: Store the values in the database.
+     * `status`: The status.
+     * `database_store_level`: The database store level.
+     * 
+     * `result`: The result of getting the loadavg monitor job.
+     * 
+     * throws: `ApplicationError`: If the job fails to be created.
+     * 
+     */
+    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::similar_names)]    
+    pub fn get_loadavg_monitor_job(
+        &mut self,
+        schedule: &str,
+    ) -> Result<Job, ApplicationError> {
+        info!("Creating Tcp monitor: {}", &self.name);
+        let mut loadavg_monitor = self.clone();       
+        let job_result = Job::new(schedule, move |_uuid, _locked| {                
+            loadavg_monitor.check();
+        });        
+        match job_result {
+            Ok(job) => Ok(job),
+            Err(err) => Err(ApplicationError::new(
+                format!("Could not create job: {err}").as_str(),
+            )), 
+        }
+    }    
+
+    /**
+     * Check the monitor.
+     */
+    fn check(&mut self) {
+        let loadavg = ProcsLoadavg::get_loadavg();
+        match loadavg {
+            Ok(loadavg) => {
+                self.check_store_current_loadavg(&loadavg);
+                self.check_loadavg(&loadavg);
+            }
+            Err(err) => {
+                error!("Error getting load average: {:?}", err);
+            }
+        }                    
+    }    
+
 }
 
 /**
@@ -197,23 +251,6 @@ impl super::Monitor for LoadAvgMonitor {
     fn get_database_store_level(&self) -> DatabaseStoreLevel {
         self.database_store_level.clone()
     }
-
-    /**
-     * Check the monitor.
-     */
-    async fn check(&mut self) -> Result<(), ApplicationError> {
-        let loadavg = ProcsLoadavg::get_loadavg();
-        match loadavg {
-            Ok(loadavg) => {
-                self.check_store_current_loadavg(&loadavg);
-                self.check_loadavg(&loadavg);
-            }
-            Err(err) => {
-                error!("Error getting load average: {:?}", err);
-            }
-        }                    
-        Ok(())
-    }    
      
 }
 
@@ -270,7 +307,7 @@ mod test {
             Some(3.0),
             &Arc::new(Mutex::new(HashMap::new())),
             &Arc::new(None),
-            super::DatabaseStoreLevel::None,
+            &super::DatabaseStoreLevel::None,
             false,
         );
 
@@ -305,7 +342,7 @@ mod test {
             Some(3.0),
             &Arc::new(Mutex::new(HashMap::new())),
             &Arc::new(None),
-            super::DatabaseStoreLevel::None,
+            &super::DatabaseStoreLevel::None,
             false,
         );
 
@@ -340,7 +377,7 @@ mod test {
             Some(3.0),
             &Arc::new(Mutex::new(HashMap::new())),
             &Arc::new(None),
-            super::DatabaseStoreLevel::None,
+            &super::DatabaseStoreLevel::None,
             false,
         );
 
@@ -375,7 +412,7 @@ mod test {
             Some(3.0),
             &Arc::new(Mutex::new(HashMap::new())),
             &Arc::new(None),
-            super::DatabaseStoreLevel::None,
+            &super::DatabaseStoreLevel::None,
             false,
         );
 
