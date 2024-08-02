@@ -5,7 +5,7 @@ use tokio_cron_scheduler::{Job, JobScheduler};
 
 use crate::common::{configuration::MonitoringConfig, ApplicationError, MonitorStatus};
 use crate::services::MariaDbService;
-use super::monitors::{CommandMonitor, HttpMonitor, LoadAvgMonitor, TcpMonitor};
+use super::monitors::{CommandMonitor, HttpMonitor, LoadAvgMonitor, TcpMonitor, MeminfoMonitor};
 
 /**
  * Scheduling Service.
@@ -185,6 +185,12 @@ impl SchedulingService {
             } => {               
                 let mut loadavg_monitor = LoadAvgMonitor::new(&monitor.name, threshold_1min, threshold_5min, threshold_10min, &self.status, &self.database_service.clone(), &monitor.store, store_values);
                 let job = loadavg_monitor.get_loadavg_monitor_job(monitor.schedule.as_str())?;
+                self.add_job(scheduler, job).await
+            },
+            crate::common::MonitorType::Mem {max_percentage_mem, max_percentage_swap, store_values
+            } => {
+                let mut meminfo_monitor = MeminfoMonitor::new(&monitor.name, max_percentage_mem, max_percentage_swap, &self.status, &self.database_service.clone(), &monitor.store, store_values);
+                let job = meminfo_monitor.get_meminfo_monitor_job(monitor.schedule.as_str())?;
                 self.add_job(scheduler, job).await
             },
         }?;   
