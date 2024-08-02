@@ -4,9 +4,9 @@ use std::{
 };
 
 use log::{debug, error, info};
+use tokio_cron_scheduler::Job;
 
-use crate::{common::{ApplicationError, MonitorStatus, Status}, services::MariaDbService};
-use crate::services::monitors::Monitor;
+use crate::{common::{configuration::DatabaseStoreLevel, ApplicationError, MonitorStatus, Status}, services::{monitors::Monitor, MariaDbService}};
 
 /**
  * Command Monitor.
@@ -27,7 +27,9 @@ pub struct CommandMonitor {
     /// The current status of the monitor.
     pub status: Arc<Mutex<HashMap<String, MonitorStatus>>>,
     /// The database service.
-    database_service: Arc<Option<MariaDbService>>,    
+    database_service: Arc<Option<MariaDbService>>,   
+    /// The database store level.
+    database_store_level: DatabaseStoreLevel, 
 }
 
 impl CommandMonitor {
@@ -39,6 +41,8 @@ impl CommandMonitor {
      * args: The arguments to the command.
      * expected: The expected output of the command.
      * status: The status of the monitor.
+     * `database_service`: The database service.
+     * `database_store_level`: The database store level.
      *
      * Returns: A new command monitor.
      * 
@@ -50,11 +54,12 @@ impl CommandMonitor {
         expected: Option<String>,
         status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
         database_service: &Arc<Option<MariaDbService>>,
+        database_store_level: &DatabaseStoreLevel
     ) -> CommandMonitor {
         let status_lock = status.lock();
         match status_lock {
             Ok(mut lock) => {
-                lock.insert(name.to_string(), MonitorStatus::new(Status::Unknown));
+                lock.insert(name.to_string(), MonitorStatus::new(name.to_string(),Status::Unknown));
             }
             Err(err) => {
                 error!("Error creating command monitor: {:?}", err);
@@ -68,8 +73,61 @@ impl CommandMonitor {
             expected,
             status: status.clone(),
             database_service: database_service.clone(),
+            database_store_level: database_store_level.clone(),
         }
     } 
+
+    /**
+     * Check if the command ran successfully.
+     *
+     * `output`: The output of the command.
+     * `output_resp`: The response of the command.
+     *
+     * Returns true if the command ran successfully, false otherwise.
+     */
+    fn is_command_success(&mut self, output: &std::process::Output, output_resp: &str) -> bool {
+            output.status.success()
+                && (self.expected.is_none()
+                    || (self.expected.is_some()
+                        && self
+                            .expected
+                            .as_ref()
+                            .unwrap_or(&String::new())
+                            .eq(output_resp)))
+    }
+
+    /**
+     * Get a command monitor job.
+     * 
+     * `schedule`: The schedule.
+     * `name`: The name of the monitor.
+     * `command`: The command to monitor.
+     * `args`: The arguments.
+     * `expected`: The expected result.
+     * `status`: The status.
+     * `database_store_level`: The database store level.
+     * 
+     * `result`: The result of getting the command monitor job.
+     * 
+     * throws: `ApplicationError`: If the job fails to be created.
+     */
+    #[allow(clippy::too_many_arguments)]
+    pub fn get_command_monitor_job(
+        &mut self,
+        schedule: &str,
+    ) -> Result<Job, ApplicationError> {
+        info!("Creating Command monitor: {}", &self.name);
+        let command_monitor: CommandMonitor = self.clone();       
+        let job_result = Job::new(schedule, move |_uuid, _locked| {
+            CommandMonitor::run_scheduled(command_monitor.clone());
+        });        
+        match job_result {
+            Ok(job) => Ok(job),
+            Err(err) => Err(ApplicationError::new(
+                format!("Could not create job: {err}").as_str(),
+            ))
+        }
+    }
 
     /**
      * Check the monitor.
@@ -79,14 +137,14 @@ impl CommandMonitor {
      * Returns: Ok if the monitor ran successfully, an error otherwise.
      *
      */
-    pub async fn check(&mut self) -> Result<(), ApplicationError> {
+    fn check(&mut self) -> Result<(), ApplicationError> {
         debug!("Checking monitor: {}", &self.name);
-        let mut command = tokio::process::Command::new(&self.command);
+        let mut command = std::process::Command::new(&self.command);
         let command = match &self.args {
             Some(args) => command.args(args),
             None => &mut command,
         };
-        let command_result = command.output().await;
+        let command_result = command.output();
         match command_result {
             Ok(output) => {
                 let output_resp = String::from_utf8_lossy(&output.stdout);
@@ -112,27 +170,23 @@ impl CommandMonitor {
                 )))
             }
         }        
+    }    
+    
+    /**
+     * Run schuled command monitor.
+     * 
+     * `command_monitor`: The command monitor to run.
+     */
+    fn run_scheduled(mut command_monitor: CommandMonitor) {
+        let _ = command_monitor.check().map_err(|err| {
+            error!("Error checking monitor: {err:?}");
+            err
+        });
     }
 
-    /**
-     * Check if the command ran successfully.
-     *
-     * `output`: The output of the command.
-     * `output_resp`: The response of the command.
-     *
-     * Returns true if the command ran successfully, false otherwise.
-     */
-    fn is_command_success(&mut self, output: &std::process::Output, output_resp: &str) -> bool {
-            output.status.success()
-                && (self.expected.is_none()
-                    || (self.expected.is_some()
-                        && self
-                            .expected
-                            .as_ref()
-                            .unwrap_or(&String::new())
-                            .eq(output_resp)))
-    }
 }
+
+
 
 
 /**
@@ -166,6 +220,15 @@ impl super::Monitor for CommandMonitor {
         self.database_service.clone()
     }
  
+    /**
+     * Get the database store level.
+     *
+     * Returns: The database store level.
+     */
+    fn get_database_store_level(&self) -> DatabaseStoreLevel {
+        self.database_store_level.clone()
+    }   
+
 }
 
 #[cfg(test)]
@@ -181,8 +244,8 @@ mod test {
     async fn test_check_ls() {
         let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
             Arc::new(Mutex::new(HashMap::new()));
-        let mut monitor = CommandMonitor::new("test", "ls", None, None, &status, &Arc::new(None));
-        monitor.check().await.unwrap();
+        let mut monitor = CommandMonitor::new("test", "ls", None, None, &status, &Arc::new(None), &DatabaseStoreLevel::None);
+        monitor.check().unwrap();
         assert_eq!(
             status.lock().unwrap().get("test").unwrap().status,
             Status::Ok
@@ -202,9 +265,10 @@ mod test {
             Some(vec!["status".to_string(), "dbus.service".to_string()]),
             None,
             &status,
-            &Arc::new(None),
+            &Arc::new(None), 
+            &DatabaseStoreLevel::None
         );
-        monitor.check().await.unwrap();
+        monitor.check().unwrap();
         assert_eq!(
             status.lock().unwrap().get("test").unwrap().status,
             Status::Ok
@@ -218,8 +282,8 @@ mod test {
     async fn test_check_non_existing_command() {
         let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
             Arc::new(Mutex::new(HashMap::new()));
-        let mut monitor = CommandMonitor::new("test", "grumpy", None, None, &status, &Arc::new(None));
-        let _ = monitor.check().await;
+        let mut monitor = CommandMonitor::new("test", "grumpy", None, None, &status, &Arc::new(None), &DatabaseStoreLevel::None);
+        let _ = monitor.check();
         assert_eq!(status.lock().unwrap().get("test").unwrap().status, Status::Error { message: "Error running command: Os { code: 2, kind: NotFound, message: \"No such file or directory\" }".to_string() });
     }
 
@@ -241,8 +305,9 @@ mod test {
             Some("ActiveState=active\n".to_string()),
             &status,
             &Arc::new(None),
+            &DatabaseStoreLevel::None
         );
-        let _ = monitor.check().await;
+        let _ = monitor.check();
         assert_eq!(
             status.lock().unwrap().get("test").unwrap().status,
             Status::Ok
@@ -253,7 +318,7 @@ mod test {
     fn test_is_command_success_exitstatus_0() {
         let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
             Arc::new(Mutex::new(HashMap::new()));
-        let mut monitor = CommandMonitor::new("test", "ls", None, None, &status, &Arc::new(None),);
+        let mut monitor = CommandMonitor::new("test", "ls", None, None, &status, &Arc::new(None), &DatabaseStoreLevel::None);
         let output = std::process::Output {
             status: std::process::ExitStatus::from_raw(0),
             stdout: Vec::new(),
@@ -266,7 +331,7 @@ mod test {
     fn test_is_command_success_exitstatus_1() {
         let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
             Arc::new(Mutex::new(HashMap::new()));
-        let mut monitor = CommandMonitor::new("test", "ls", None, None, &status, &Arc::new(None),);
+        let mut monitor = CommandMonitor::new("test", "ls", None, None, &status, &Arc::new(None), &DatabaseStoreLevel::None);
         let output = std::process::Output {
             status: std::process::ExitStatus::from_raw(1),
             stdout: Vec::new(),

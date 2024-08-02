@@ -1,13 +1,15 @@
-
 use log::info;
 use log::{debug, error};
+use tokio_cron_scheduler::Job;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use crate::common::{MonitorStatus, Status};
+use crate::common::configuration::DatabaseStoreLevel;
+use crate::common::{ApplicationError, MonitorStatus, Status};
 use crate::services::MariaDbService;
-use crate::services::monitors::Monitor;
+
+use super::Monitor;
 
 
 /**
@@ -33,6 +35,8 @@ pub struct TcpMonitor {
     pub status: Arc<Mutex<HashMap<String, MonitorStatus>>>,
     /// The database service.
     database_service: Arc<Option<MariaDbService>>,
+    /// The database store level.
+    database_store_level: DatabaseStoreLevel,
 }
 
 impl TcpMonitor {
@@ -51,12 +55,13 @@ impl TcpMonitor {
         name: &str,
         status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
         database_service: &Arc<Option<MariaDbService>>,
+        database_store_level: &DatabaseStoreLevel,
     ) -> TcpMonitor {
         debug!("Creating TCP monitor: {}", &name);
         let status_lock = status.lock();
         match status_lock {
             Ok(mut lock) => {
-                lock.insert(name.to_string(), MonitorStatus::new(Status::Unknown));
+                lock.insert(name.to_string(), MonitorStatus::new(name.to_string(), Status::Unknown));
             }
             Err(err) => {
                 error!("Error creating command monitor: {:?}", err);
@@ -69,6 +74,7 @@ impl TcpMonitor {
             port,
             status: status.clone(),
             database_service: database_service.clone(),
+            database_store_level: database_store_level.clone(),
         }
     }
 
@@ -86,11 +92,38 @@ impl TcpMonitor {
             }
         }
     }
-    
+
+        /**
+     * Get a TCP monitor job.
+     *
+     * `schedule`: The schedule.
+     * `name`: The name of the monitor.
+     * `host`: The host to monitor.
+     * `port`: The port to monitor.
+     *
+     * `result`: The result of getting the TCP monitor job.
+     */
+    pub fn get_tcp_monitor_job(
+        &mut self,
+        schedule: &str,
+    ) -> Result<Job, ApplicationError> {
+        info!("Creating Tcp monitor: {}", &self.name);
+        let tcp_monitor = self.clone();
+        let job_result = Job::new(schedule, move |_uuid, _locked| {
+            TcpMonitor::run_scheduled(tcp_monitor.clone());
+        });        
+        match job_result {
+            Ok(job) => Ok(job),
+            Err(err) => Err(ApplicationError::new(
+                format!("Could not create job: {err}").as_str(),
+            )),
+        }
+    }
+
     /**
      * Check the monitor.
      */
-    pub fn check(&mut self) {
+    fn check(&mut self) {
         match std::net::TcpStream::connect(format!("{}:{}", &self.host, &self.port)) {
             Ok(tcp_stream) => {
                 TcpMonitor::close_connection(&tcp_stream);
@@ -106,9 +139,20 @@ impl TcpMonitor {
                 });
             }
         }
-        debug!("Monitor checked: {}", &self.name);
+    }    
+
+    /**
+     * Run the monitor.
+     * 
+     * `tcp_monitor`: The TCP monitor.
+     */
+    fn run_scheduled(mut tcp_monitor: TcpMonitor) {
+        tcp_monitor.check();
     }
+
 }
+
+
 
 /**
  * Implement the `Monitor` trait for `TcpMonitor`.
@@ -140,6 +184,15 @@ impl super::Monitor for TcpMonitor {
     fn get_database_service(&self) -> Arc<Option<MariaDbService>> {
         self.database_service.clone()
     }
+
+    /**
+     * Get the database store level.
+     *
+     * Returns: The database store level.
+     */
+    fn get_database_store_level(&self) -> DatabaseStoreLevel {
+        self.database_store_level.clone()
+    }    
  
 }
 
@@ -148,6 +201,8 @@ mod test {
 
     use super::*;
 
+    use crate::services::monitors::Monitor;
+
     /**
      * Test the check method. Testing toward Netbios port 139.
      */
@@ -155,7 +210,7 @@ mod test {
     #[tokio::test]
     async fn test_check_port_139() {
         let status = Arc::new(Mutex::new(HashMap::new()));
-        let mut monitor = TcpMonitor::new("localhost", 139, "localhost", &status, &Arc::new(None));
+        let mut monitor = TcpMonitor::new("localhost", 139, "localhost", &status, &Arc::new(None), &DatabaseStoreLevel::None);
         monitor.check();
         assert_eq!(
             status.lock().unwrap().get("localhost").unwrap().status,
@@ -170,7 +225,7 @@ mod test {
     async fn test_check_port_65000() {
         let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
             Arc::new(Mutex::new(HashMap::new()));
-        let mut monitor = TcpMonitor::new("localhost", 65000, "localhost", &status, &Arc::new(None));
+        let mut monitor = TcpMonitor::new("localhost", 65000, "localhost", &status, &Arc::new(None), &DatabaseStoreLevel::None);
         monitor.check();
         assert_eq!(status.lock().unwrap().get("localhost").unwrap().status, Status::Error { message: "Error connecting to localhost:65000 with error: Connection refused (os error 111)".to_string() });
     }
@@ -182,7 +237,7 @@ mod test {
     fn test_set_status() {
         let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
             Arc::new(Mutex::new(HashMap::new()));
-        let mut monitor = TcpMonitor::new("localhost", 65000, "localhost", &status, &Arc::new(None));
+        let mut monitor = TcpMonitor::new("localhost", 65000, "localhost", &status, &Arc::new(None), &DatabaseStoreLevel::None);
         monitor.set_status(&Status::Ok);
         assert_eq!(
             status.lock().unwrap().get("localhost").unwrap().status,

@@ -20,4 +20,8 @@ impl ApplicationError {
             message: message.to_string(),
         }
     }
+
+    pub fn get_message(&self) -> String {
+        self.message.clone()
+    }
 }
