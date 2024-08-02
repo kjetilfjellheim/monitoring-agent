@@ -1,11 +1,11 @@
-use std::{collections::HashMap, future::Future, sync::{Arc, Mutex}, time::{Duration, Instant}};
+use std::{collections::HashMap, sync::{Arc, Mutex}, time::Duration};
 
-use log::{debug, error, info};
+use log::info;
 use tokio_cron_scheduler::{Job, JobScheduler};
 
-use crate::common::{configuration::MonitoringConfig, ApplicationError, HttpMethod, MonitorStatus};
+use crate::common::{configuration::MonitoringConfig, ApplicationError, MonitorStatus};
 use crate::services::MariaDbService;
-use super::monitors::{CommandMonitor, HttpMonitor, TcpMonitor};
+use super::monitors::{CommandMonitor, HttpMonitor, LoadAvgMonitor, TcpMonitor, MeminfoMonitor};
 
 /**
  * Scheduling Service.
@@ -13,21 +13,12 @@ use super::monitors::{CommandMonitor, HttpMonitor, TcpMonitor};
  * This struct represents the scheduling service.
  * 
  * `scheduler`: The job scheduler.
- * `tcp_monitors`: The TCP monitors.
- * `http_monitors`: The HTTP monitors.
- * `command_monitors`: The command monitors.
  * `monitoring_config`: The monitoring configuration.
  * 
  */
 pub struct SchedulingService {
     /// The job scheduler. Handles starting the jobs.
     scheduler: Option<JobScheduler>,
-    /// The TCP monitors.
-    tcp_monitors: Vec<TcpMonitor>,
-    /// The HTTP monitors.
-    http_monitors: Vec<HttpMonitor>,
-    /// The command monitors.
-    command_monitors: Vec<CommandMonitor>,    
     /// The monitoring configuration.
     monitoring_config: MonitoringConfig,
     /// The status of the monitors.
@@ -46,9 +37,6 @@ impl SchedulingService {
     pub fn new(monitoring_config: &MonitoringConfig, status: &Arc<Mutex<HashMap<String, MonitorStatus>>>, database_service: &Arc<Option<MariaDbService>>) -> SchedulingService {
         SchedulingService {
             scheduler: None,
-            tcp_monitors: Vec::new(),
-            http_monitors: Vec::new(),
-            command_monitors: Vec::new(),
             monitoring_config: monitoring_config.clone(),
             status: status.clone(),
             database_service: database_service.clone(),
@@ -104,8 +92,7 @@ impl SchedulingService {
          */
         let monitors = self.monitoring_config.clone().monitors;
         for monitor in monitors {
-            self.create_and_add_job(&monitor, &scheduler)
-                .await?;
+            self.create_and_add_job(&monitor, &scheduler).await?;
         }                 
         /*
          * Start the scheduler.
@@ -123,9 +110,8 @@ impl SchedulingService {
             }
         }
         loop {
-            self.log_monitors();
-
-            tokio::time::sleep(Duration::from_secs(20)).await;
+            info!("Scheduler is awake");
+            tokio::time::sleep(Duration::from_secs(300)).await;
         }
     }
 
@@ -145,14 +131,12 @@ impl SchedulingService {
         scheduler: &JobScheduler,        
     ) -> Result<(), ApplicationError> {
         let monitor_type = monitor.details.clone();
-        let job = match monitor_type {
-            crate::common::MonitorType::Tcp { host, port } => self.get_tcp_monitor_job(
-                monitor.schedule.as_str(),
-                monitor.name.as_str(),
-                host.as_str(),
-                port,
-                &self.status.clone(),
-            )?,
+        match monitor_type {
+            crate::common::MonitorType::Tcp { host, port } => {
+                let mut tcp_monitor = TcpMonitor::new(host.as_str(), port, &monitor.name, &self.status.clone(), &self.database_service.clone(), &monitor.store);
+                let job = tcp_monitor.get_tcp_monitor_job(monitor.schedule.as_str())?;
+                self.add_job(scheduler, job).await
+            },
             crate::common::MonitorType::Http {
                 url,
                 method,
@@ -164,52 +148,53 @@ impl SchedulingService {
                 root_certificate,
                 identity,
                 identity_password,
-            } => self.get_http_monitor_job(
-                monitor.schedule.as_str(),
-                monitor.name.as_str(),
-                url.as_str(),
-                method,
-                &body,
-                &headers,
-                use_builtin_root_certs,
-                accept_invalid_certs,
-                tls_info,
-                root_certificate,
-                identity,
-                identity_password,
-                &self.status.clone(),
-            )?,
+            } => { 
+                let mut http_monitor = HttpMonitor::new(
+                    url.as_str(),
+                    method,
+                    &body,
+                    &headers,
+                    &monitor.name,
+                    use_builtin_root_certs,
+                    accept_invalid_certs,
+                    tls_info,
+                    root_certificate,
+                    identity,
+                    identity_password,
+                    &self.status,
+                    &self.database_service.clone(),
+                    &monitor.store,
+                )?;
+                let job = http_monitor.get_http_monitor_job(monitor.schedule.as_str())?;
+                self.add_job(scheduler, job).await
+            },
             crate::common::MonitorType::Command {
                 command,
                 args,
                 expected,
-            } => self.get_command_monitor_job(
-                monitor.schedule.as_str(),
-                monitor.name.as_str(),
-                &command,
-                &args,
-                &expected,
-                &self.status.clone(),
-            )?,
-        };
-        self.add_job(scheduler, job).await?;
-        Ok(())
-    }
-
-    /**
-     * Log the monitors.
-     */
-    fn log_monitors(&self) {
-        debug!("Logging monitors {:?}", Instant::now());
-        for tcp_monitor in &*self.tcp_monitors {
-            SchedulingService::log_tcp_monitor(tcp_monitor);
-        }
-        for http_monitor in &*self.http_monitors {
-            SchedulingService::log_http_monitor(http_monitor);
-        }
-        for command_monitor in &*self.command_monitors {
-            SchedulingService::log_command_monitor(command_monitor);
-        }
+            } => {
+                let mut command_monitor = CommandMonitor::new(&monitor.name, command.as_str(), args, expected, &self.status, &self.database_service.clone(), &monitor.store);
+                let job = command_monitor.get_command_monitor_job(monitor.schedule.as_str())?;
+                self.add_job(scheduler, job).await
+            },
+            crate::common::MonitorType::LoadAvg {  
+                threshold_1min,
+                threshold_5min,
+                threshold_10min,
+                store_values,
+            } => {               
+                let mut loadavg_monitor = LoadAvgMonitor::new(&monitor.name, threshold_1min, threshold_5min, threshold_10min, &self.status, &self.database_service.clone(), &monitor.store, store_values);
+                let job = loadavg_monitor.get_loadavg_monitor_job(monitor.schedule.as_str())?;
+                self.add_job(scheduler, job).await
+            },
+            crate::common::MonitorType::Mem {max_percentage_mem, max_percentage_swap, store_values
+            } => {
+                let mut meminfo_monitor = MeminfoMonitor::new(&monitor.name, max_percentage_mem, max_percentage_swap, &self.status, &self.database_service.clone(), &monitor.store, store_values);
+                let job = meminfo_monitor.get_meminfo_monitor_job(monitor.schedule.as_str())?;
+                self.add_job(scheduler, job).await
+            },
+        }?;   
+        Ok(()) 
     }
 
     /**
@@ -230,241 +215,6 @@ impl SchedulingService {
             )),
         }
     }      
-
-    /**
-     * Get a command monitor job.
-     * 
-     * `schedule`: The schedule.
-     * `name`: The name of the monitor.
-     * `command`: The command to monitor.
-     * `args`: The arguments.
-     * `expected`: The expected result.
-     * `status`: The status.
-     * 
-     * `result`: The result of getting the command monitor job.
-     * 
-     * throws: `ApplicationError`: If the job fails to be created.
-     */
-    fn get_command_monitor_job(
-        &mut self,
-        schedule: &str,
-        name: &str,
-        command: &str,
-        args: &Option<Vec<String>>,
-        expected: &Option<String>,
-        status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
-    ) -> Result<Job, ApplicationError> {
-        info!("Creating Command monitor: {}", &name);
-        let command_monitor =
-            CommandMonitor::new(name, command, args.clone(), expected.clone(), status, &self.database_service.clone());
-        self.command_monitors.push(command_monitor.clone());
-        match Job::new_async(schedule, move |_uuid, _locked| {
-            SchedulingService::check_command_monitor(&command_monitor)
-        }) {
-            Ok(job) => Ok(job),
-            Err(err) => Err(ApplicationError::new(
-                format!("Could not create job: {err}").as_str(),
-            )),
-        }
-    }
-
-    /**
-     * Get a TCP monitor job.
-     *
-     * `schedule`: The schedule.
-     * `name`: The name of the monitor.
-     * `host`: The host to monitor.
-     * `port`: The port to monitor.
-     *
-     * `result`: The result of getting the TCP monitor job.
-     */
-    fn get_tcp_monitor_job(
-        &mut self,
-        schedule: &str,
-        name: &str,
-        host: &str,
-        port: u16,
-        status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
-    ) -> Result<Job, ApplicationError> {
-        info!("Creating Tcp monitor: {}", &name);
-        let tcp_monitor = TcpMonitor::new(host, port, name, status, &self.database_service.clone());
-        self.tcp_monitors.push(tcp_monitor.clone());
-        match Job::new_async(schedule, move |_uuid, _locked| {
-            SchedulingService::check_tcp_monitor(&tcp_monitor)
-        }) {
-            Ok(job) => Ok(job),
-            Err(err) => Err(ApplicationError::new(
-                format!("Could not create job: {err}").as_str(),
-            )),
-        }
-    }
-
-    /**
-     * Get an HTTP monitor job.
-     *
-     * `schedule`: The schedule.
-     * `name`: The name of the monitor.
-     * `url`: The URL to monitor.
-     * `method`: The HTTP method.
-     * `body`: The body.
-     * `headers`: The headers.
-     *
-     * result: The result of getting the HTTP monitor job.
-     *
-     * throws: `ApplicationError`: If the job fails to be created.
-     */
-    #[allow(clippy::too_many_arguments)]
-    fn get_http_monitor_job(
-        &mut self,
-        schedule: &str,
-        name: &str,
-        url: &str,
-        method: HttpMethod,
-        body: &Option<String>,
-        headers: &Option<std::collections::HashMap<String, String>>,
-        use_builtin_root_certs: bool,
-        accept_invalid_certs: bool,
-        tls_info: bool,
-        root_certificate: Option<String>,
-        identity: Option<String>,
-        identity_password: Option<String>,
-        status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
-    ) -> Result<Job, ApplicationError> {
-        info!("Creating http monitor: {}", &name);
-        let http_monitor = HttpMonitor::new(
-            url,
-            method,
-            body,
-            headers,
-            name,
-            use_builtin_root_certs,
-            accept_invalid_certs,
-            tls_info,
-            root_certificate,
-            identity,
-            identity_password,
-            status,
-            &self.database_service.clone()
-        )?;
-        self.http_monitors.push(http_monitor.clone());
-        match Job::new_async(schedule, move |_uuid, _locked| {
-            SchedulingService::check_http_monitor(&http_monitor)
-        }) {
-            Ok(job) => Ok(job),
-            Err(err) => Err(ApplicationError::new(
-                format!("Could not create job: {err}").as_str(),
-            )),
-        }
-    }
-
-    /**
-     * Log the HTTP monitor.
-     *
-     * `http_monitor`: The HTTP monitor.
-     */
-    fn log_http_monitor(http_monitor: &HttpMonitor) {
-        let lock = http_monitor.status.lock();
-        match lock {
-            Ok(lock) => {
-                debug!("Job {}: Status: {:?}", http_monitor.name, lock);
-            }
-            Err(err) => {
-                error!("Error getting lock: {:?}", err);
-            }
-        }
-    }
-
-    /**
-     * Log the TCP monitor.
-     *
-     * `tcp_monitor`: The TCP monitor.
-     */
-    fn log_tcp_monitor(tcp_monitor: &TcpMonitor) {
-        let lock = tcp_monitor.status.lock();
-        match lock {
-            Ok(lock) => {
-                debug!("Job {}: Status: {:?}", tcp_monitor.name, lock);
-            }
-            Err(err) => {
-                error!("Error getting lock: {:?}", err);
-            }
-        }
-    }
-
-    /**
-     * Log the Command monitor.
-     *
-     * `command_monitor`: The command monitor.
-     */
-    fn log_command_monitor(command_monitor: &CommandMonitor) {
-        let lock = command_monitor.status.lock();
-        match lock {
-            Ok(lock) => {
-                debug!("Job {}: Status: {:?}", command_monitor.name, lock);
-            }
-            Err(err) => {
-                error!("Error getting lock: {:?}", err);
-            }
-        }
-    }
-
-    /**
-     * Check the HTTP monitor.
-     *
-     * `http_monitor`: The HTTP monitor.
-     *
-     * result: Future of the check.
-     */
-    fn check_http_monitor(
-        http_monitor: &HttpMonitor,
-    ) -> std::pin::Pin<Box<impl Future<Output = ()>>> {
-        Box::pin({
-            let mut moved_http_monitor = http_monitor.clone();
-            async move {
-                let _ = moved_http_monitor
-                    .check()
-                    .await
-                    .map_err(|err| error!("Error: {}", err.message));
-            }
-        })
-    }
-
-    /**
-     * Check the TCP monitor.
-     *
-     * `tcp_monitor`: The TCP monitor.
-     *
-     * result: Future of the check.
-     */
-    fn check_tcp_monitor(tcp_monitor: &TcpMonitor) -> std::pin::Pin<Box<impl Future<Output = ()>>> {
-        Box::pin({
-            let mut moved_tcp_monitor = tcp_monitor.clone();
-            async move {
-                let () = moved_tcp_monitor.check();
-            }
-        })
-    }
-
-    /**
-     * Check the command monitor.
-     *
-     * `command_monitor`: The command monitor.
-     *
-     * result: Future of the check.
-     */
-    fn check_command_monitor(
-        command_monitor: &CommandMonitor,
-    ) -> std::pin::Pin<Box<impl Future<Output = ()>>> {
-        Box::pin({
-            let mut moved_command_monitor = command_monitor.clone();
-            async move {
-                let _ = moved_command_monitor
-                    .check()
-                    .await
-                    .map_err(|err| error!("Error: {}", err.message));
-            }
-        })
-    }
 
 }
 

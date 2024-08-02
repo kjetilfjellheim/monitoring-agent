@@ -9,10 +9,11 @@ use crate::common::ApplicationError;
  *
  * This enum represents the different types of monitors that can be used.
  *
- * Tcp: Monitor a TCP connection.
- * Http: Monitor an HTTP connection.
- * Sql: Monitor a SQL connection.
- * Command: Monitor a command.
+ * `Tcp`: Monitor a TCP connection.
+ * `Http`: Monitor an HTTP connection.
+ * `Sql`: Monitor a SQL connection.
+ * `Command`: Monitor a command.
+ * `LoadAvg`: Monitor the load average of the system. Can only be one.
  *
  */
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
@@ -49,6 +50,24 @@ pub enum MonitorType {
         #[serde(skip_serializing_if = "Option::is_none")]
         expected: Option<String>,
     },
+    LoadAvg {
+        #[serde(skip_serializing_if = "Option::is_none", rename = "threshold1min")]
+        threshold_1min: Option<f32>,
+        #[serde(skip_serializing_if = "Option::is_none", rename = "threshold5min")]
+        threshold_5min: Option<f32>,
+        #[serde(skip_serializing_if = "Option::is_none", rename = "threshold10min")]
+        threshold_10min: Option<f32>,
+        #[serde(rename = "storeValues", default = "default_as_false")]
+        store_values: bool,    
+    },  
+    Mem {
+        #[serde(skip_serializing_if = "Option::is_none", rename = "maxPercentageMemUsed")]
+        max_percentage_mem: Option<f64>,
+        #[serde(skip_serializing_if = "Option::is_none", rename = "maxPercentageSwapUsed")]
+        max_percentage_swap: Option<f64>,        
+        #[serde(rename = "storeValues", default = "default_as_false")]
+        store_values: bool,    
+    },   
 }
 
 /**
@@ -192,8 +211,27 @@ pub struct ServerConfig {
  */
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct DatabaseConfig {
-    /// The database url. Example <mysql://root:password@localhost:3307/db_name>
-    pub url: String,
+    /// The host or ip of the database.
+    #[serde(rename = "host", default = "default_server_ip")]
+    pub host: String,
+    /// The database name
+    #[serde(rename = "database")]
+    pub db_name: String,
+    /// The user.
+    #[serde(rename = "user")]
+    pub user: String,
+    /// The password.
+    #[serde(rename = "password")]
+    pub password: String,
+    /// The port.
+    #[serde(rename = "port")]
+    pub port: u16,
+    /// The minimum connections in pool.
+    #[serde(rename = "minConnections")]
+    pub min_connections: usize,
+    /// The maximum connections in pool.
+    #[serde(rename = "maxConnections")]
+    pub max_connections: usize,    
 }
 
 /**

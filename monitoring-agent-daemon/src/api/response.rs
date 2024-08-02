@@ -219,16 +219,16 @@ pub struct ProcessResponse {
     /// The parent process id.
     #[serde(skip_serializing_if = "Option::is_none", rename = "parentPid")]  
     pub parent_pid: Option<u32>,
-    /// The name of the process.
+    /// Command run by this process. Strings longer than 16 characters (including the terminating null byte) are silently truncated.
     #[serde(skip_serializing_if = "Option::is_none", rename = "name")]      
     pub name: Option<String>,
-    /// The umask of the process.
+    /// Process umask, expressed in octal with a leading zero.
     #[serde(skip_serializing_if = "Option::is_none", rename = "umask")]          
     pub umask: Option<String>,
     /// The state of the process.
     #[serde(skip_serializing_if = "Option::is_none", rename = "processState")]              
     pub state: Option<ProcessStateResponse>,
-    /// The number of threads in the process.
+    /// Number of threads in process containing this thread.
     #[serde(skip_serializing_if = "Option::is_none", rename = "numThreads")]          
     pub threads: Option<u32>,
     /// The groups the process belongs to.
@@ -313,8 +313,6 @@ impl ProcessResponse {
 pub enum ProcessStateResponse {
     /// The process is running.
     Running,
-    /// The process is in an uninterruptible sleep.
-    UninterruptibleSleep,
     /// The process is in an interruptable sleep.
     InterruptableSleep,
     /// The process is stopped.
@@ -323,6 +321,12 @@ pub enum ProcessStateResponse {
     Zombie,
     /// The process is idle.
     Idle,
+    /// The process is in disk sleep.
+    DiskSleep,
+    /// The process is dead.
+    Dead,
+    /// The process is in tracing stop.
+    TracingStop,
     /// The process state is unknown. This probably occurs if the state is not found in the enum.
     Unknown
 }
@@ -340,11 +344,13 @@ impl ProcessStateResponse {
         let Some(state) = state else { return None };
         let new_state = match state {
             ProcessState::Running => ProcessStateResponse::Running,
-            ProcessState::UninterruptibleSleep => ProcessStateResponse::UninterruptibleSleep,
             ProcessState::InterruptableSleep => ProcessStateResponse::InterruptableSleep,
             ProcessState::Stopped => ProcessStateResponse::Stopped,
             ProcessState::Zombie => ProcessStateResponse::Zombie,
             ProcessState::Idle => ProcessStateResponse::Idle,
+            ProcessState::DiskSleep => ProcessStateResponse::DiskSleep,
+            ProcessState::Dead => ProcessStateResponse::Dead,
+            ProcessState::TracingStop => ProcessStateResponse::TracingStop,
             ProcessState::Unknown => ProcessStateResponse::Unknown
         };
         Some(new_state)
@@ -354,6 +360,9 @@ impl ProcessStateResponse {
 #[allow(clippy::module_name_repetitions)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MonitorResponse {
+    /// Name of the monitor.
+    #[serde(rename = "name")]
+    name: String,
     /// The status of the monitor.
     #[serde(rename = "status")]
     status: MonitorStatusResponse,
@@ -372,6 +381,7 @@ impl MonitorResponse {
     /**
      * Create a new `MonitorResponse`.
      * 
+     * `name`: The name of the monitor.
      * `status`: The status of the monitor.
      * `last_successful_time`: The last time the monitor was successful.
      * `last_error`: The last error message.
@@ -379,12 +389,14 @@ impl MonitorResponse {
      * 
      */
     pub fn new(
+        name: String,
         status: MonitorStatusResponse,
         last_successful_time: Option<DateTime<Utc>>,
         last_error: Option<String>,
         last_error_time: Option<DateTime<Utc>>,
     ) -> MonitorResponse {
         MonitorResponse {
+            name,
             status,
             last_successful_time,
             last_error,
@@ -402,6 +414,7 @@ impl MonitorResponse {
      */
     pub fn from_monitor_status_message(monitor_status: &MonitorStatus) -> MonitorResponse {
         MonitorResponse::new(
+            monitor_status.name.clone(),
             MonitorStatusResponse::from_status(&monitor_status.status),
             monitor_status.last_successful_time,
             monitor_status.last_error.clone(),

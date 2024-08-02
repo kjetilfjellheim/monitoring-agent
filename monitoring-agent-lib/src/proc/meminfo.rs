@@ -105,6 +105,8 @@ impl ProcsMeminfo {
             parts.get("SwapTotal").and_then(|f| u64::from_str(f).ok()),
             parts.get("SwapFree").and_then(|f| u64::from_str(f).ok()),
         ))
+
+
     }
 
     /**
@@ -128,6 +130,23 @@ impl ProcsMeminfo {
             }
         }
     }
+
+
+    /**
+     * Calculate the percentage.
+     * 
+     * `free`: Free memory 
+     * `total`: Total memory 
+     * 
+     * Returns: Percentage or none
+     */
+    #[allow(clippy::cast_precision_loss)]
+    #[must_use]
+    pub fn get_percent_used(free: Option<u64>, total: Option<u64>) -> Option<f64> {
+        let free = free?;
+        let total = total?;   
+        Some(100f64 - ((free as f64 / total as f64) * 100f64))      
+    }    
 }
 
 
@@ -150,6 +169,18 @@ mod test {
         assert_eq!(binding.memavailable, Some(4_491_376));
         assert_eq!(binding.swaptotal, Some(1_998_844));
         assert_eq!(binding.swapfree, Some(13_952));
+    }
+
+    #[test]
+    fn test_get_percent_used() {
+        let result = ProcsMeminfo::get_percent_used(None, None);
+        assert_eq!(result, None);
+        let result = ProcsMeminfo::get_percent_used(Some(32000), None);
+        assert_eq!(result, None);  
+        let result = ProcsMeminfo::get_percent_used(None, Some(32000));
+        assert_eq!(result, None); 
+        let result = ProcsMeminfo::get_percent_used(Some(25000), Some(100000));
+        assert_eq!(result, Some(75f64));                         
     }
 
 }

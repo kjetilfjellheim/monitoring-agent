@@ -1,6 +1,12 @@
 {
     "database": {
-        "url": "mysql://monitor-agent-rw:[vKsoUcgY0CqHfKU@planescape.forgottendonkey.com:3306/monitor-agent"
+        "host": "planescape.forgottendonkey.com",
+        "port": 3306,
+        "user": "monitor-agent-rw",
+        "password": "[vKsoUcgY0CqHfKU",
+        "database": "monitor-agent",
+        "minConnections": 10,
+        "maxConnections": 100
     },
     "server": {
 	    "ip": "127.0.0.1",
@@ -42,6 +48,27 @@
                 "command": "systemctl",
                 "args": ["show", "memcached.service", "--property=ActiveState"],
                 "expected": "ActiveState=active\n"
+            }
+        },
+        {
+            "name":"Loadavg",
+            "schedule": "*/5 * * * * *",
+            "details": {
+                "type": "loadAvg",
+                "threshold1min": 2.0,
+                "threshold5min": 2.0,
+                "threshold10min": 2.0,
+                "storeValues": true
+            }
+        },
+        {
+            "name":"Mem",
+            "schedule": "*/5 * * * * *",
+            "details": {
+                "type": "mem",
+                "maxPercentageMemUsed": 2.0,
+                "maxPercentageSwapUsed": 2.0,
+                "storeValues": true
             }
         }
     ]
