@@ -12,9 +12,11 @@ mod commandmonitor;
 mod httpmonitor;
 mod tcpmonitor;
 mod loadavgmonitor;
+mod meminfomonitor;
 
 pub use common::Monitor;
 pub use commandmonitor::CommandMonitor;
 pub use httpmonitor::HttpMonitor;
 pub use tcpmonitor::TcpMonitor;
 pub use loadavgmonitor::LoadAvgMonitor;
+pub use meminfomonitor::MeminfoMonitor;
