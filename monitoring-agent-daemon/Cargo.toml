@@ -51,3 +51,6 @@ conf-files = [
     "/etc/monitoring-agent-daemon/logging.yml",
     "/etc/systemd/system/monitoring-agent-daemon.service",
 ]
+
+[profile.release]
+lto = true
