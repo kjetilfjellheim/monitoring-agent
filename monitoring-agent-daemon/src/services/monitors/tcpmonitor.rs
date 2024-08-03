@@ -7,7 +7,7 @@ use std::sync::Mutex;
 
 use crate::common::configuration::DatabaseStoreLevel;
 use crate::common::{ApplicationError, MonitorStatus, Status};
-use crate::services::MariaDbService;
+use crate::services::DbService;
 
 use super::Monitor;
 
@@ -34,7 +34,7 @@ pub struct TcpMonitor {
     /// The status of the monitor.
     pub status: Arc<Mutex<HashMap<String, MonitorStatus>>>,
     /// The database service.
-    database_service: Arc<Option<MariaDbService>>,
+    database_service: Arc<Option<DbService>>,
     /// The database store level.
     database_store_level: DatabaseStoreLevel,
 }
@@ -54,7 +54,7 @@ impl TcpMonitor {
         port: u16,
         name: &str,
         status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
-        database_service: &Arc<Option<MariaDbService>>,
+        database_service: &Arc<Option<DbService>>,
         database_store_level: &DatabaseStoreLevel,
     ) -> TcpMonitor {
         debug!("Creating TCP monitor: {}", &name);
@@ -181,7 +181,7 @@ impl super::Monitor for TcpMonitor {
      *
      * Returns: The database service.
      */
-    fn get_database_service(&self) -> Arc<Option<MariaDbService>> {
+    fn get_database_service(&self) -> Arc<Option<DbService>> {
         self.database_service.clone()
     }
 

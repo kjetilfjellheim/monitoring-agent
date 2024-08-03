@@ -4,7 +4,7 @@ use log::{error, info};
 use monitoring_agent_lib::proc::ProcsMeminfo;
 use tokio_cron_scheduler::Job;
 
-use crate::{common::{configuration::DatabaseStoreLevel, ApplicationError, MonitorStatus, Status}, MariaDbService};
+use crate::{common::{configuration::DatabaseStoreLevel, ApplicationError, MonitorStatus, Status}, DbService};
 
 use super::Monitor;
 
@@ -19,7 +19,7 @@ pub struct MeminfoMonitor {
     /// The status of the monitor.
     pub status: Arc<Mutex<HashMap<String, MonitorStatus>>>,    
     /// The database service
-    database_service: Arc<Option<MariaDbService>>,
+    database_service: Arc<Option<DbService>>,
     /// The database store level.
     database_store_level: DatabaseStoreLevel,
     /// The current load average.
@@ -49,7 +49,7 @@ impl MeminfoMonitor {
         max_percentage_mem: Option<f64>,
         max_percentage_swap: Option<f64>,
         status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
-        database_service: &Arc<Option<MariaDbService>>,
+        database_service: &Arc<Option<DbService>>,
         database_store_level: &DatabaseStoreLevel,
         store_current_meminfo: bool,
     ) -> MeminfoMonitor {
@@ -227,7 +227,7 @@ impl super::Monitor for MeminfoMonitor {
      *
      * Returns: The database service.
      */
-    fn get_database_service(&self) -> Arc<Option<MariaDbService>> {
+    fn get_database_service(&self) -> Arc<Option<DbService>> {
         self.database_service.clone()
     }
 
