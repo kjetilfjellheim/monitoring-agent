@@ -1,6 +1,6 @@
 {
     "database": {
-        "host": "planescape.forgottendonkey.com",
+        "host": "greyhawk.forgottendonkey.com",
         "port": 3306,
         "user": "monitor-agent-rw",
         "password": "[vKsoUcgY0CqHfKU",
