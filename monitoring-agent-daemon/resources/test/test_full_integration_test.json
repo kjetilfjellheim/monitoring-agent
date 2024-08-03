@@ -1,5 +1,6 @@
 {
     "database": {
+        "type": "Mysql",
         "host": "greyhawk.forgottendonkey.com",
         "port": 3306,
         "user": "monitor-agent-rw",

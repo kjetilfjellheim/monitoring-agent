@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::{Arc, Mutex}};
 
 use log::{debug, error};
 
-use crate::{common::{configuration::DatabaseStoreLevel, MonitorStatus, Status}, services::MariaDbService};
+use crate::{common::{configuration::DatabaseStoreLevel, MonitorStatus, Status}, services::DbService};
 
 pub trait Monitor {
     
@@ -25,7 +25,7 @@ pub trait Monitor {
      *
      * Returns: The database service.
      */
-    fn get_database_service(&self) -> Arc<Option<MariaDbService>>;
+    fn get_database_service(&self) -> Arc<Option<DbService>>;
 
     /**
      * Get the database store level.
