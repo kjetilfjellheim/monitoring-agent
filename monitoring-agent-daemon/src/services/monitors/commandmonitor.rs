@@ -6,7 +6,7 @@ use std::{
 use log::{debug, error, info};
 use tokio_cron_scheduler::Job;
 
-use crate::{common::{configuration::DatabaseStoreLevel, ApplicationError, MonitorStatus, Status}, services::{monitors::Monitor, MariaDbService}};
+use crate::{common::{configuration::DatabaseStoreLevel, ApplicationError, MonitorStatus, Status}, services::{monitors::Monitor, DbService}};
 
 /**
  * Command Monitor.
@@ -27,7 +27,7 @@ pub struct CommandMonitor {
     /// The current status of the monitor.
     pub status: Arc<Mutex<HashMap<String, MonitorStatus>>>,
     /// The database service.
-    database_service: Arc<Option<MariaDbService>>,   
+    database_service: Arc<Option<DbService>>,   
     /// The database store level.
     database_store_level: DatabaseStoreLevel, 
 }
@@ -53,7 +53,7 @@ impl CommandMonitor {
         args: Option<Vec<String>>,
         expected: Option<String>,
         status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
-        database_service: &Arc<Option<MariaDbService>>,
+        database_service: &Arc<Option<DbService>>,
         database_store_level: &DatabaseStoreLevel
     ) -> CommandMonitor {
         let status_lock = status.lock();
@@ -216,7 +216,7 @@ impl super::Monitor for CommandMonitor {
      *
      * Returns: The database service.
      */
-    fn get_database_service(&self) -> Arc<Option<MariaDbService>> {
+    fn get_database_service(&self) -> Arc<Option<DbService>> {
         self.database_service.clone()
     }
  

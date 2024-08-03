@@ -13,5 +13,5 @@ mod databaseservice;
 
 pub use monitoringservice::MonitoringService;
 pub use schedulingservice::SchedulingService;
-pub use databaseservice::MariaDbService;
+pub use databaseservice::DbService;
 

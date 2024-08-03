@@ -27,6 +27,7 @@ chrono = { version = "0.4.38", features = ["serde"]}                            
 monitoring-agent-lib = { path = "../monitoring-agent-lib" }                             # For reading system information.
 r2d2 = { version = "0.8.10", features = [   ]}                                          # For handling connection pools.
 r2d2_mysql = "25.0.0"                                                                   # For handling mysql connections. 
+r2d2_postgres = "0.18.1"                                                                # For handling postgres connections.
 
 [package.metadata.deb]
 maintainer = "Kjetil Fjellheim <kjetil@forgottendonkey.net>"
