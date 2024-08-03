@@ -228,10 +228,10 @@ pub struct DatabaseConfig {
     pub port: u16,
     /// The minimum connections in pool.
     #[serde(rename = "minConnections")]
-    pub min_connections: usize,
+    pub min_connections: u32,
     /// The maximum connections in pool.
     #[serde(rename = "maxConnections")]
-    pub max_connections: usize,    
+    pub max_connections: u32,    
 }
 
 /**
