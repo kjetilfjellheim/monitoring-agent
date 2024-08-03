@@ -10,3 +10,6 @@ members = [
 [workspace.metadata.spellcheck]
 config = "spellcheck.toml"
 
+
+[profile.release]
+lto = true
