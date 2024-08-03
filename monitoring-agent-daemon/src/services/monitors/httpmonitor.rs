@@ -16,7 +16,7 @@ use crate::common::ApplicationError;
 use crate::common::{MonitorStatus, Status};
 use crate::common::HttpMethod;
 use crate::services::monitors::Monitor;
-use crate::services::MariaDbService;
+use crate::services::DbService;
 
 /**
  * HTTP Monitor.
@@ -47,7 +47,7 @@ pub struct HttpMonitor {
     /// The status of the monitor.
     pub status: Arc<Mutex<HashMap<String, MonitorStatus>>>,
     /// The database service.
-    database_service: Arc<Option<MariaDbService>>,
+    database_service: Arc<Option<DbService>>,
     /// The database store level.
     database_store_level: DatabaseStoreLevel,         
 }
@@ -87,7 +87,7 @@ impl HttpMonitor {
         identity: Option<String>,
         identity_password: Option<String>,
         status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
-        database_service: &Arc<Option<MariaDbService>>,
+        database_service: &Arc<Option<DbService>>,
         database_store_level: &DatabaseStoreLevel,
     ) -> Result<HttpMonitor, ApplicationError> {
         debug!("Creating HTTP monitor: {}", &name);
@@ -456,7 +456,7 @@ impl super::Monitor for HttpMonitor {
      *
      * Returns: The database service.
      */
-    fn get_database_service(&self) -> Arc<Option<MariaDbService>> {
+    fn get_database_service(&self) -> Arc<Option<DbService>> {
         self.database_service.clone()
     }
 

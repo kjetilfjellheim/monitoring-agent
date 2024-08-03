@@ -210,10 +210,23 @@ pub struct ServerConfig {
 }
 
 /**
+ * Database type.
+ */
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+pub enum DatabaseType {
+    Postgres,
+    Mysql,
+    Maria
+}
+
+/**
  * Database configuration.
  */
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct DatabaseConfig {
+    /// The type of database.
+    #[serde(rename = "type")]
+    pub dbtype: DatabaseType,
     /// The host or ip of the database.
     #[serde(rename = "host", default = "default_server_ip")]
     pub host: String,

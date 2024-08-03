@@ -4,7 +4,7 @@ use log::info;
 use tokio_cron_scheduler::{Job, JobScheduler};
 
 use crate::common::{configuration::MonitoringConfig, ApplicationError, MonitorStatus};
-use crate::services::MariaDbService;
+use crate::services::DbService;
 use super::monitors::{CommandMonitor, HttpMonitor, LoadAvgMonitor, TcpMonitor, MeminfoMonitor};
 
 /**
@@ -24,7 +24,7 @@ pub struct SchedulingService {
     /// The status of the monitors.
     status: Arc<Mutex<HashMap<String, MonitorStatus>>>,
     /// The database service.
-    database_service: Arc<Option<MariaDbService>>,
+    database_service: Arc<Option<DbService>>,
 }
 
 impl SchedulingService {
@@ -34,7 +34,7 @@ impl SchedulingService {
      *
      * result: The result of creating the scheduling service.
      */
-    pub fn new(monitoring_config: &MonitoringConfig, status: &Arc<Mutex<HashMap<String, MonitorStatus>>>, database_service: &Arc<Option<MariaDbService>>) -> SchedulingService {
+    pub fn new(monitoring_config: &MonitoringConfig, status: &Arc<Mutex<HashMap<String, MonitorStatus>>>, database_service: &Arc<Option<DbService>>) -> SchedulingService {
         SchedulingService {
             scheduler: None,
             monitoring_config: monitoring_config.clone(),
