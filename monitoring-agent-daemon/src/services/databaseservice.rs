@@ -23,6 +23,8 @@ use crate::common::ApplicationError;
 pub struct MariaDbService {
     /// The database connection pool.
     pool: Pool<MySqlConnectionManager>,
+    /// Server name
+    server_name: String
 }
 
 impl MariaDbService {
@@ -36,7 +38,7 @@ impl MariaDbService {
      * Errors:
      * - If there is an error creating the pool.
      */
-    pub fn new(database_config: &DatabaseConfig) -> Result<MariaDbService, ApplicationError> {
+    pub fn new(database_config: &DatabaseConfig, server_name: &str) -> Result<MariaDbService, ApplicationError> {
 
         let manager = r2d2_mysql::MySqlConnectionManager::new(OptsBuilder::new()
             .ip_or_hostname(Some(database_config.host.clone()))
@@ -57,6 +59,7 @@ impl MariaDbService {
          */
         Ok(MariaDbService {
             pool,
+            server_name: server_name.to_string()
         })
     }
 
@@ -78,7 +81,8 @@ impl MariaDbService {
     pub fn insert_monitor_status(&self, name: &str, status: &Status) -> Result<(), ApplicationError> {
         let mut conn = self.pool.get().map_err(|err| ApplicationError::new(&err.to_string()))?;
         let mut tx = conn.start_transaction(TxOpts::default()).map_err(|err| ApplicationError::new(&err.to_string()))?;
-        tx.exec_drop("INSERT INTO monitor_status (monitor_name, status, log_time, message) VALUES (:name, :status, now(3), :message)", params! {
+        tx.exec_drop("INSERT INTO monitor_status (server_name, monitor_name, status, log_time, message) VALUES (:server_name,:name, :status, now(3), :message)", params! {
+            "server_name" => self.server_name.to_string(),
             "name" => &name,
             "status" => MariaDbService::get_status_db_repr(status),
             "message" => MariaDbService::get_message(status),
@@ -131,7 +135,8 @@ impl MariaDbService {
     pub fn store_loadavg(&self, loadavg: &ProcsLoadavg) -> Result<(), ApplicationError> {
         let mut conn = self.pool.get().map_err(|err| ApplicationError::new(&err.to_string()))?;
         let mut tx = conn.start_transaction(TxOpts::default()).map_err(|err| ApplicationError::new(&err.to_string()))?;
-        tx.exec_drop("INSERT INTO loadavg (loadavg1min, loadavg5min, loadavg10min, num_processes, num_running_processes, log_time) VALUES (:loadavg1min, :loadavg5min, :loadavg10min, :num_processes, :num_running_processes, now(3))", params! {
+        tx.exec_drop("INSERT INTO loadavg (server_name, loadavg1min, loadavg5min, loadavg10min, num_processes, num_running_processes, log_time) VALUES (:server_name, :loadavg1min, :loadavg5min, :loadavg10min, :num_processes, :num_running_processes, now(3))", params! {
+            "server_name" => self.server_name.to_string(),
             "loadavg1min" => loadavg.loadavg1min,
             "loadavg5min" => loadavg.loadavg5min,
             "loadavg10min" => loadavg.loadavg10min,
@@ -156,7 +161,8 @@ impl MariaDbService {
         let start = Instant::now();
         let mut conn = self.pool.get().map_err(|err| ApplicationError::new(&err.to_string()))?;
         let mut tx = conn.start_transaction(TxOpts::default()).map_err(|err| ApplicationError::new(&err.to_string()))?;
-        tx.exec_drop("INSERT INTO meminfo (freemem, mem_percent_used, freeswap, swap_percent_used, log_time) VALUES (:freemem, :mem_percent_used, :freeswap, :swap_percent_used, now(3))", params! {
+        tx.exec_drop("INSERT INTO meminfo (server_name, freemem, mem_percent_used, freeswap, swap_percent_used, log_time) VALUES (:server_name, :freemem, :mem_percent_used, :freeswap, :swap_percent_used, now(3))", params! {
+            "server_name" => self.server_name.to_string(),
             "freemem" => meminfo.memfree,
             "mem_percent_used" => ProcsMeminfo::get_percent_used(meminfo.memfree, meminfo.memtotal),
             "freeswap" => meminfo.swapfree,

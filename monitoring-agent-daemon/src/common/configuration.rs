@@ -204,6 +204,9 @@ pub struct ServerConfig {
     /// The ip of the server.
     #[serde(rename = "ip", default = "default_server_ip")]
     pub ip: String,
+    /// The name of the server.
+    #[serde(rename = "name")]  
+    pub name: String,
 }
 
 /**
@@ -243,6 +246,7 @@ fn default_server() -> ServerConfig {
     ServerConfig {
         port: default_server_port(),
         ip: default_server_ip(),
+        name: "Default".to_string(),
     }
 }
 
