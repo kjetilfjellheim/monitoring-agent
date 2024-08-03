@@ -1,6 +1,3 @@
-use std::time::Instant;
-
-use log::info;
 use monitoring_agent_lib::proc::{ProcsLoadavg, ProcsMeminfo};
 use r2d2::Pool;
 use r2d2_mysql::mysql::params;
@@ -158,7 +155,6 @@ impl MariaDbService {
      * - If there is an error starting a transaction.
      */
     pub fn store_meminfo(&self, meminfo: &ProcsMeminfo) -> Result<(), ApplicationError> {
-        let start = Instant::now();
         let mut conn = self.pool.get().map_err(|err| ApplicationError::new(&err.to_string()))?;
         let mut tx = conn.start_transaction(TxOpts::default()).map_err(|err| ApplicationError::new(&err.to_string()))?;
         tx.exec_drop("INSERT INTO meminfo (server_name, freemem, mem_percent_used, freeswap, swap_percent_used, log_time) VALUES (:server_name, :freemem, :mem_percent_used, :freeswap, :swap_percent_used, now(3))", params! {
@@ -166,11 +162,9 @@ impl MariaDbService {
             "freemem" => meminfo.memfree,
             "mem_percent_used" => ProcsMeminfo::get_percent_used(meminfo.memfree, meminfo.memtotal),
             "freeswap" => meminfo.swapfree,
-            "swap_percent_used" => ProcsMeminfo::get_percent_used(meminfo.memfree, meminfo.memtotal),
+            "swap_percent_used" => ProcsMeminfo::get_percent_used(meminfo.swapfree, meminfo.swaptotal),
         }).map_err(|err| ApplicationError::new(&err.to_string()))?;
         tx.commit().map_err(|err| ApplicationError::new(&err.to_string()))?;       
-        let duration = start.elapsed();
-        info!("store_meminfo took: {:?}", duration);
         Ok(())
     }
 
