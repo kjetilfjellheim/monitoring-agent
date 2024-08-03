@@ -1,6 +1,6 @@
 [package]
 name = "monitoring-agent-daemon"
-version = "0.0.15"
+version = "0.0.16"
 edition = "2021"
 description = "A monitoring agent that can be used to monitor the health of a system."
 license = "Apache 2.0"
@@ -12,10 +12,10 @@ categories = ["monitoring", "health", "system"]
 
 [dependencies]
 serde = { version = "1.0.204", features = ["derive", ] }                                # For serializing/deserializing.
-serde_json = { version = "1.0.120", features = []}                                      # For serializing/deserializing.
+serde_json = { version = "1.0.122", features = []}                                      # For serializing/deserializing.
 tokio-cron-scheduler = "0.10.2"                                                         # For schduling jobs.
-tokio = { version = "1.38.1", features = ["full"] }                                     # For schduling jobs.
-clap = { version = "4.5.9", features = ["derive"] }                                     # For parsing input arguments.
+tokio = { version = "1.39.2", features = ["full"] }                                     # For schduling jobs.
+clap = { version = "4.5.13", features = ["derive"] }                                     # For parsing input arguments.
 daemonize = "0.5.0"                                                                     # For daemonizing the process.
 reqwest = { version = "0.12.5", features = ["blocking", "native-tls"]}                  # For handling http requests.
 futures = "0.3.30"                                                                      # For better handling of futures.
@@ -25,8 +25,8 @@ log = "0.4.22"                                                                  
 actix-web = { version = "4.8.0" }                                                       # For handling http requests.
 chrono = { version = "0.4.38", features = ["serde"]}                                    # For handling time.
 monitoring-agent-lib = { path = "../monitoring-agent-lib" }                             # For reading system information.
-mysql = "25.0.1"                                                                        # For handling mysql connections.
-mysql_common = { version = "0.32.4" }                                                   # For handling mysql connections.
+r2d2 = { version = "0.8.10", features = [   ]}                                          # For handling connection pools.
+r2d2_mysql = "25.0.0"                                                                   # For handling mysql connections. 
 
 [package.metadata.deb]
 maintainer = "Kjetil Fjellheim <kjetil@forgottendonkey.net>"
