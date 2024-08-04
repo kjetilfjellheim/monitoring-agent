@@ -98,8 +98,9 @@ async fn start_application(monitoring_config: &MonitoringConfig, args: &Applicat
     let cloned_monitoring_config = monitoring_config.clone();
     let cloned_args = args.clone();
     let monitor_statuses = monitoring_service.get_status();
+    let server_name = monitoring_config.server.name.clone();
     tokio::spawn(async move {
-        let mut scheduling_service = SchedulingService::new(&cloned_monitoring_config, &monitor_statuses, &database_service.clone());
+        let mut scheduling_service = SchedulingService::new(&server_name, &cloned_monitoring_config, &monitor_statuses, &database_service.clone());
         match scheduling_service.start(cloned_args.test).await {
             Ok(()) => {
                 info!("Scheduling service started!");
