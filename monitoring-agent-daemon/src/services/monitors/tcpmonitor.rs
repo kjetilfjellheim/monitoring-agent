@@ -155,8 +155,6 @@ impl TcpMonitor {
 
 }
 
-
-
 /**
  * Implement the `Monitor` trait for `TcpMonitor`.
  */

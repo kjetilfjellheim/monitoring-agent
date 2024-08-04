@@ -68,6 +68,10 @@ pub enum MonitorType {
         #[serde(rename = "storeValues", default = "default_as_false")]
         store_values: bool,    
     },   
+    Systemctl {
+        #[serde(rename = "active")]
+        active: Vec<String>,
+    },   
 }
 
 /**

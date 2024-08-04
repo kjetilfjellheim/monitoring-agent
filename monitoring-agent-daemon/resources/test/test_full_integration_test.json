@@ -71,6 +71,15 @@
                 "maxPercentageSwapUsed": 2.0,
                 "storeValues": true
             }
+        },
+        {
+            "name":"Systemctl",
+            "schedule": "*/5 * * * * *",
+            "details": {
+                "type": "systemctl",
+                "active": ["uuidd", "ssh"],
+                "storeValues": true
+            }
         }
     ]
 }
