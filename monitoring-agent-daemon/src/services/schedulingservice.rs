@@ -5,7 +5,7 @@ use tokio_cron_scheduler::{Job, JobScheduler};
 
 use crate::common::{configuration::MonitoringConfig, ApplicationError, MonitorStatus};
 use crate::services::DbService;
-use super::monitors::{CommandMonitor, HttpMonitor, LoadAvgMonitor, MeminfoMonitor, SystemctlMonitor, TcpMonitor};
+use super::monitors::{CommandMonitor, HttpMonitor, LoadAvgMonitor, MeminfoMonitor, SystemctlMonitor, TcpMonitor, DatabaseMonitor};
 
 /**
  * Scheduling Service.
@@ -14,6 +14,9 @@ use super::monitors::{CommandMonitor, HttpMonitor, LoadAvgMonitor, MeminfoMonito
  * 
  * `scheduler`: The job scheduler.
  * `monitoring_config`: The monitoring configuration.
+ * `status`: The status of the monitors.
+ * `database_service`: The database service.
+ * `server_name`: The server name.
  * 
  */
 pub struct SchedulingService {
@@ -25,6 +28,8 @@ pub struct SchedulingService {
     status: Arc<Mutex<HashMap<String, MonitorStatus>>>,
     /// The database service.
     database_service: Arc<Option<DbService>>,
+    /// The server name.
+    server_name: String,
 }
 
 impl SchedulingService {
@@ -34,12 +39,13 @@ impl SchedulingService {
      *
      * result: The result of creating the scheduling service.
      */
-    pub fn new(monitoring_config: &MonitoringConfig, status: &Arc<Mutex<HashMap<String, MonitorStatus>>>, database_service: &Arc<Option<DbService>>) -> SchedulingService {
+    pub fn new(server_name: &str, monitoring_config: &MonitoringConfig, status: &Arc<Mutex<HashMap<String, MonitorStatus>>>, database_service: &Arc<Option<DbService>>) -> SchedulingService {
         SchedulingService {
             scheduler: None,
             monitoring_config: monitoring_config.clone(),
             status: status.clone(),
             database_service: database_service.clone(),
+            server_name: server_name.to_string(),
         }
     }
 
@@ -193,13 +199,46 @@ impl SchedulingService {
                 let job = meminfo_monitor.get_meminfo_monitor_job(monitor.schedule.as_str())?;
                 self.add_job(scheduler, job).await
             },
-            crate::common::MonitorType::Systemctl { active } => {
+            crate::common::MonitorType::Systemctl { active 
+            } => {
                 let mut systemctl_monitor = SystemctlMonitor::new(&monitor.name, &self.status, &self.database_service.clone(), &monitor.store, active);
                 let job = systemctl_monitor.get_systemctl_monitor_job(monitor.schedule.as_str())?;
                 self.add_job(scheduler, job).await
             },
+            crate::common::MonitorType::Database {database_config, max_query_time,
+            } => {
+                let mut database_monitor = DatabaseMonitor::new(
+                    &monitor.name,
+                    max_query_time,
+                    &self.status,
+                    &self.get_database_service(&self.database_service, &database_config).await?,
+                    &monitor.store,
+                );
+                let job = database_monitor.get_database_monitor_job(monitor.schedule.as_str())?;
+                self.add_job(scheduler, job).await
+            },
         }?;   
         Ok(()) 
+    }
+
+    /**
+     * Get the database service.
+     *
+     * `database_service`: The database service.
+     * `database_config`: The database configuration.
+     *
+     * `result`: The result of getting the database service.
+     *
+     * throws: `ApplicationError`: If the database service fails to be created.
+     */
+    async fn get_database_service(&self, database_service: &Arc<Option<DbService>>, database_config: &Option<crate::common::DatabaseConfig>) -> Result<Arc<Option<DbService>>, ApplicationError> {
+        match database_config {
+            Some(database_config) => {
+                let database_service = DbService::new(database_config, &self.server_name).await?;
+                Ok(Arc::new(Some(database_service)))
+            },
+            None => Ok(database_service.clone()),
+        }
     }
 
     /**
@@ -237,7 +276,7 @@ mod test {
     #[tokio::test]
     async fn test_monitoring_service() {
         let status = Arc::new(Mutex::new(HashMap::new()));
-        let mut scheduling_service = SchedulingService::new(&MonitoringConfig::new("./resources/test/test_full_integration_test.json").unwrap(), &status, &Arc::new(None));
+        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("./resources/test/test_full_integration_test.json").unwrap(), &status, &Arc::new(None));
         let res = scheduling_service.start(true).await;
         assert!(res.is_ok());
     }
@@ -248,7 +287,7 @@ mod test {
     #[tokio::test]
     async fn test_monitoring_service_tcp() {
         let status = Arc::new(Mutex::new(HashMap::new()));
-        let mut scheduling_service = SchedulingService::new(&MonitoringConfig::new("./resources/test/test_simple_tcp.json").unwrap(), &status, &Arc::new(None));
+        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("./resources/test/test_simple_tcp.json").unwrap(), &status, &Arc::new(None));
         let res = scheduling_service.start(true).await;
         assert!(res.is_ok());
     }
@@ -259,7 +298,7 @@ mod test {
     #[tokio::test]
     async fn test_monitoring_service_http() {
         let status = Arc::new(Mutex::new(HashMap::new()));
-        let mut scheduling_service = SchedulingService::new(&MonitoringConfig::new("./resources/test/test_simple_http.json").unwrap(), &status, &Arc::new(None));
+        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("./resources/test/test_simple_http.json").unwrap(), &status, &Arc::new(None));
         let res = scheduling_service.start(true).await;
         assert!(res.is_ok());
     }
@@ -270,7 +309,7 @@ mod test {
     #[tokio::test]
     async fn test_monitoring_service_command() {
         let status = Arc::new(Mutex::new(HashMap::new()));
-        let mut scheduling_service = SchedulingService::new(&MonitoringConfig::new("./resources/test/test_simple_command.json").unwrap(), &status, &Arc::new(None));
+        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("./resources/test/test_simple_command.json").unwrap(), &status, &Arc::new(None));
         let res = scheduling_service.start(true).await;
         assert!(res.is_ok());
     }
