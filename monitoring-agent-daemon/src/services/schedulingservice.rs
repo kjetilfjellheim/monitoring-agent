@@ -4,8 +4,8 @@ use log::info;
 use tokio_cron_scheduler::{Job, JobScheduler};
 
 use crate::common::{configuration::MonitoringConfig, ApplicationError, MonitorStatus};
-use crate::services::MariaDbService;
-use super::monitors::{CommandMonitor, HttpMonitor, LoadAvgMonitor, TcpMonitor, MeminfoMonitor};
+use crate::services::DbService;
+use super::monitors::{CommandMonitor, HttpMonitor, LoadAvgMonitor, MeminfoMonitor, SystemctlMonitor, TcpMonitor};
 
 /**
  * Scheduling Service.
@@ -24,7 +24,7 @@ pub struct SchedulingService {
     /// The status of the monitors.
     status: Arc<Mutex<HashMap<String, MonitorStatus>>>,
     /// The database service.
-    database_service: Arc<Option<MariaDbService>>,
+    database_service: Arc<Option<DbService>>,
 }
 
 impl SchedulingService {
@@ -34,7 +34,7 @@ impl SchedulingService {
      *
      * result: The result of creating the scheduling service.
      */
-    pub fn new(monitoring_config: &MonitoringConfig, status: &Arc<Mutex<HashMap<String, MonitorStatus>>>, database_service: &Arc<Option<MariaDbService>>) -> SchedulingService {
+    pub fn new(monitoring_config: &MonitoringConfig, status: &Arc<Mutex<HashMap<String, MonitorStatus>>>, database_service: &Arc<Option<DbService>>) -> SchedulingService {
         SchedulingService {
             scheduler: None,
             monitoring_config: monitoring_config.clone(),
@@ -191,6 +191,11 @@ impl SchedulingService {
             } => {
                 let mut meminfo_monitor = MeminfoMonitor::new(&monitor.name, max_percentage_mem, max_percentage_swap, &self.status, &self.database_service.clone(), &monitor.store, store_values);
                 let job = meminfo_monitor.get_meminfo_monitor_job(monitor.schedule.as_str())?;
+                self.add_job(scheduler, job).await
+            },
+            crate::common::MonitorType::Systemctl { active } => {
+                let mut systemctl_monitor = SystemctlMonitor::new(&monitor.name, &self.status, &self.database_service.clone(), &monitor.store, active);
+                let job = systemctl_monitor.get_systemctl_monitor_job(monitor.schedule.as_str())?;
                 self.add_job(scheduler, job).await
             },
         }?;   

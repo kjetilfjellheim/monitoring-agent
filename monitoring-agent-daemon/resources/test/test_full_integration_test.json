@@ -1,7 +1,8 @@
 {
     "database": {
+        "type": "Postgres",
         "host": "greyhawk.forgottendonkey.com",
-        "port": 3306,
+        "port": 5432,
         "user": "monitor-agent-rw",
         "password": "[vKsoUcgY0CqHfKU",
         "database": "monitor-agent",
@@ -68,6 +69,15 @@
                 "type": "mem",
                 "maxPercentageMemUsed": 2.0,
                 "maxPercentageSwapUsed": 2.0,
+                "storeValues": true
+            }
+        },
+        {
+            "name":"Systemctl",
+            "schedule": "*/5 * * * * *",
+            "details": {
+                "type": "systemctl",
+                "active": ["uuidd", "ssh"],
                 "storeValues": true
             }
         }

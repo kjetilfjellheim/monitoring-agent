@@ -4,8 +4,8 @@ DefaultDependencies=no
 Before=shutdown.target
 
 [Service]
-ExecStart=/usr/bin/monitoring-agent --daemon
-Type=forking
+ExecStart=/usr/bin/monitoring-agent
+Type=simple
 Restart=on-failure
 TimeoutStartSec=10
 
