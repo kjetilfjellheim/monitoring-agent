@@ -71,7 +71,14 @@ pub enum MonitorType {
     Systemctl {
         #[serde(rename = "active")]
         active: Vec<String>,
-    },   
+    },
+    Database {
+        /// Database config. If not given then use the global database config.
+        #[serde(skip_serializing_if = "Option::is_none", rename = "config")]
+        database_config: Option<DatabaseConfig>,
+        #[serde(skip_serializing_if = "Option::is_none", rename = "maxQueryTime")]
+        max_query_time: Option<u32>,          
+    },    
 }
 
 /**

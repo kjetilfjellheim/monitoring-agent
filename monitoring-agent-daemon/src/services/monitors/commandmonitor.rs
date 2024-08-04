@@ -179,9 +179,6 @@ impl CommandMonitor {
 
 }
 
-
-
-
 /**
  * Implement the `Monitor` trait for `HttpMonitor`.
  */
