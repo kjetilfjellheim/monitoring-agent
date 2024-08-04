@@ -82,7 +82,7 @@ impl MeminfoMonitor {
      * 
      */
     #[allow(clippy::similar_names)]         
-    fn check_meminfo(&mut self, meminfo: &ProcsMeminfo) {    
+    async fn check_meminfo(&mut self, meminfo: &ProcsMeminfo) {    
         let percentage_mem_used = ProcsMeminfo::get_percent_used(meminfo.memfree, meminfo.memtotal);
         let percentage_swap_used = ProcsMeminfo::get_percent_used(meminfo.swapfree, meminfo.swaptotal);
 
@@ -94,9 +94,9 @@ impl MeminfoMonitor {
                 message: format!(
                     "Meminfo check failed: mem: {free_percentage_mem_status:?}, swap: {free_percentage_swap_status:?}"
                 ),
-            });
+            }).await;
         } else {
-            self.set_status(&Status::Ok);
+            self.set_status(&Status::Ok).await;
         }
     }
 
@@ -130,9 +130,9 @@ impl MeminfoMonitor {
      * 
      * 
      */
-    fn check_store_current_meminfo(&self, meminfo: &ProcsMeminfo) {
+    async fn check_store_current_meminfo(&self, meminfo: &ProcsMeminfo) {
         if self.store_current_meminfo {
-            self.store_current_meminfo(meminfo);
+            self.store_current_meminfo(meminfo).await;
         }           
     }
     
@@ -141,10 +141,10 @@ impl MeminfoMonitor {
      * 
      * `meminfo`: The current load average.
      */
-    fn store_current_meminfo(&self, meminfo: &ProcsMeminfo) {
+    async fn store_current_meminfo(&self, meminfo: &ProcsMeminfo) {
         match self.database_service.as_ref() {            
             Some(database_service) => {
-                match database_service.store_meminfo(meminfo) {
+                match database_service.store_meminfo(meminfo).await {
                     Ok(()) => {}
                     Err(err) => {
                         error!("Error storing memory use: {:?}", err);
@@ -170,9 +170,12 @@ impl MeminfoMonitor {
         schedule: &str,
     ) -> Result<Job, ApplicationError> {
         info!("Creating meminfo monitor: {}", &self.name);
-        let mut meminfo_monitor = self.clone();       
-        let job_result = Job::new(schedule, move |_uuid, _locked| {                
-            meminfo_monitor.check();
+        let meminfo_monitor = self.clone();       
+        let job_result = Job::new_async(schedule, move |_uuid, _locked| {                
+            let mut meminfo_monitor = meminfo_monitor.clone();
+            Box::pin(async move {
+                meminfo_monitor.check().await;
+            })  
         });        
         match job_result {
             Ok(job) => Ok(job),
@@ -185,12 +188,12 @@ impl MeminfoMonitor {
     /**
      * Check the monitor.
      */
-    fn check(&mut self) {
+    async fn check(&mut self) {
         let meminfo = ProcsMeminfo::get_meminfo();
         match meminfo {
             Ok(meminfo) => {
-                self.check_store_current_meminfo(&meminfo);
-                self.check_meminfo(&meminfo);
+                self.check_store_current_meminfo(&meminfo).await;
+                self.check_meminfo(&meminfo).await;
             }
             Err(err) => {
                 error!("Error getting meminfo: {:?}", err);
@@ -248,8 +251,8 @@ mod test {
 
     use super::Monitor;
 
-    #[test]
-    fn test_check() {
+    #[tokio::test]
+    async fn test_check() {
         let mut monitor = super::MeminfoMonitor::new(
             "test",
             Some(100.0),
@@ -259,7 +262,7 @@ mod test {
             &super::DatabaseStoreLevel::None,
             false,
         );
-        monitor.check();
+        monitor.check().await;
         let status = monitor.get_status();
         let status = status.lock().unwrap();
         assert_eq!(status.get("test").unwrap().status, super::Status::Ok);
@@ -271,8 +274,8 @@ mod test {
      * Test the following scenarios:
      * - Memory is lower on all.
      */
-    #[test]
-    fn test_check_max_meminfo() {
+    #[tokio::test]
+    async fn test_check_max_meminfo() {
         // Test success. Memory lower on all
         let mut monitor = super::MeminfoMonitor::new(
             "test",
@@ -292,7 +295,7 @@ mod test {
             swapfree: Some(5000),
         };
 
-        monitor.check_meminfo(&meminfo);
+        monitor.check_meminfo(&meminfo).await;
 
         let status = monitor.get_status();
         let status = status.lock().unwrap();
@@ -306,8 +309,8 @@ mod test {
      * Test the following scenarios:
      * - Memory is lower on all.
      */
-    #[test]
-    fn test_check_max_meminfo_over() {
+    #[tokio::test]
+    async fn test_check_max_meminfo_over() {
         // Test success. Memory lower on all
         let mut monitor = super::MeminfoMonitor::new(
             "test",
@@ -327,7 +330,7 @@ mod test {
             swapfree: Some(5000),
         };
 
-        monitor.check_meminfo(&meminfo);
+        monitor.check_meminfo(&meminfo).await;
 
         let status = monitor.get_status();
         let status = status.lock().unwrap();
