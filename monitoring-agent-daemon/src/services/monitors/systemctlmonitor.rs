@@ -25,11 +25,11 @@ impl SystemctlMonitor {
     /**
      * Create a new Systemctl monitor.
      *
-     * name: The name of the monitor.
-     * status: The status of the monitor.
-     * database_service: The database service.
-     * database_store_level: The database store level.
-     * active: The services to monitor.
+     * `name`: The name of the monitor.
+     * `status`: The status of the monitor.
+     * `database_service`: The database service.
+     * `database_store_level`: The database store level.
+     * `active`: The services to monitor.
      *
      */
     pub fn new(
@@ -61,7 +61,7 @@ impl SystemctlMonitor {
     /**
      * Get systemctl job.
      *
-     * `schedule``: The schedule for the job.
+     * `schedule`: The schedule for the job.
      */
     pub fn get_systemctl_monitor_job(
         &mut self,
@@ -93,12 +93,12 @@ impl SystemctlMonitor {
             .await
             .expect("failed to execute process");
         let command_output = String::from_utf8_lossy(&output.stdout);        
-        let non_active = self.get_nonactive_status(&command_output).await;
-        let error_message = format!("Non-active services: {:?}", non_active);
-        if non_active.len() > 0 {
-            self.set_status(&Status::Error { message: error_message }).await;
+        let non_active = self.get_nonactive_status(&command_output);
+        let error_message = format!("Non-active services: {non_active:?}");
+        if non_active.is_empty() {
+            self.set_status(&Status::Ok).await;            
         } else {
-            self.set_status(&Status::Ok).await;
+            self.set_status(&Status::Error { message: error_message }).await;
         }        
     }
 
@@ -109,16 +109,14 @@ impl SystemctlMonitor {
      * 
      * Returns: The non-active services.
      */
-    async fn get_nonactive_status(&self, command_output: &str) -> Vec<String> {
+    fn get_nonactive_status(&self, command_output: &str) -> Vec<String> {
         let mut non_active: Vec<String> = vec![];
-        let active_set: HashSet<String> = HashSet::from_iter(self.active.iter().cloned());
+        let active_set: HashSet<String> = HashSet::from_iter(self.active.clone());
         for line in command_output.lines() {
             let data = line.split_whitespace().collect::<Vec<&str>>();
-            if data.len() >= 3 && active_set.contains(&(data[0].replace(".service", "").to_owned()).to_string()) {
-                if data[2] != "active" {
-                    non_active.push(data[0].to_string());
-                }
-            }
+            if data.len() >= 3 && active_set.contains(&(data[0].replace(".service", "").clone()).to_string()) && data[2] != "active" {
+                non_active.push(data[0].to_string());
+            }                
         }
         non_active
     }
@@ -215,7 +213,7 @@ mod test {
             active,
         );
         let command_str = String::from_utf8(fs::read("resources/test/systemctl_test.out").unwrap()).unwrap();
-        let non_active = systemctl_monitor.get_nonactive_status(command_str.as_str()).await;
+        let non_active = systemctl_monitor.get_nonactive_status(command_str.as_str());
         assert_eq!(non_active.len(), 0);
     }
 
@@ -236,7 +234,7 @@ mod test {
             active,
         );
         let command_str = String::from_utf8(fs::read("resources/test/systemctl_uuidd_inactive.out").unwrap()).unwrap();
-        let non_active = systemctl_monitor.get_nonactive_status(command_str.as_str()).await;
+        let non_active = systemctl_monitor.get_nonactive_status(command_str.as_str());
         assert_eq!(non_active.len(), 1);
     }    
 
