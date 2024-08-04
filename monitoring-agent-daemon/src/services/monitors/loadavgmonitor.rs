@@ -87,7 +87,7 @@ impl LoadAvgMonitor {
      * 
      */
     #[allow(clippy::similar_names)]         
-    fn check_loadavg(&mut self, loadavg: &ProcsLoadavg) {    
+    async fn check_loadavg(&mut self, loadavg: &ProcsLoadavg) {    
         let status_1min = LoadAvgMonitor::check_loadavg_values(self.loadavg1min_max, loadavg.loadavg1min);
         let status_5min = LoadAvgMonitor::check_loadavg_values(self.loadavg5min_max, loadavg.loadavg5min);
         let status_10min = LoadAvgMonitor::check_loadavg_values(self.loadavg10min_max, loadavg.loadavg10min);
@@ -97,9 +97,9 @@ impl LoadAvgMonitor {
                 message: format!(
                     "Load average check failed: 1min: {status_1min:?}, 5min: {status_5min:?}, 10min: {status_10min:?}"
                 ),
-            });
+            }).await;
         } else {
-            self.set_status(&Status::Ok);
+            self.set_status(&Status::Ok).await;
         }
     }
 
@@ -133,9 +133,9 @@ impl LoadAvgMonitor {
      * 
      * 
      */
-    fn check_store_current_loadavg(&self, loadavg: &ProcsLoadavg) {
+    async fn check_store_current_loadavg(&self, loadavg: &ProcsLoadavg) {
         if self.store_current_loadavg {
-            self.store_current_loadavg(loadavg);
+            self.store_current_loadavg(loadavg).await;
         }           
     }
     
@@ -144,10 +144,10 @@ impl LoadAvgMonitor {
      * 
      * `loadavg`: The current load average.
      */
-    fn store_current_loadavg(&self, loadavg: &ProcsLoadavg) {
+    async fn store_current_loadavg(&self, loadavg: &ProcsLoadavg) {
         match self.database_service.as_ref() {            
             Some(database_service) => {
-                match database_service.store_loadavg(loadavg) {
+                match database_service.store_loadavg(loadavg).await {
                     Ok(()) => {}
                     Err(err) => {
                         error!("Error storing load average: {:?}", err);
@@ -182,9 +182,12 @@ impl LoadAvgMonitor {
         schedule: &str,
     ) -> Result<Job, ApplicationError> {
         info!("Creating Tcp monitor: {}", &self.name);
-        let mut loadavg_monitor = self.clone();       
-        let job_result = Job::new(schedule, move |_uuid, _locked| {                
-            loadavg_monitor.check();
+        let loadavg_monitor = self.clone();       
+        let job_result = Job::new_async(schedule, move |_uuid, _locked| {                
+            let mut loadavg_monitor = loadavg_monitor.clone();
+            Box::pin(async move {
+                loadavg_monitor.check().await;
+            })        
         });        
         match job_result {
             Ok(job) => Ok(job),
@@ -197,12 +200,12 @@ impl LoadAvgMonitor {
     /**
      * Check the monitor.
      */
-    fn check(&mut self) {
+    async fn check(&mut self) {
         let loadavg = ProcsLoadavg::get_loadavg();
         match loadavg {
             Ok(loadavg) => {
-                self.check_store_current_loadavg(&loadavg);
-                self.check_loadavg(&loadavg);
+                self.check_store_current_loadavg(&loadavg).await;
+                self.check_loadavg(&loadavg).await;
             }
             Err(err) => {
                 error!("Error getting load average: {:?}", err);
@@ -297,8 +300,8 @@ mod test {
      * Test the following scenarios:
      * - Load average is lower on all.
      */
-    #[test]
-    fn test_check_loadavg_lower_on_all() {
+    #[tokio::test]
+    async fn test_check_loadavg_lower_on_all() {
         // Test success. Loadaverage lower on all
         let mut monitor = super::LoadAvgMonitor::new(
             "test",
@@ -319,7 +322,7 @@ mod test {
             total_number_of_processes: Some(10)
         };
 
-        monitor.check_loadavg(&loadavg);
+        monitor.check_loadavg(&loadavg).await;
 
         let status = monitor.get_status();
         let status = status.lock().unwrap();
@@ -332,8 +335,8 @@ mod test {
      * Test the following scenarios:
      * - Load average is higher on 1 minute.
      */
-    #[test]
-    fn test_check_loadavg_1min_higher() {
+    #[tokio::test]
+    async fn test_check_loadavg_1min_higher() {
         // Test success. Loadaverage lower on all
         let mut monitor = super::LoadAvgMonitor::new(
             "test",
@@ -354,7 +357,7 @@ mod test {
             total_number_of_processes: Some(10)
         };
 
-        monitor.check_loadavg(&loadavg);
+        monitor.check_loadavg(&loadavg).await;
 
         let status = monitor.get_status();
         let status = status.lock().unwrap();
@@ -367,8 +370,8 @@ mod test {
      * Test the following scenarios:
      * - Load average is higher on 5 minutes.
      */
-    #[test]
-    fn test_check_loadavg_5min_higher() {
+    #[tokio::test]
+    async fn test_check_loadavg_5min_higher() {
         // Test success. Loadaverage lower on all
         let mut monitor = super::LoadAvgMonitor::new(
             "test",
@@ -389,7 +392,7 @@ mod test {
             total_number_of_processes: Some(10)
         };
 
-        monitor.check_loadavg(&loadavg);
+        monitor.check_loadavg(&loadavg).await;
 
         let status = monitor.get_status();
         let status = status.lock().unwrap();
@@ -402,8 +405,8 @@ mod test {
      * Test the following scenarios:
      * - Load average is higher on 10 minutes.
      */ 
-    #[test]
-    fn test_check_loadavg_10min_higher() {
+    #[tokio::test]
+    async fn test_check_loadavg_10min_higher() {
         // Test success. Loadaverage lower on all
         let mut monitor = super::LoadAvgMonitor::new(
             "test",
@@ -424,7 +427,7 @@ mod test {
             total_number_of_processes: Some(10)
         };
 
-        monitor.check_loadavg(&loadavg);
+        monitor.check_loadavg(&loadavg).await;
 
         let status = monitor.get_status();
         let status = status.lock().unwrap();

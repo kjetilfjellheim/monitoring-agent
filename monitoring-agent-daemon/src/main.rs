@@ -82,7 +82,7 @@ async fn start_application(monitoring_config: &MonitoringConfig, args: &Applicat
      */
     let database_config = monitoring_config.database.clone();
     let database_service: Arc<Option<DbService>> = if let Some(database_config) = database_config {
-        Arc::new(initialize_database(&database_config, &monitoring_config.server))
+        Arc::new(initialize_database(&database_config, &monitoring_config.server).await)
     } else {
         info!("No database configuration found!");
         Arc::new(None)
@@ -145,8 +145,8 @@ async fn start_application(monitoring_config: &MonitoringConfig, args: &Applicat
  * Returns the database service.
  * 
  */
-fn initialize_database(database_config: &DatabaseConfig, server_config: &ServerConfig) -> Option<DbService> {
-    match DbService::new(database_config, &server_config.name) {
+async fn initialize_database(database_config: &DatabaseConfig, server_config: &ServerConfig) -> Option<DbService> {
+    match DbService::new(database_config, &server_config.name).await {
         Ok(database_service) => {
             info!("Database service initialized!");
             Some(database_service)

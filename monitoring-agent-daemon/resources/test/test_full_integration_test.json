@@ -1,8 +1,8 @@
 {
     "database": {
-        "type": "Mysql",
+        "type": "Postgres",
         "host": "greyhawk.forgottendonkey.com",
-        "port": 3306,
+        "port": 5432,
         "user": "monitor-agent-rw",
         "password": "[vKsoUcgY0CqHfKU",
         "database": "monitor-agent",
