@@ -118,8 +118,13 @@ impl CommandMonitor {
     ) -> Result<Job, ApplicationError> {
         info!("Creating Command monitor: {}", &self.name);
         let command_monitor: CommandMonitor = self.clone();       
-        let job_result = Job::new(schedule, move |_uuid, _locked| {
-            CommandMonitor::run_scheduled(command_monitor.clone());
+        let job_result = Job::new_async(schedule, move |_uuid, _locked| {
+            let mut command_monitor = command_monitor.clone();
+            Box::pin(async move {
+                let _ = command_monitor.check().await.map_err(|err| {
+                    error!("Error checking monitor: {:?}", err);
+                });
+            })
         });        
         match job_result {
             Ok(job) => Ok(job),
@@ -137,7 +142,7 @@ impl CommandMonitor {
      * Returns: Ok if the monitor ran successfully, an error otherwise.
      *
      */
-    fn check(&mut self) -> Result<(), ApplicationError> {
+    async fn check(&mut self) -> Result<(), ApplicationError> {
         debug!("Checking monitor: {}", &self.name);
         let mut command = std::process::Command::new(&self.command);
         let command = match &self.args {
@@ -151,12 +156,12 @@ impl CommandMonitor {
                 debug!("Command output: {}", output_resp);
                 if self.is_command_success(&output, &output_resp)
                 {
-                    self.set_status(&Status::Ok);
+                    self.set_status(&Status::Ok).await;
                 } else {
                     info!("Monitor status error: {} - {:?}", &self.name, output);
                     self.set_status(&Status::Error {
                         message: format!("Error running command: {output:?}"),
-                    });
+                    }).await;
                 }
                 Ok(())
             }
@@ -164,25 +169,13 @@ impl CommandMonitor {
                 info!("Monitor status error: {} - {:?}", &self.name, err);
                 self.set_status(&Status::Error {
                     message: format!("Error running command: {err:?}"),
-                });
+                }).await;
                 Err(ApplicationError::new(&format!(
                     "Error running command: {err:?}"
                 )))
             }
         }        
     }    
-    
-    /**
-     * Run schuled command monitor.
-     * 
-     * `command_monitor`: The command monitor to run.
-     */
-    fn run_scheduled(mut command_monitor: CommandMonitor) {
-        let _ = command_monitor.check().map_err(|err| {
-            error!("Error checking monitor: {err:?}");
-            err
-        });
-    }
 
 }
 
@@ -245,7 +238,7 @@ mod test {
         let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
             Arc::new(Mutex::new(HashMap::new()));
         let mut monitor = CommandMonitor::new("test", "ls", None, None, &status, &Arc::new(None), &DatabaseStoreLevel::None);
-        monitor.check().unwrap();
+        monitor.check().await.unwrap();
         assert_eq!(
             status.lock().unwrap().get("test").unwrap().status,
             Status::Ok
@@ -268,7 +261,7 @@ mod test {
             &Arc::new(None), 
             &DatabaseStoreLevel::None
         );
-        monitor.check().unwrap();
+        monitor.check().await.unwrap();
         assert_eq!(
             status.lock().unwrap().get("test").unwrap().status,
             Status::Ok

@@ -5,10 +5,10 @@ use r2d2_mysql::mysql::prelude::Queryable;
 use r2d2_mysql::mysql::OptsBuilder;
 use r2d2_mysql::mysql::TxOpts;
 use r2d2_mysql::MySqlConnectionManager;
-use r2d2_postgres::postgres::tls::NoTls;
-use r2d2_postgres::postgres::Config;
-use r2d2_postgres::PostgresConnectionManager;
-
+use bb8_postgres::tokio_postgres::tls::NoTls;
+use bb8_postgres::tokio_postgres::Config;
+use bb8_postgres::PostgresConnectionManager;
+use rust_decimal::Decimal;
 
 use crate::common::configuration::DatabaseConfig;
 use crate::common::configuration::DatabaseType;
@@ -41,11 +41,11 @@ impl DbService {
      * - If there is an error creating the database service.
      * 
      */
-    pub fn new(database_config: &DatabaseConfig, server_name: &str) -> Result<DbService, ApplicationError> {
+    pub async fn new(database_config: &DatabaseConfig, server_name: &str) -> Result<DbService, ApplicationError> {
         match &database_config.dbtype {
             DatabaseType::Maria => Ok(DbService::MariaDb(MariaDbService::new(database_config, server_name)?)),
             DatabaseType::Mysql => Ok(DbService::MariaDb(MariaDbService::new(database_config, server_name)?)),
-            DatabaseType::Postgres => Ok(DbService::PostgresDb(PostgresDbService::new(database_config, server_name)?)),
+            DatabaseType::Postgres => Ok(DbService::PostgresDb(PostgresDbService::new(database_config, server_name).await?)),
         }
     }
 
@@ -63,10 +63,10 @@ impl DbService {
      * - If there is an error committing the transaction.
      * 
      */
-    pub fn insert_monitor_status(&self, name: &str, status: &Status) -> Result<(), ApplicationError> {
+    pub async fn insert_monitor_status(&self, name: &str, status: &Status) -> Result<(), ApplicationError> {
         match self {
             DbService::MariaDb(service) => service.insert_monitor_status(name, status),
-            DbService::PostgresDb(service) => service.insert_monitor_status(name, status),
+            DbService::PostgresDb(service) => service.insert_monitor_status(name, status).await,
         }
     }
 
@@ -82,10 +82,10 @@ impl DbService {
      * - If there is an error starting a transaction.
      * 
      */
-    pub fn store_loadavg(&self, loadavg: &ProcsLoadavg) -> Result<(), ApplicationError> {
+    pub async fn store_loadavg(&self, loadavg: &ProcsLoadavg) -> Result<(), ApplicationError> {
         match self {
             DbService::MariaDb(service) => service.store_loadavg(loadavg),
-            DbService::PostgresDb(service) => service.store_loadavg(loadavg),
+            DbService::PostgresDb(service) => service.store_loadavg(loadavg).await,
         }
     }
 
@@ -101,10 +101,10 @@ impl DbService {
      * - If there is an error starting a transaction.
      * 
      */
-    pub fn store_meminfo(&self, meminfo: &ProcsMeminfo) -> Result<(), ApplicationError> {
+    pub async fn store_meminfo(&self, meminfo: &ProcsMeminfo) -> Result<(), ApplicationError> {
         match self {
             DbService::MariaDb(service) => service.store_meminfo(meminfo),
-            DbService::PostgresDb(service) => service.store_meminfo(meminfo),
+            DbService::PostgresDb(service) => service.store_meminfo(meminfo).await,
         }
     }
 
@@ -274,7 +274,7 @@ impl MariaDbService {
 #[derive(Debug)]
 pub struct PostgresDbService {
     /// The database connection pool.
-    pool: Pool<PostgresConnectionManager<NoTls>>,
+    pool: bb8::Pool<PostgresConnectionManager<NoTls>>,
     /// Server name
     server_name: String
 }
@@ -291,19 +291,20 @@ impl PostgresDbService {
      * Errors:
      * - If there is an error creating the pool.
      */
-    pub fn new(database_config: &DatabaseConfig, server_name: &str) -> Result<PostgresDbService, ApplicationError> {
+    pub async fn new(database_config: &DatabaseConfig, server_name: &str) -> Result<PostgresDbService, ApplicationError> {
 
-        let manager = r2d2_postgres::PostgresConnectionManager::new(Config::new()
+        let manager = bb8_postgres::PostgresConnectionManager::new(Config::new()
             .host(&database_config.host)
             .dbname(&database_config.db_name)
             .user(&database_config.user)
             .password(&database_config.password)
             .port(database_config.port).clone(), NoTls);
 
-        let pool = r2d2::Pool::builder()
+        let pool = bb8::Pool::builder()
             .max_size(database_config.max_connections)
             .min_idle(Some(database_config.min_connections))
             .build(manager)
+            .await
             .map_err(|err| ApplicationError::new(&err.to_string()))?;
         /*
          * Verify connection
@@ -329,16 +330,16 @@ impl PostgresDbService {
      * - If there is an error committing the transaction.
      * 
      */
-    pub fn insert_monitor_status(&self, name: &str, status: &Status) -> Result<(), ApplicationError> {
-        let mut conn = self.pool.get().map_err(|err| ApplicationError::new(&err.to_string()))?;
-        let mut tx = conn.transaction().map_err(|err| ApplicationError::new(&err.to_string()))?;
-        tx.execute("INSERT INTO monitor_status (server_name, monitor_name, status, log_time, message) VALUES ($1, $2, $3, now(), $4)", &[
+    pub async fn insert_monitor_status(&self, name: &str, status: &Status) -> Result<(), ApplicationError> {
+        let mut conn = self.pool.get().await.map_err(|err| ApplicationError::new(&err.to_string()))?;
+        let tx = conn.transaction().await.map_err(|err| ApplicationError::new(&err.to_string()))?;
+        tx.execute("INSERT INTO monitor_status (id, server_name, monitor_name, status, log_time, message) VALUES (nextval('seq_monitor_status'), $1, $2, $3, now(), $4)", &[
             &self.server_name,
             &name,
             &DbService::get_status_db_repr(status),
             &DbService::get_message(status),
-        ]).map_err(|err| ApplicationError::new(&err.to_string()))?;
-        tx.commit().map_err(|err| ApplicationError::new(&err.to_string()))?;
+        ]).await.map_err(|err| ApplicationError::new(&err.to_string()))?;
+        tx.commit().await.map_err(|err| ApplicationError::new(&err.to_string()))?;
         Ok(())
     }
 
@@ -353,18 +354,18 @@ impl PostgresDbService {
      * - If there is an error storing the load average.
      * - If there is an error starting a transaction.
      */
-    pub fn store_loadavg(&self, loadavg: &ProcsLoadavg) -> Result<(), ApplicationError> {
-        let mut conn = self.pool.get().map_err(|err| ApplicationError::new(&err.to_string()))?;
-        let mut tx = conn.transaction().map_err(|err| ApplicationError::new(&err.to_string()))?;
-        tx.execute("INSERT INTO loadavg (server_name, loadavg1min, loadavg5min, loadavg10min, num_processes, num_running_processes, log_time) VALUES ($1, $2, $3, $4, $5, $6, now())", &[
+    pub async fn store_loadavg(&self, loadavg: &ProcsLoadavg) -> Result<(), ApplicationError> {
+        let mut conn = self.pool.get().await.map_err(|err| ApplicationError::new(&err.to_string()))?;
+        let tx = conn.transaction().await.map_err(|err| ApplicationError::new(&err.to_string()))?;
+        tx.execute("INSERT INTO loadavg (id, server_name, loadavg1min, loadavg5min, loadavg10min, num_processes, num_running_processes, log_time) VALUES (nextval('seq_loadavg'), $1, $2, $3, $4, $5, $6, now())", &[
             &self.server_name,
-            &loadavg.loadavg1min,
-            &loadavg.loadavg5min,
-            &loadavg.loadavg10min,
-            &loadavg.total_number_of_processes,
-            &loadavg.current_running_processes,
-        ]).map_err(|err| ApplicationError::new(&err.to_string()))?;
-        tx.commit().map_err(|err| ApplicationError::new(&err.to_string()))?;
+            &loadavg.loadavg1min.map(|f|Decimal::try_from(f).ok()),
+            &loadavg.loadavg5min.map(|f|Decimal::try_from(f).ok()),
+            &loadavg.loadavg10min.map(|f|Decimal::try_from(f).ok()),
+            &loadavg.total_number_of_processes.map(i64::from),
+            &loadavg.current_running_processes.map(i64::from),
+        ]).await.map_err(|err| ApplicationError::new(&err.to_string()))?;
+        tx.commit().await.map_err(|err| ApplicationError::new(&err.to_string()))?;
         Ok(())
     }
 
@@ -379,17 +380,17 @@ impl PostgresDbService {
      * - If there is an error storing the meminfo.
      * - If there is an error starting a transaction.
      */
-    pub fn store_meminfo(&self, meminfo: &ProcsMeminfo) -> Result<(), ApplicationError> {
-        let mut conn = self.pool.get().map_err(|err| ApplicationError::new(&err.to_string()))?;
-        let mut tx = conn.transaction().map_err(|err| ApplicationError::new(&err.to_string()))?;
-        tx.execute("INSERT INTO meminfo (server_name, freemem, mem_percent_used, freeswap, swap_percent_used, log_time) VALUES ($1, $2, $3, $4, $5, now())", &[
+    pub async fn store_meminfo(&self, meminfo: &ProcsMeminfo) -> Result<(), ApplicationError> {
+        let mut conn = self.pool.get().await.map_err(|err| ApplicationError::new(&err.to_string()))?;
+        let tx = conn.transaction().await.map_err(|err| ApplicationError::new(&err.to_string()))?;
+        tx.execute("INSERT INTO meminfo (id, server_name, freemem, mem_percent_used, freeswap, swap_percent_used, log_time) VALUES (nextval('seq_meminfo'), $1, $2, $3, $4, $5, now())", &[
             &self.server_name,
-            &meminfo.memfree.map(|x| i64::try_from(x).ok()),
-            &ProcsMeminfo::get_percent_used(meminfo.memfree, meminfo.memtotal),
-            &meminfo.swapfree.map(|x| i64::try_from(x).ok()),
-            &ProcsMeminfo::get_percent_used(meminfo.swapfree, meminfo.swaptotal),
-        ]).map_err(|err| ApplicationError::new(&err.to_string()))?;
-        tx.commit().map_err(|err| ApplicationError::new(&err.to_string()))?;
+            &meminfo.memfree.map(|x| i32::try_from(x).ok()),
+            &ProcsMeminfo::get_percent_used(meminfo.memfree, meminfo.memtotal).map(|f|Decimal::try_from(f).ok()),
+            &meminfo.swapfree.map(|x| i32::try_from(x).ok()),
+            &ProcsMeminfo::get_percent_used(meminfo.swapfree, meminfo.swaptotal).map(|f|Decimal::try_from(f).ok()),
+        ]).await.map_err(|err| ApplicationError::new(&err.to_string()))?;
+        tx.commit().await.map_err(|err| ApplicationError::new(&err.to_string()))?;
         Ok(())
     }
 }

@@ -28,6 +28,9 @@ monitoring-agent-lib = { path = "../monitoring-agent-lib" }                     
 r2d2 = { version = "0.8.10", features = [   ]}                                          # For handling connection pools.
 r2d2_mysql = "25.0.0"                                                                   # For handling mysql connections. 
 r2d2_postgres = "0.18.1"                                                                # For handling postgres connections.
+bb8 = "0.8.5"                                                                           # For handling connection pools.
+bb8-postgres = "0.8.0"                                                                  # For handling postgres connections.
+rust_decimal = { version = "1.35.0", features = ["db-postgres"] }
 
 [package.metadata.deb]
 maintainer = "Kjetil Fjellheim <kjetil@forgottendonkey.net>"
