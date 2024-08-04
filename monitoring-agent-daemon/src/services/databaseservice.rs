@@ -3,6 +3,7 @@ use r2d2::Pool;
 use r2d2_mysql::mysql::params;
 use r2d2_mysql::mysql::prelude::Queryable;
 use r2d2_mysql::mysql::OptsBuilder;
+use r2d2_mysql::mysql::Row;
 use r2d2_mysql::mysql::TxOpts;
 use r2d2_mysql::MySqlConnectionManager;
 use bb8_postgres::tokio_postgres::tls::NoTls;
@@ -137,7 +138,27 @@ impl DbService {
             Status::Error { message } => Some(message.clone()),
             _ => None,
         }
-    }    
+    }
+
+    /**
+     * Query long running queries.
+     * 
+     * `max_query_time`: The maximum query time.
+     * 
+     * Returns: The long running queries.
+     * 
+     * Errors:
+     * - If there is an error querying the long running queries.
+     * - If there is an error starting a transaction.
+     * - If there is an error committing the transaction.
+     * 
+     */
+    pub async fn query_long_running_queries(&self, max_query_time: u32) -> Result<Vec<String>, ApplicationError> {
+        match self {
+            DbService::MariaDb(service) => service.query_long_running_queries(max_query_time),
+            DbService::PostgresDb(service) => service.query_long_running_queries(max_query_time).await,
+        }
+    }
 }
 
 /**
@@ -268,6 +289,34 @@ impl MariaDbService {
         Ok(())
     }
 
+    /**
+     * Query long running queries.
+     * 
+     * `max_query_time`: The maximum query time.
+     * 
+     * Returns: The long running queries.
+     * 
+     * Errors:
+     * - If there is an error querying the long running queries.
+     * - If there is an error starting a transaction.
+     * - If there is an error committing the transaction.
+     * 
+     */
+    pub fn query_long_running_queries(&self, max_query_time: u32) -> Result<Vec<String>, ApplicationError> {
+        let mut conn = self.pool.get().map_err(|err| ApplicationError::new(&err.to_string()))?;
+        let mut tx = conn.start_transaction(TxOpts::default()).map_err(|err| ApplicationError::new(&err.to_string()))?;
+        let params = params! {
+            "max_query_time" => max_query_time,
+        };
+        let result = tx.exec_map("SELECT * FROM INFORMATION_SCHEMA.PROCESSLIST WHERE COMMAND != 'Sleep' AND TIME > :max_query_time", params, |row: Row| {
+            let id: u32 = row.get(0).unwrap_or(0);
+            let info: String = row.get(7).unwrap_or("unknown".to_string());
+            format!("id: {id}, info: {info}")
+        }).map_err(|err| ApplicationError::new(&err.to_string()))?;
+        tx.commit().map_err(|err| ApplicationError::new(&err.to_string()))?;
+        Ok(result)
+    }
+
 }
 
 
@@ -393,4 +442,27 @@ impl PostgresDbService {
         tx.commit().await.map_err(|err| ApplicationError::new(&err.to_string()))?;
         Ok(())
     }
+
+    /**
+     * Query long running queries.
+     * 
+     * `max_query_time`: The maximum query time.
+     * 
+     * Returns: The long running queries.
+     * 
+     */
+    pub async fn query_long_running_queries(&self, max_query_time: u32) -> Result<Vec<String>, ApplicationError> {
+        let mut conn = self.pool.get().await.map_err(|err| ApplicationError::new(&err.to_string()))?;
+        let tx = conn.transaction().await.map_err(|err| ApplicationError::new(&err.to_string()))?;
+        let result = tx.query("SELECT * FROM pg_stat_activity WHERE state = 'active' AND now() - query_start > interval '1 second' * $1", &[&f64::from(max_query_time)]).await.map_err(|err| ApplicationError::new(&err.to_string()))?;
+        let mut queries: Vec<String> = Vec::new();
+        for row in result {
+            let id: u32 = row.get(0);
+            let client: String = row.get(6);
+            queries.push(format!("id: {id}, client: {client}"));
+        }
+        tx.commit().await.map_err(|err| ApplicationError::new(&err.to_string()))?;
+        Ok(queries)
+    }
+
 }
