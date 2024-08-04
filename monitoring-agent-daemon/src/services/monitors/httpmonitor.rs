@@ -243,14 +243,14 @@ impl HttpMonitor {
      * `response`: The response from the request.
      *
      */
-    fn check_response_and_set_status(
+    async fn check_response_and_set_status(
         &mut self,
         response: Result<reqwest::Response, reqwest::Error>,
     ) {
         match response {
             Ok(response) => {
                 if response.status().is_success() {
-                    self.set_status(&Status::Ok);
+                    self.set_status(&Status::Ok).await;
                 } else {
                     info!("Monitor status error: {} - {:?}", &self.name, response);
                     self.set_status(&Status::Error {
@@ -259,13 +259,13 @@ impl HttpMonitor {
                             &self.url,
                             response.status()
                         ),
-                    });
+                    }).await;
                 }
             }
             Err(err) => {
                 self.set_status(&Status::Error {
                     message: format!("Error connecting to {} with error: {err}", &self.url),
-                });
+                }).await;
             }
         }
     }
@@ -422,7 +422,7 @@ impl HttpMonitor {
         /*
          * Check response and set status in the monitor.
          */
-        self.check_response_and_set_status(req_response);
+        self.check_response_and_set_status(req_response).await;
         debug!("Monitor checked: {}", &self.name);
         Ok(())
     }    
@@ -529,8 +529,8 @@ mod test {
     /**
      * Test the `set_status` method.
      */
-    #[test]
-    fn test_set_status() {
+    #[tokio::test]
+    async fn test_set_status() {
         let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
             Arc::new(Mutex::new(HashMap::new()));
         let mut monitor = HttpMonitor::new(
@@ -550,7 +550,7 @@ mod test {
             &DatabaseStoreLevel::None
         )
         .unwrap();
-        monitor.set_status(&Status::Ok);
+        monitor.set_status(&Status::Ok).await;
         assert_eq!(
             status.lock().unwrap().get("Google").unwrap().status,
             Status::Ok

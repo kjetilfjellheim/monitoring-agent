@@ -40,8 +40,8 @@ pub trait Monitor {
      * `new_status`: The new status.
      *
      */
-    fn set_status(&mut self, new_status: &Status) {
-        self.insert_monitor_status(new_status);
+    async fn set_status(&mut self, new_status: &Status) {
+        self.insert_monitor_status(new_status).await;
         let status = self.get_status();
         match status.lock() {
             Ok(mut monitor_lock) => {
@@ -67,7 +67,7 @@ pub trait Monitor {
      * status: The status to insert.
      *
      */
-    fn insert_monitor_status(&mut self, status: &Status) {
+    async fn insert_monitor_status(&mut self, status: &Status) {
         match self.get_database_store_level() {
             DatabaseStoreLevel::None => {
                 return;
@@ -89,7 +89,7 @@ pub trait Monitor {
                 match database_service.insert_monitor_status(
                     self.get_name(),
                     &status.clone(),
-                ) {
+                ).await {
                     Ok(()) => {}
                     Err(err) => {
                         error!("Error inserting monitor status: {:?}", err);
