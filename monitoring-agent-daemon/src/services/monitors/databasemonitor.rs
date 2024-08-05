@@ -169,3 +169,63 @@ impl super::Monitor for DatabaseMonitor {
     }   
 
 }
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+    use std::sync::Arc;
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_new() {
+        let name = "test";
+        let status = Arc::new(Mutex::new(HashMap::new()));
+        let database_service = Arc::new(None);
+        let database_store_level = DatabaseStoreLevel::None;
+        let database_monitor = DatabaseMonitor::new(name, None, &status, &database_service, &database_store_level);
+        assert_eq!(database_monitor.name, name);
+    }
+
+    #[test]
+    fn test_get_database_monitor_job() {
+        let name = "test";
+        let status = Arc::new(Mutex::new(HashMap::new()));
+        let database_service = Arc::new(None);
+        let database_store_level = DatabaseStoreLevel::None;
+        let mut database_monitor = DatabaseMonitor::new(name, None, &status, &database_service, &database_store_level);
+        let job = database_monitor.get_database_monitor_job("* * * * * *");
+        assert!(job.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_check() {
+        let name = "test";
+        let status = Arc::new(Mutex::new(HashMap::new()));
+        let database_service = Arc::new(None);
+        let database_store_level = DatabaseStoreLevel::None;
+        let mut database_monitor = DatabaseMonitor::new(name, None, &status, &database_service, &database_store_level);
+        let check = database_monitor.check().await;
+        assert_eq!(check, ());
+    }
+
+    #[test]
+    fn test_get_name() {
+        let name = "test";
+        let status = Arc::new(Mutex::new(HashMap::new()));
+        let database_service = Arc::new(None);
+        let database_store_level = DatabaseStoreLevel::None;
+        let database_monitor = DatabaseMonitor::new(name, None, &status, &database_service, &database_store_level);
+        assert_eq!(database_monitor.get_name(), name);
+    }
+
+    #[test]
+    fn test_get_status() {
+        let name = "test";
+        let status = Arc::new(Mutex::new(HashMap::new()));
+        let database_service = Arc::new(None);
+        let database_store_level = DatabaseStoreLevel::None;
+        let database_monitor = DatabaseMonitor::new(name, None, &status, &database_service, &database_store_level);
+        assert_eq!(database_monitor.get_status().lock().unwrap().get("test").unwrap().status, Status::Unknown);
+    }
+}

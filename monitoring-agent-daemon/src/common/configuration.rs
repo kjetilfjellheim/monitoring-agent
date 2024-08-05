@@ -322,7 +322,7 @@ mod tests {
     #[test]
     fn test_simple_tcp_file() -> Result<(), ApplicationError> {
         let monitoring: MonitoringConfig =
-            MonitoringConfig::new("resources/test/test_simple_tcp.json")?;
+            MonitoringConfig::new("resources/test/configuration_import_test/test_simple_tcp.json")?;
         assert_eq!("0 0 0 0 0 0 0".to_string(), monitoring.monitors[0].schedule);
         assert_eq!(1, monitoring.monitors.len());
         let monitor = monitoring.monitors[0].details.clone();
@@ -344,7 +344,7 @@ mod tests {
     #[test]
     fn test_simple_http_file() -> Result<(), ApplicationError> {
         let monitoring: MonitoringConfig =
-            MonitoringConfig::new("resources/test/test_simple_http.json")?;
+            MonitoringConfig::new("resources/test/configuration_import_test/test_simple_http.json")?;
         assert_eq!("1 2 3 4 5 6 7".to_string(), monitoring.monitors[0].schedule);
         assert_eq!(1, monitoring.monitors.len());
         let monitor = monitoring.monitors[0].details.clone();
@@ -369,67 +369,146 @@ mod tests {
     }
 
     /**
-     * Test for multiple monitors in a single file.
+     * Test for a simple command monitor.
      */
     #[test]
-    fn test_multiple_file() -> Result<(), ApplicationError> {
+    fn test_simple_command_file() -> Result<(), ApplicationError> {
         let monitoring: MonitoringConfig =
-            MonitoringConfig::new("resources/test/test_multiple.json")?;
-        assert_eq!("* * * * * * *".to_string(), monitoring.monitors[0].schedule);
-        assert_eq!("* * * * * * *".to_string(), monitoring.monitors[1].schedule);
-        assert_eq!(2, monitoring.monitors.len());
+            MonitoringConfig::new("resources/test/configuration_import_test/test_simple_command.json")?;
+        assert_eq!("0 0 0 0 0 0 0".to_string(), monitoring.monitors[0].schedule);
+        assert_eq!(1, monitoring.monitors.len());
         let monitor = monitoring.monitors[0].details.clone();
         assert_eq!(
             monitor,
-            MonitorType::Tcp {
-                host: "127.0.0.1".to_string(),
-                port: 80,
-            }
-        );
-        let monitor = monitoring.monitors[1].details.clone();
-        assert_eq!(
-            monitor,
-            MonitorType::Http {
-                url: "https://post.com".to_string(),
-                body: Some("body".to_string()),
-                method: HttpMethod::Post,
-                headers: Some(HashMap::new()),
-                use_builtin_root_certs: true,
-                accept_invalid_certs: false,
-                tls_info: false,
-                root_certificate: None,
-                identity: None,
-                identity_password: None
+            MonitorType::Command {
+                command: "ls".to_string(),
+                args: Some(vec!["-l".to_string()]),
+                expected: Some("expected".to_string())
             }
         );
         Ok(())
     }
 
     /**
-     * Test for a http monitor with tls fields set.
+     * Test for a simple mariadb monitor.
      */
-    #[ignore = "No support for testing yet."]
     #[test]
-    fn test_simple_tlsfields() -> Result<(), ApplicationError> {
+    fn test_simple_db_mariadb_file() -> Result<(), ApplicationError> {
         let monitoring: MonitoringConfig =
-            MonitoringConfig::new("resources/test/test_simple_tlsfields.json")?;
+            MonitoringConfig::new("resources/test/configuration_import_test/test_simple_db_mariadb.json")?;
         assert_eq!("0 0 0 0 0 0 0".to_string(), monitoring.monitors[0].schedule);
+        assert_eq!(1, monitoring.monitors.len());
         let monitor = monitoring.monitors[0].details.clone();
         assert_eq!(
             monitor,
-            MonitorType::Http {
-                url: "https://post.com".to_string(),
-                body: Some("body".to_string()),
-                method: HttpMethod::Post,
-                headers: Some(HashMap::new()),
-                use_builtin_root_certs: false,
-                accept_invalid_certs: true,
-                tls_info: true,
-                root_certificate: Some("rootCertificate".to_string()),
-                identity: Some("identity".to_string()),
-                identity_password: Some("identityPassword".to_string())
+            MonitorType::Database { 
+                database_config: Some(DatabaseConfig {
+                    dbtype: DatabaseType::Maria,
+                    host: "localhost".to_string(),
+                    db_name: "test".to_string(),
+                    user: "root".to_string(),
+                    password: "root".to_string(),
+                    port: 3306,
+                    min_connections: 1,
+                    max_connections: 10,
+                }),
+                max_query_time: Some(100),
             }
         );
         Ok(())
     }
+
+    /**
+     * Test for a simple postgres monitor.
+     */
+    #[test]
+    fn test_simple_db_postgres_file() -> Result<(), ApplicationError> {
+        let monitoring: MonitoringConfig =
+            MonitoringConfig::new("resources/test/configuration_import_test/test_simple_db_postgres.json")?;
+        assert_eq!("0 0 0 0 0 0 0".to_string(), monitoring.monitors[0].schedule);
+        assert_eq!(1, monitoring.monitors.len());
+        let monitor = monitoring.monitors[0].details.clone();
+        assert_eq!(
+            monitor,
+            MonitorType::Database { 
+                database_config: Some(DatabaseConfig {
+                    dbtype: DatabaseType::Postgres,
+                    host: "localhost".to_string(),
+                    db_name: "test".to_string(),
+                    user: "root".to_string(),
+                    password: "root".to_string(),
+                    port: 5432,
+                    min_connections: 1,
+                    max_connections: 10,
+                }),
+                max_query_time: Some(100),
+            }
+        );
+        Ok(())
+    }
+
+    /**
+     * Test for a simple loadavg monitor.
+     */
+    #[test]
+    fn test_simple_loadavg_file() -> Result<(), ApplicationError> {
+        let monitoring: MonitoringConfig =
+            MonitoringConfig::new("resources/test/configuration_import_test/test_simple_loadavg.json")?;
+        assert_eq!("0 0 0 0 0 0 0".to_string(), monitoring.monitors[0].schedule);
+        assert_eq!(1, monitoring.monitors.len());
+        let monitor = monitoring.monitors[0].details.clone();
+        assert_eq!(
+            monitor,
+            MonitorType::LoadAvg {
+                threshold_1min: Some(1.0),
+                threshold_5min: Some(2.0),
+                threshold_10min: Some(3.0),
+                store_values: true,               
+            }
+        );
+        Ok(())
+    }
+
+
+    /**
+     * Test for a simple memory monitor.
+     */
+    #[test]
+    fn test_simple_meminfo_file() -> Result<(), ApplicationError> {
+        let monitoring: MonitoringConfig =
+            MonitoringConfig::new("resources/test/configuration_import_test/test_simple_meminfo.json")?;
+        assert_eq!("0 0 0 0 0 0 0".to_string(), monitoring.monitors[0].schedule);
+        assert_eq!(1, monitoring.monitors.len());
+        let monitor = monitoring.monitors[0].details.clone();
+        assert_eq!(
+            monitor,
+            MonitorType::Mem {
+                max_percentage_mem: Some(70.0),
+                max_percentage_swap: Some(80.0),
+                store_values: true,                            
+            }
+        );
+        Ok(())
+    }    
+
+
+    /**
+     * Test for a simple systemctl monitor.
+     */
+    #[test]
+    fn test_simple_systemctl_file() -> Result<(), ApplicationError> {
+        let monitoring: MonitoringConfig =
+            MonitoringConfig::new("resources/test/configuration_import_test/test_simple_systemctl.json")?;
+        assert_eq!("0 0 0 0 0 0 0".to_string(), monitoring.monitors[0].schedule);
+        assert_eq!(1, monitoring.monitors.len());
+        let monitor = monitoring.monitors[0].details.clone();
+        assert_eq!(
+            monitor,
+            MonitorType::Systemctl { 
+                active: vec!["service1".to_string(), "service2".to_string()]                        
+            }
+        );
+        Ok(())
+    }        
+
 }

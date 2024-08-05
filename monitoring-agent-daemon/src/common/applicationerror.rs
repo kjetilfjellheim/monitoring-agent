@@ -25,3 +25,18 @@ impl ApplicationError {
         self.message.clone()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #[cfg(test)]
+    mod applicationerror_tests {
+        use super::super::*;
+
+        #[test]
+        fn test_new() {
+            let message = "test message";
+            let application_error = ApplicationError::new(message);
+            assert_eq!(application_error.get_message(), message);
+        }
+    }
+}

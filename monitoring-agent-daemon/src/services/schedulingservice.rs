@@ -276,7 +276,7 @@ mod test {
     #[tokio::test]
     async fn test_monitoring_service() {
         let status = Arc::new(Mutex::new(HashMap::new()));
-        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("./resources/test/test_full_integration_test.json").unwrap(), &status, &Arc::new(None));
+        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("./resources/test/test_full_configuration.json").unwrap(), &status, &Arc::new(None));
         let res = scheduling_service.start(true).await;
         assert!(res.is_ok());
     }
