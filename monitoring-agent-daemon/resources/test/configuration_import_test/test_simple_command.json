@@ -1,0 +1,14 @@
+{
+    "monitors":[
+        {
+            "name":"test command",
+            "schedule": "0 0 0 0 0 0 0",
+            "details": {
+                "type": "command",
+                "command": "ls",
+                "args": ["-l"],
+                "expected": "expected"           
+            }
+        }
+    ]
+}

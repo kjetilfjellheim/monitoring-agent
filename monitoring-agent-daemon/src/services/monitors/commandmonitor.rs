@@ -273,7 +273,7 @@ mod test {
         let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
             Arc::new(Mutex::new(HashMap::new()));
         let mut monitor = CommandMonitor::new("test", "grumpy", None, None, &status, &Arc::new(None), &DatabaseStoreLevel::None);
-        let _ = monitor.check();
+        let _ = monitor.check().await;
         assert_eq!(status.lock().unwrap().get("test").unwrap().status, Status::Error { message: "Error running command: Os { code: 2, kind: NotFound, message: \"No such file or directory\" }".to_string() });
     }
 
@@ -297,7 +297,7 @@ mod test {
             &Arc::new(None),
             &DatabaseStoreLevel::None
         );
-        let _ = monitor.check();
+        let _ = monitor.check().await;
         assert_eq!(
             status.lock().unwrap().get("test").unwrap().status,
             Status::Ok

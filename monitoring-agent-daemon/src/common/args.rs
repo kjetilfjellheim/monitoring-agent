@@ -39,3 +39,35 @@ pub struct ApplicationArguments {
     #[arg(short = 'p', long, default_value = "/var/run/monitoring-agent-daemon.pid")]
     pub pidfile: String,
 }
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+
+    #[test]
+    fn test_application_arguments() {
+        let args = ApplicationArguments::parse_from(&["monitoring-agent-daemon", "-c", "/etc/monitoring-agent-daemon/config.json", "-l", "/etc/monitoring-agent-daemon/logging.yml", "-d", "-t", "-i", "/var/log/monitoring-agent-daemon.out", "-e", "/var/log/monitoring-agent-daemon.err", "-p", "/var/run/monitoring-agent-daemon.pid"]);
+        assert_eq!(args.config, "/etc/monitoring-agent-daemon/config.json");
+        assert_eq!(args.loggingfile, "/etc/monitoring-agent-daemon/logging.yml");
+        assert_eq!(args.daemon, true);
+        assert_eq!(args.test, true);
+        assert_eq!(args.stdout, "/var/log/monitoring-agent-daemon.out");
+        assert_eq!(args.stderr, "/var/log/monitoring-agent-daemon.err");
+        assert_eq!(args.pidfile, "/var/run/monitoring-agent-daemon.pid");
+    }
+
+
+    #[test]
+    fn test_application_default_arguments() {
+        let args = ApplicationArguments::parse_from(&["monitoring-agent-daemon"]);
+        assert_eq!(args.config, "/etc/monitoring-agent-daemon/config.json");
+        assert_eq!(args.loggingfile, "/etc/monitoring-agent-daemon/logging.yml");
+        assert_eq!(args.daemon, false);
+        assert_eq!(args.test, false);
+        assert_eq!(args.stdout, "/var/log/monitoring-agent-daemon.out");
+        assert_eq!(args.stderr, "/var/log/monitoring-agent-daemon.err");
+        assert_eq!(args.pidfile, "/var/run/monitoring-agent-daemon.pid");
+    }
+
+}

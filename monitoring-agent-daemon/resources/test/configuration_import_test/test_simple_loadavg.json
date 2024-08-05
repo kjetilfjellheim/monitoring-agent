@@ -1,0 +1,19 @@
+{
+    "server": {
+        "ip": "127.0.0.1",
+        "port": 8080
+    },
+    "monitors":[
+        {        
+            "name":"Loadavg",
+            "schedule": "0 0 0 0 0 0 0",
+            "details": {
+                "type": "loadAvg",
+                "threshold1min": 1.0,
+                "threshold5min": 2.0,
+                "threshold10min": 3.0,
+                "storeValues": true
+            }
+        }
+    ]
+}

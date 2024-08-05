@@ -245,7 +245,7 @@ mod test {
     #[tokio::test]
     async fn test_normal_application() {
         let args = ApplicationArguments {
-            config: "./resources/test/test_full_integration_test.json".to_string(),
+            config: "./resources/test/test_full_configuration.json".to_string(),
             daemon: false,
             test: true,
             stdout: String::new(),
@@ -261,7 +261,7 @@ mod test {
     #[tokio::test]
     async fn test_daemonize_application() {
         let args = ApplicationArguments {
-            config: "./resources/test/test_full_integration_test.json".to_string(),
+            config: "./resources/test/test_full_configuration.json".to_string(),
             daemon: true,
             test: true,
             stdout: "/tmp/monitoring-agent.out".to_string(),
