@@ -29,6 +29,15 @@ impl ProcsLoadavg {
     /**
      * Create a new `ProcsLoadavg`.
      *
+     * ```
+     * use monitoring_agent_lib::proc::loadavg::ProcsLoadavg;
+     * ProcsLoadavg::new(None, None, None, None, None);
+     * ```
+     * ```
+     * use monitoring_agent_lib::proc::loadavg::ProcsLoadavg;
+     * ProcsLoadavg::new(Some(0.59), Some(0.63), Some(0.32), Some(1), Some(1419));
+     * ```
+     * 
      * `loadavg1min`: The load average for the last minute.
      * `loadavg5min`: The load average for the last 5 minutes.
      * `loadavg10min`: The load average for the last 10 minutes.
@@ -56,7 +65,11 @@ impl ProcsLoadavg {
 
     /**
      * Get the loadavg of the cpu.
-     * 
+     * ```
+     * use monitoring_agent_lib::proc::loadavg::ProcsLoadavg;
+     * ProcsLoadavg::get_loadavg();
+     * ```
+     *      
      * # Errors
      *  - If there is an error reading the loadavg file.
      *  - If there is an error reading a line from the loadavg file.
