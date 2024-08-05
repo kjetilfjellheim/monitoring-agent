@@ -122,8 +122,6 @@ Run as daemon `./monitoring-agent --daemon`
 ```
 
 ## Setup as daemon
-### Important
-Type=forking This is important as the application forks a a daemon process. Without forking this setting this won't be identified and it will fail.
 
 ### Setup
 Add the monitoring-agent command to /usr/local/bin
@@ -138,8 +136,8 @@ DefaultDependencies=no
 Before=shutdown.target
 
 [Service]
-ExecStart=/usr/local/bin/monitoring-agent --daemon
-Type=forking
+ExecStart=/usr/local/bin/monitoring-agent
+Type=simple
 Restart=on-failure
 TimeoutStartSec=10
 

@@ -34,6 +34,16 @@ impl ProcsProcess {
     /**
     * Create a new `ProcsProcess`.
     *
+    * ```
+    * use monitoring_agent_lib::proc::process::ProcsProcess;
+    * ProcsProcess::new(None, None, None, None, None, None, None);
+    * ```
+    * ```
+    * use monitoring_agent_lib::proc::process::ProcsProcess;
+    * use monitoring_agent_lib::proc::process::ProcessState;
+    * ProcsProcess::new(Some(2914), Some(2656), Some("code".to_string()), Some("0002".to_string()), Some(ProcessState::InterruptableSleep), Some(1), Some(vec!["4".to_string(), "24".to_string(), "27".to_string(), "30".to_string(), "46".to_string(), "100".to_string(), "119".to_string(), "129".to_string(), "1000".to_string()]));
+    * ```
+    * 
     * `pid`: The process id.
     * `parent_pid`: The parent process id.
     * `name`: The name of the process.
@@ -66,6 +76,11 @@ impl ProcsProcess {
 
     /**
      * Get all processes.
+     * 
+     * ```
+     * use monitoring_agent_lib::proc::process::ProcsProcess;
+     * ProcsProcess::get_all_processes();
+     * ```
      * 
      * Returns the processes or an error.
      * 
@@ -126,6 +141,11 @@ impl ProcsProcess {
     /**
      * Get process status.
      * 
+     * ```
+     * use monitoring_agent_lib::proc::process::ProcsProcess;
+     * ProcsProcess::get_process(1);
+     * ```
+     * 
      * `dir`: The directory to get the process status from.
      * 
      * Returns the process status or an error.
@@ -142,6 +162,11 @@ impl ProcsProcess {
 
     /**
      * Get child processes.
+     * 
+     * ```
+     * use monitoring_agent_lib::proc::process::ProcsProcess;
+     * ProcsProcess::get_process_threads(1);
+     * ```
      * 
      * `pid`: The process id to get the child processes from.
      * 

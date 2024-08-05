@@ -32,7 +32,16 @@ pub struct ProcsCpuinfo {
 impl ProcsCpuinfo {
     /**
      * Create a new `Cpuinfo`.
-     *
+     * 
+     * ```
+     * use monitoring_agent_lib::proc::cpuinfo::ProcsCpuinfo;
+     * ProcsCpuinfo::new(None, None, None, None, None, None, None);
+     * ```
+     * ```
+     * use monitoring_agent_lib::proc::cpuinfo::ProcsCpuinfo;
+     * ProcsCpuinfo::new(Some(0), Some("AuthenticAMD".to_string()), Some("25".to_string()), Some("116".to_string()), Some("AMD Ryzen 7 7840HS w/ Radeon 780M Graphics".to_string()), Some(8), Some(3000.0));
+     * ```
+     * 
      * `apicid`: The apicid of the cpu.
      * `vendor_id`: The vendor id of the cpu.
      * `cpu_family`: The cpu family.
@@ -66,6 +75,11 @@ impl ProcsCpuinfo {
 
     /**
      * Get the apicid of the cpu.
+     * 
+     * ```
+     * use monitoring_agent_lib::proc::cpuinfo::ProcsCpuinfo;
+     * ProcsCpuinfo::get_cpuinfo();
+     * ```
      * 
      * # Errors
      *  - If there is an error reading the cpuinfo file.
