@@ -436,7 +436,7 @@ impl MonitorResponse {
 }
 
 #[allow(clippy::module_name_repetitions)]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum MonitorStatusResponse {
     /// The monitor is ok.
     Ok,
@@ -586,5 +586,92 @@ mod test {
         assert_eq!(process_response.state, Some(ProcessStateResponse::Running));
         assert_eq!(process_response.threads, Some(3));
         assert_eq!(process_response.groups, Some(vec!["group1".to_string(), "group2".to_string()]));
+    }
+
+    #[test]
+    fn test_process_state_response_from_state() {
+        assert_eq!(ProcessStateResponse::from_state(&Some(ProcessState::Running)), Some(ProcessStateResponse::Running));
+        assert_eq!(ProcessStateResponse::from_state(&Some(ProcessState::Running)), Some(ProcessStateResponse::Running));
+        assert_eq!(ProcessStateResponse::from_state(&Some(ProcessState::InterruptableSleep)), Some(ProcessStateResponse::InterruptableSleep));
+        assert_eq!(ProcessStateResponse::from_state(&Some(ProcessState::Stopped)), Some(ProcessStateResponse::Stopped));
+        assert_eq!(ProcessStateResponse::from_state(&Some(ProcessState::Zombie)), Some(ProcessStateResponse::Zombie));
+        assert_eq!(ProcessStateResponse::from_state(&Some(ProcessState::Idle)), Some(ProcessStateResponse::Idle));
+        assert_eq!(ProcessStateResponse::from_state(&Some(ProcessState::DiskSleep)), Some(ProcessStateResponse::DiskSleep));
+        assert_eq!(ProcessStateResponse::from_state(&Some(ProcessState::Dead)), Some(ProcessStateResponse::Dead));
+        assert_eq!(ProcessStateResponse::from_state(&Some(ProcessState::TracingStop)), Some(ProcessStateResponse::TracingStop));
+        assert_eq!(ProcessStateResponse::from_state(&Some(ProcessState::Unknown)), Some(ProcessStateResponse::Unknown));
+        assert_eq!(ProcessStateResponse::from_state(&None), None);        
+    }
+
+    #[test]
+    fn test_from_processes() {
+        let procs_process = vec![ProcsProcess {
+            pid: Some(1),
+            parent_pid: Some(2),
+            name: Some("name".to_string()),
+            umask: Some("umask".to_string()),
+            state: Some(ProcessState::Running),
+            threads: Some(3),
+            groups: Some(vec!["group1".to_string(), "group2".to_string()]),
+        }];
+        let process_response = ProcessResponse::from_processes(&procs_process);
+        assert_eq!(process_response[0].pid, Some(1));
+        assert_eq!(process_response[0].parent_pid, Some(2));
+        assert_eq!(process_response[0].name, Some("name".to_string()));
+        assert_eq!(process_response[0].umask, Some("umask".to_string()));
+        assert_eq!(process_response[0].state, Some(ProcessStateResponse::Running));
+        assert_eq!(process_response[0].threads, Some(3));
+        assert_eq!(process_response[0].groups, Some(vec!["group1".to_string(), "group2".to_string()]));
+    }
+
+    #[test]
+    fn test_from_monitor_status_message() {
+        let monitor_status = MonitorStatus {
+            name: "name".to_string(),
+            status: Status::Ok,
+            last_successful_time: Some(Utc::now()),
+            last_error: Some("error".to_string()),
+            last_error_time: Some(Utc::now()),
+        };
+        let monitor_response = MonitorResponse::from_monitor_status_message(&monitor_status);
+        assert_eq!(monitor_response.name, "name".to_string());
+        assert_eq!(monitor_response.status, MonitorStatusResponse::Ok);
+        assert_eq!(monitor_response.last_successful_time.is_some(), true);
+        assert_eq!(monitor_response.last_error, Some("error".to_string()));
+        assert_eq!(monitor_response.last_error_time.is_some(), true);
+    }
+
+    #[test]
+    fn test_new_moniorresponse() {
+        let monitor_response = MonitorResponse::new("name".to_string(), MonitorStatusResponse::Ok, Some(Utc::now()), Some("error".to_string()), Some(Utc::now()));
+        assert_eq!(monitor_response.name, "name".to_string());
+        assert_eq!(monitor_response.status, MonitorStatusResponse::Ok);
+        assert_eq!(monitor_response.last_successful_time.is_some(), true);
+        assert_eq!(monitor_response.last_error, Some("error".to_string()));
+        assert_eq!(monitor_response.last_error_time.is_some(), true);        
+    }
+
+    #[test]
+    fn test_from_monitor_status_messages() {
+        let monitor_status = vec![MonitorStatus {
+            name: "name".to_string(),
+            status: Status::Ok,
+            last_successful_time: Some(Utc::now()),
+            last_error: Some("error".to_string()),
+            last_error_time: Some(Utc::now()),
+        }];
+        let monitor_response = MonitorResponse::from_monitor_status_messages(&monitor_status);
+        assert_eq!(monitor_response[0].name, "name".to_string());
+        assert_eq!(monitor_response[0].status, MonitorStatusResponse::Ok);
+        assert_eq!(monitor_response[0].last_successful_time.is_some(), true);
+        assert_eq!(monitor_response[0].last_error, Some("error".to_string()));
+        assert_eq!(monitor_response[0].last_error_time.is_some(), true);        
+    }
+
+    #[test]
+    fn test_from_status() {
+        assert_eq!(MonitorStatusResponse::from_status(&Status::Ok), MonitorStatusResponse::Ok);
+        assert_eq!(MonitorStatusResponse::from_status(&Status::Unknown), MonitorStatusResponse::Unknown);
+        assert_eq!(MonitorStatusResponse::from_status(&Status::Error { message: "error".to_string() }), MonitorStatusResponse::Error);
     }
 }

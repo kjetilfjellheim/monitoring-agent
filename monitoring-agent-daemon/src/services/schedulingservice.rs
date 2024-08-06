@@ -268,6 +268,8 @@ mod test {
 
     use std::sync::Arc;
 
+    use crate::common::configuration::DatabaseStoreLevel;
+
     use super::*;
 
     /**
@@ -287,7 +289,7 @@ mod test {
     #[tokio::test]
     async fn test_monitoring_service_tcp() {
         let status = Arc::new(Mutex::new(HashMap::new()));
-        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("./resources/test/test_simple_tcp.json").unwrap(), &status, &Arc::new(None));
+        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("./resources/test/configuration_import_test/test_simple_tcp.json").unwrap(), &status, &Arc::new(None));
         let res = scheduling_service.start(true).await;
         assert!(res.is_ok());
     }
@@ -298,7 +300,7 @@ mod test {
     #[tokio::test]
     async fn test_monitoring_service_http() {
         let status = Arc::new(Mutex::new(HashMap::new()));
-        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("./resources/test/test_simple_http.json").unwrap(), &status, &Arc::new(None));
+        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("./resources/test/configuration_import_test/test_simple_http.json").unwrap(), &status, &Arc::new(None));
         let res = scheduling_service.start(true).await;
         assert!(res.is_ok());
     }
@@ -309,10 +311,181 @@ mod test {
     #[tokio::test]
     async fn test_monitoring_service_command() {
         let status = Arc::new(Mutex::new(HashMap::new()));
-        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("./resources/test/test_simple_command.json").unwrap(), &status, &Arc::new(None));
+        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("./resources/test/configuration_import_test/test_simple_command.json").unwrap(), &status, &Arc::new(None));
         let res = scheduling_service.start(true).await;
         assert!(res.is_ok());
     }
+
+    /**
+     * Test the monitoring service with an loadavg monitor.
+     */
+    #[tokio::test]
+    async fn test_monitoring_service_loadavg() {
+        let status = Arc::new(Mutex::new(HashMap::new()));
+        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("./resources/test/configuration_import_test/test_simple_loadavg.json").unwrap(), &status, &Arc::new(None));
+        let res = scheduling_service.start(true).await;
+        assert!(res.is_ok());
+    }
+
+    /**
+     * Test the monitoring service with an memory use monitor.
+     */
+    #[tokio::test]
+    async fn test_monitoring_service_meminfo() {
+        let status = Arc::new(Mutex::new(HashMap::new()));
+        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("./resources/test/configuration_import_test/test_simple_meminfo.json").unwrap(), &status, &Arc::new(None));
+        let res = scheduling_service.start(true).await;
+        assert!(res.is_ok());
+    }
+
+    /**
+     * Test the monitoring service with an systemd monitor.
+     */
+    #[tokio::test]
+    async fn test_monitoring_service_systemctl() {
+        let status = Arc::new(Mutex::new(HashMap::new()));
+        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("./resources/test/configuration_import_test/test_simple_systemctl.json").unwrap(), &status, &Arc::new(None));
+        let res = scheduling_service.start(true).await;
+        assert!(res.is_ok());
+    }
+
+    /**
+     * Test the monitoring service with an mariadb monitor.
+     */
+    #[tokio::test]
+    async fn test_monitoring_service_db_mariadb() {
+        let status = Arc::new(Mutex::new(HashMap::new()));
+        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("./resources/test/configuration_import_test/test_simple_db_mariadb.json").unwrap(), &status, &Arc::new(None));
+        let res = scheduling_service.start(true).await;
+        assert!(res.is_ok());
+    }
+
+    /**
+     * Test the monitoring service with an postgres monitor.
+     */
+    #[tokio::test]
+    async fn test_monitoring_service_db_postgres() {
+        let status = Arc::new(Mutex::new(HashMap::new()));
+        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("./resources/test/configuration_import_test/test_simple_db_postgres.json").unwrap(), &status, &Arc::new(None));
+        let res = scheduling_service.start(true).await;
+        assert!(res.is_ok());
+    }    
+
+    #[tokio::test]
+    async fn test_add_jobs() {
+        let status = Arc::new(Mutex::new(HashMap::new()));
+        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("resources/test/configuration_import_test/test_simple_tcp.json").unwrap(), &status, &Arc::new(None));
+        let res = scheduling_service.add_jobs().await;
+        print!("{:?}", res);
+    }
+
+    #[tokio::test]
+    async fn test_create_and_add_job_tcp_job() {
+        let status = Arc::new(Mutex::new(HashMap::new()));
+        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("resources/test/configuration_import_test/test_simple_tcp.json").unwrap(), &status, &Arc::new(None));
+        let res = scheduling_service.create_and_add_job(&crate::common::Monitor {
+            name: "test".to_string(),
+            schedule: "* * * * * *".to_string(),
+            store: DatabaseStoreLevel::None,
+            details: crate::common::MonitorType::Tcp {
+                host: "localhost".to_string(),
+                port: 80,
+            },
+        }, &JobScheduler::new().await.unwrap()).await;
+        assert!(res.is_ok())
+    }
+
+    #[tokio::test]
+    async fn test_create_and_add_job_http_job() {
+        let status = Arc::new(Mutex::new(HashMap::new()));
+        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("resources/test/configuration_import_test/test_simple_http.json").unwrap(), &status, &Arc::new(None));
+        let res = scheduling_service.create_and_add_job(&crate::common::Monitor {
+            name: "test".to_string(),
+            schedule: "* * * * * *".to_string(),
+            store: DatabaseStoreLevel::None,
+            details: crate::common::MonitorType::Http {
+                url: "http://localhost".to_string(),
+                method: crate::common::HttpMethod::Get,
+                body: Some("".to_string()),
+                headers: Some(HashMap::new()),
+                use_builtin_root_certs: false,
+                accept_invalid_certs: false,
+                tls_info: false,
+                root_certificate: None,
+                identity: None,
+                identity_password: None,
+            },
+        }, &JobScheduler::new().await.unwrap()).await;
+        assert!(res.is_ok())
+    }
+
+
+    #[tokio::test]
+    async fn test_create_and_add_job_systemctl_job() {
+        let status = Arc::new(Mutex::new(HashMap::new()));
+        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("resources/test/configuration_import_test/test_simple_systemctl.json").unwrap(), &status, &Arc::new(None));
+        let res = scheduling_service.create_and_add_job(&crate::common::Monitor {
+            name: "test".to_string(),
+            schedule: "* * * * * *".to_string(),
+            store: DatabaseStoreLevel::None,
+            details: crate::common::MonitorType::Systemctl { 
+                active: vec!["ssh".to_string()],
+            },
+        }, &JobScheduler::new().await.unwrap()).await;
+        assert!(res.is_ok())
+    }
+
+    #[tokio::test]
+    async fn test_create_and_add_job_command_job() {
+        let status = Arc::new(Mutex::new(HashMap::new()));
+        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("resources/test/configuration_import_test/test_simple_command.json").unwrap(), &status, &Arc::new(None));
+        let res = scheduling_service.create_and_add_job(&crate::common::Monitor {
+            name: "test".to_string(),
+            schedule: "* * * * * *".to_string(),
+            store: DatabaseStoreLevel::None,
+            details: crate::common::MonitorType::Command {
+                command: "ls".to_string(),
+                args: Some(vec!["-l".to_string()]),
+                expected: Some("total".to_string()),
+            },
+        }, &JobScheduler::new().await.unwrap()).await;
+        assert!(res.is_ok())
+    }
+
+    #[tokio::test]
+    async fn test_create_and_add_job_loadavg_job() {
+        let status = Arc::new(Mutex::new(HashMap::new()));
+        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("resources/test/configuration_import_test/test_simple_loadavg.json").unwrap(), &status, &Arc::new(None));
+        let res = scheduling_service.create_and_add_job(&crate::common::Monitor {
+            name: "test".to_string(),
+            schedule: "* * * * * *".to_string(),
+            store: DatabaseStoreLevel::None,
+            details: crate::common::MonitorType::LoadAvg { 
+                threshold_1min: Some(0.0),
+                threshold_5min: Some(0.0),
+                threshold_10min: Some(0.0),
+                store_values: false,
+            },
+        }, &JobScheduler::new().await.unwrap()).await;
+        assert!(res.is_ok())
+    }
+
+    #[tokio::test]
+    async fn test_create_and_add_job_meminfo_job() {
+        let status = Arc::new(Mutex::new(HashMap::new()));
+        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("resources/test/configuration_import_test/test_simple_meminfo.json").unwrap(), &status, &Arc::new(None));
+        let res = scheduling_service.create_and_add_job(&crate::common::Monitor {
+            name: "test".to_string(),
+            schedule: "* * * * * *".to_string(),
+            store: DatabaseStoreLevel::None,
+            details: crate::common::MonitorType::Mem {
+                max_percentage_mem: Some(0.0),
+                max_percentage_swap: Some(0.0),
+                store_values: false,
+            },
+        }, &JobScheduler::new().await.unwrap()).await;
+        assert!(res.is_ok())
+    }    
 
 }
 

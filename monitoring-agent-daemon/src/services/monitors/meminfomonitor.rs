@@ -249,6 +249,8 @@ impl super::Monitor for MeminfoMonitor {
 mod test {
     use std::{collections::HashMap, sync::{Arc, Mutex}};
 
+    use crate::{common::MonitorStatus, services::monitors::MeminfoMonitor};
+
     use super::Monitor;
 
     #[tokio::test]
@@ -337,5 +339,20 @@ mod test {
         assert_eq!(status.get("test").unwrap().status, super::Status::Error { message: "Meminfo check failed: mem: Error { message: \"Memory use 75.000% is more than 70.000%\" }, swap: Error { message: \"Memory use 50.000% is more than 15.000%\" }".to_string() });
     }
 
-
+    #[test]
+    fn test_get_meminfo_monitor_job() {
+        let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
+            Arc::new(Mutex::new(HashMap::new()));
+        let mut monitor = MeminfoMonitor::new(
+            "test",
+            Some(100.0),
+            Some(100.0),
+            &status,
+            &Arc::new(None),
+            &super::DatabaseStoreLevel::None,
+            false,
+        );
+        let job = monitor.get_meminfo_monitor_job("0 0 * * * *");
+        assert!(job.is_ok());
+    }  
 }

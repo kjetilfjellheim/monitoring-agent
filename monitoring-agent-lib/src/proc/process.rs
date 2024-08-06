@@ -510,7 +510,48 @@ mod test {
         assert_eq!(&processes.get(0).unwrap().state, &Some(ProcessState::Idle));
         assert_eq!(&processes.get(0).unwrap().threads, &Some(1));
         assert_eq!(&processes.get(0).unwrap().groups, &Some(vec![]));
-
     }         
+
+    #[test]
+    fn test_get_process_threads() {
+        let processes = ProcsProcess::get_process_threads(1);
+        assert!(processes.is_ok());
+    }
+
+    #[test]
+    fn test_get_process() {
+        let process = ProcsProcess::get_process(1);
+        assert!(process.is_ok());
+    }
+
+    #[test]
+    fn test_get_state() {
+        let state = ProcsProcess::get_state(Some(&"R".to_string()));
+        assert_eq!(state, Some(ProcessState::Running));
+        let state = ProcsProcess::get_state(Some(&"D".to_string()));
+        assert_eq!(state, Some(ProcessState::DiskSleep));
+        let state = ProcsProcess::get_state(Some(&"S".to_string()));
+        assert_eq!(state, Some(ProcessState::InterruptableSleep));
+        let state = ProcsProcess::get_state(Some(&"t".to_string()));
+        assert_eq!(state, Some(ProcessState::TracingStop));
+        let state = ProcsProcess::get_state(Some(&"Z".to_string()));
+        assert_eq!(state, Some(ProcessState::Zombie));
+        let state = ProcsProcess::get_state(Some(&"I".to_string()));
+        assert_eq!(state, Some(ProcessState::Idle));
+        let state = ProcsProcess::get_state(Some(&"X".to_string()));
+        assert_eq!(state, Some(ProcessState::Dead));
+        let state = ProcsProcess::get_state(Some(&"U".to_string()));
+        assert_eq!(state, Some(ProcessState::Unknown));
+        let state = ProcsProcess::get_state(Some(&"T".to_string()));
+        assert_eq!(state, Some(ProcessState::Stopped));           
+        let state = ProcsProcess::get_state(None);
+        assert_eq!(state, None);                   
+    }
+
+    #[test]
+    fn test_get_process_status_with_dir_error() {
+        let process = ProcsProcess::get_process_status_with_dir("resources/test/677676");
+        assert!(process.is_err());
+    }
 
 }

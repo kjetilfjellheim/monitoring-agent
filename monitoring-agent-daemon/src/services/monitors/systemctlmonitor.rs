@@ -238,4 +238,19 @@ mod test {
         assert_eq!(non_active.len(), 1);
     }    
 
+    #[test]
+    fn test_get_systemctl_monitor_job() {
+        let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
+            Arc::new(Mutex::new(HashMap::new()));
+        let mut monitor = SystemctlMonitor::new(
+            "test",
+            &status,
+            &Arc::new(None),
+            &DatabaseStoreLevel::None,
+            vec![],
+        );
+        let job = monitor.get_systemctl_monitor_job("0 0 * * * *");
+        assert!(job.is_ok());
+    }  
+
 }
