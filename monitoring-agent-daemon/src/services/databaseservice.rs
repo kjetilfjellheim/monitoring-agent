@@ -455,14 +455,28 @@ impl PostgresDbService {
         let mut conn = self.pool.get().await.map_err(|err| ApplicationError::new(&err.to_string()))?;
         let tx = conn.transaction().await.map_err(|err| ApplicationError::new(&err.to_string()))?;
         let result = tx.query("SELECT * FROM pg_stat_activity WHERE state = 'active' AND now() - query_start > interval '1 second' * $1", &[&f64::from(max_query_time)]).await.map_err(|err| ApplicationError::new(&err.to_string()))?;
+        let queries = PostgresDbService::map_result(result);
+        tx.commit().await.map_err(|err| ApplicationError::new(&err.to_string()))?;
+        Ok(queries)
+    }
+
+    /**
+     * Map the result.
+     * 
+     * `result`: The result to map.
+     * 
+     * Returns: The mapped result.
+     * 
+     * Errors:
+     * - If there is an error mapping the result.
+     */
+    fn map_result(result: Vec<r2d2_postgres::postgres::Row>) -> Vec<String> {
         let mut queries: Vec<String> = Vec::new();
         for row in result {
             let id: u32 = row.get(0);
             let client: String = row.get(6);
             queries.push(format!("id: {id}, client: {client}"));
         }
-        tx.commit().await.map_err(|err| ApplicationError::new(&err.to_string()))?;
-        Ok(queries)
+        queries
     }
-
 }

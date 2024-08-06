@@ -243,6 +243,38 @@ mod test {
     use super::*;
 
     #[tokio::test]
+    async fn test_main_normal() -> Result<(), std::io::Error> {
+        let args = ApplicationArguments {
+            config: "./resources/test/test_full_configuration.json".to_string(),
+            daemon: false,
+            test: true,
+            stdout: String::new(),
+            stderr: String::new(),
+            pidfile: String::new(),
+            loggingfile: "./resources/test/logging.yml".to_string(),
+        };
+        let monitoring_config = MonitoringConfig::new(&args.config).unwrap();
+        start_application(&monitoring_config, &args).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_main_daemon() -> Result<(), std::io::Error> {
+        let args = ApplicationArguments {
+            config: "./resources/test/test_full_configuration.json".to_string(),
+            daemon: true,
+            test: true,
+            stdout: String::new(),
+            stderr: String::new(),
+            pidfile: String::new(),
+            loggingfile: "./resources/test/logging.yml".to_string(),
+        };
+        let monitoring_config = MonitoringConfig::new(&args.config).unwrap();
+        start_application(&monitoring_config, &args).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
     async fn test_normal_application() {
         let args = ApplicationArguments {
             config: "./resources/test/test_full_configuration.json".to_string(),

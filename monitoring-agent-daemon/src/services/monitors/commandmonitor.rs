@@ -329,4 +329,13 @@ mod test {
         };
         assert_eq!(monitor.is_command_success(&output, ""), false);
     }
+
+    #[test]
+    fn test_get_command_monitor_job() {
+        let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
+            Arc::new(Mutex::new(HashMap::new()));
+        let mut monitor = CommandMonitor::new("test", "ls", None, None, &status, &Arc::new(None), &DatabaseStoreLevel::None);
+        let job = monitor.get_command_monitor_job("0 * * * * *");
+        assert!(job.is_ok());
+    }
 }

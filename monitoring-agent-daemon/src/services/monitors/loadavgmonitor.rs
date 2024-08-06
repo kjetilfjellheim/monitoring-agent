@@ -260,7 +260,7 @@ impl super::Monitor for LoadAvgMonitor {
 #[cfg(test)]
 mod test {
     use std::{collections::HashMap, sync::{Arc, Mutex}};
-    use crate::services::monitors::LoadAvgMonitor;
+    use crate::{common::{configuration::DatabaseStoreLevel, MonitorStatus}, services::monitors::LoadAvgMonitor};
 
     use super::Monitor;
 
@@ -432,5 +432,23 @@ mod test {
         let status = monitor.get_status();
         let status = status.lock().unwrap();
         assert_eq!(status.get("test").unwrap().status, super::Status::Error { message: "Load average check failed: 1min: Ok, 5min: Ok, 10min: Error { message: \"Load average 3.1 is greater than max load average 3\" }".to_string() } );
-    }        
+    }     
+
+    #[test]
+    fn test_get_loadavg_monitor_job() {
+        let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
+            Arc::new(Mutex::new(HashMap::new()));
+        let mut monitor = LoadAvgMonitor::new(
+            "test",
+            Some(1.0),
+            Some(2.0),
+            Some(3.0),
+            &status,
+            &Arc::new(None),
+            &DatabaseStoreLevel::None,
+            false,    
+        );
+        let job = monitor.get_loadavg_monitor_job("0 0 * * * *");
+        assert!(job.is_ok());
+    }   
 }

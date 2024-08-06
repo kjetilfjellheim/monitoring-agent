@@ -175,3 +175,68 @@ impl MonitoringService {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+
+    #[test]
+    fn test_get_all_monitorstatuses() {
+        let monitoring_service = MonitoringService::new();
+        let monitor_statuses = monitoring_service.get_all_monitorstatuses();
+        assert_eq!(monitor_statuses.len(), 0);
+    }
+
+    #[test]
+    fn test_get_status() {
+        let monitoring_service = MonitoringService::new();
+        let status = monitoring_service.get_status();
+        assert_eq!(status.lock().unwrap().len(), 0);
+    }
+
+    #[test]
+    fn test_get_current_meminfo() {
+        let monitoring_service = MonitoringService::new();
+        let meminfo = monitoring_service.get_current_meminfo();
+        assert!(meminfo.is_ok());
+    }
+
+    #[test]
+    fn test_get_current_cpuinfo() {
+        let monitoring_service = MonitoringService::new();
+        let cpuinfo = monitoring_service.get_current_cpuinfo();
+        assert!(cpuinfo.is_ok());
+    } 
+
+    #[test]
+    fn test_get_current_loadavg() {
+        let monitoring_service = MonitoringService::new();
+        let cpuinfo = monitoring_service.get_current_loadavg();
+        assert!(cpuinfo.is_ok());
+    } 
+
+    #[test]
+    fn test_get_processes() {
+        let monitoring_service = MonitoringService::new();
+        let cpuinfo = monitoring_service.get_processes();
+        assert!(cpuinfo.is_ok());
+    }     
+
+    #[test]
+    fn test_get_process() {
+        let monitoring_service = MonitoringService::new();
+        let cpuinfo = monitoring_service.get_process(1);
+        assert!(cpuinfo.is_ok());
+    }    
+
+    #[test]
+    fn test_get_threads() {
+        let monitoring_service = MonitoringService::new();
+        let cpuinfo = monitoring_service.get_process_threads(1);
+        assert!(cpuinfo.is_ok());
+    }    
+
+     
+
+}
