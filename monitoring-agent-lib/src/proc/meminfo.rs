@@ -77,6 +77,7 @@ impl ProcsMeminfo {
      *  - If there is an error reading a line from the meminfo file.
      *  - If there is an error parsing the data from the meminfo file.
      */
+    #[tracing::instrument(level = "debug")]
     pub fn get_meminfo() -> Result<ProcsMeminfo, CommonLibError> {
         let meminfo_file = "/proc/meminfo";
         ProcsMeminfo::read_meminfo(meminfo_file)

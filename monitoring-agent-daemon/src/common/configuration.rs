@@ -1,3 +1,4 @@
+use log::debug;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -267,6 +268,7 @@ pub struct DatabaseConfig {
  * result: The default server configuration.
  */
 fn default_server() -> ServerConfig {
+    debug!("Using default server configuration");
     ServerConfig {
         port: default_server_port(),
         ip: default_server_ip(),
@@ -275,6 +277,7 @@ fn default_server() -> ServerConfig {
 }
 
 fn default_server_name() -> String {
+    debug!("Using default server name");
     "Default".to_string()
 }
 
@@ -296,18 +299,21 @@ fn default_as_true() -> bool {
  * Default port.
  */
 fn default_server_port() -> u16 {
+    debug!("Using default server port");
     65000
 }
 /**
  * Default ip.
  */
 fn default_server_ip() -> String {
+    debug!("Using default server ip");
     "127.0.0.1".to_string()
 }
 /**
  * Default database store level.
  */
 fn default_database_store_level() -> DatabaseStoreLevel {
+    debug!("Using default database store level");
     DatabaseStoreLevel::Errors
 }
 

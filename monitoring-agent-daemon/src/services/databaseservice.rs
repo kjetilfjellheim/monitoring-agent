@@ -186,6 +186,7 @@ impl MariaDbService {
      * Errors:
      * - If there is an error creating the pool.
      */
+    #[tracing::instrument(level = "debug")]
     pub fn new(database_config: &DatabaseConfig, server_name: &str) -> Result<MariaDbService, ApplicationError> {
 
         let manager = r2d2_mysql::MySqlConnectionManager::new(OptsBuilder::new()
@@ -226,6 +227,7 @@ impl MariaDbService {
      * - If there is an error committing the transaction.
      * 
      */
+    #[tracing::instrument(level = "debug")]    
     pub fn insert_monitor_status(&self, name: &str, status: &Status) -> Result<(), ApplicationError> {
         let mut conn = self.pool.get().map_err(|err| ApplicationError::new(&err.to_string()))?;
         let mut tx = conn.start_transaction(TxOpts::default()).map_err(|err| ApplicationError::new(&err.to_string()))?;
@@ -250,6 +252,7 @@ impl MariaDbService {
      * - If there is an error storing the load average.
      * - If there is an error starting a transaction.
      */
+    #[tracing::instrument(level = "debug")]
     pub fn store_loadavg(&self, loadavg: &ProcsLoadavg) -> Result<(), ApplicationError> {
         let mut conn = self.pool.get().map_err(|err| ApplicationError::new(&err.to_string()))?;
         let mut tx = conn.start_transaction(TxOpts::default()).map_err(|err| ApplicationError::new(&err.to_string()))?;
@@ -275,6 +278,7 @@ impl MariaDbService {
      * - If there is an error storing the meminfo.
      * - If there is an error starting a transaction.
      */
+    #[tracing::instrument(level = "debug")]
     pub fn store_meminfo(&self, meminfo: &ProcsMeminfo) -> Result<(), ApplicationError> {
         let mut conn = self.pool.get().map_err(|err| ApplicationError::new(&err.to_string()))?;
         let mut tx = conn.start_transaction(TxOpts::default()).map_err(|err| ApplicationError::new(&err.to_string()))?;
@@ -302,6 +306,7 @@ impl MariaDbService {
      * - If there is an error committing the transaction.
      * 
      */
+    #[tracing::instrument(level = "debug")]
     pub fn query_long_running_queries(&self, max_query_time: u32) -> Result<Vec<String>, ApplicationError> {
         let mut conn = self.pool.get().map_err(|err| ApplicationError::new(&err.to_string()))?;
         let mut tx = conn.start_transaction(TxOpts::default()).map_err(|err| ApplicationError::new(&err.to_string()))?;
@@ -340,6 +345,7 @@ impl PostgresDbService {
      * Errors:
      * - If there is an error creating the pool.
      */
+    #[tracing::instrument(level = "debug")]
     pub async fn new(database_config: &DatabaseConfig, server_name: &str) -> Result<PostgresDbService, ApplicationError> {
 
         let manager = bb8_postgres::PostgresConnectionManager::new(Config::new()
@@ -379,6 +385,7 @@ impl PostgresDbService {
      * - If there is an error committing the transaction.
      * 
      */
+    #[tracing::instrument(level = "debug")]
     pub async fn insert_monitor_status(&self, name: &str, status: &Status) -> Result<(), ApplicationError> {
         let mut conn = self.pool.get().await.map_err(|err| ApplicationError::new(&err.to_string()))?;
         let tx = conn.transaction().await.map_err(|err| ApplicationError::new(&err.to_string()))?;
@@ -403,6 +410,7 @@ impl PostgresDbService {
      * - If there is an error storing the load average.
      * - If there is an error starting a transaction.
      */
+    #[tracing::instrument(level = "debug")]
     pub async fn store_loadavg(&self, loadavg: &ProcsLoadavg) -> Result<(), ApplicationError> {
         let mut conn = self.pool.get().await.map_err(|err| ApplicationError::new(&err.to_string()))?;
         let tx = conn.transaction().await.map_err(|err| ApplicationError::new(&err.to_string()))?;
@@ -429,6 +437,7 @@ impl PostgresDbService {
      * - If there is an error storing the meminfo.
      * - If there is an error starting a transaction.
      */
+    #[tracing::instrument(level = "debug")]
     pub async fn store_meminfo(&self, meminfo: &ProcsMeminfo) -> Result<(), ApplicationError> {
         let mut conn = self.pool.get().await.map_err(|err| ApplicationError::new(&err.to_string()))?;
         let tx = conn.transaction().await.map_err(|err| ApplicationError::new(&err.to_string()))?;
@@ -451,6 +460,7 @@ impl PostgresDbService {
      * Returns: The long running queries.
      * 
      */
+    #[tracing::instrument(level = "debug")]
     pub async fn query_long_running_queries(&self, max_query_time: u32) -> Result<Vec<String>, ApplicationError> {
         let mut conn = self.pool.get().await.map_err(|err| ApplicationError::new(&err.to_string()))?;
         let tx = conn.transaction().await.map_err(|err| ApplicationError::new(&err.to_string()))?;

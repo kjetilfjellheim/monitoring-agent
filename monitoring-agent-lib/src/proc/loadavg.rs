@@ -75,6 +75,7 @@ impl ProcsLoadavg {
      *  - If there is an error reading a line from the loadavg file.
      *  - If there is an error parsing the data from the loadavg file.
      */
+    #[tracing::instrument(level = "debug")]
     pub fn get_loadavg() -> Result<ProcsLoadavg, CommonLibError> {
         let loadavg_file = "/proc/loadavg";
         ProcsLoadavg::read_loadavg(loadavg_file)

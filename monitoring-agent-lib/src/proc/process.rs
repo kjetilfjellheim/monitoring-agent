@@ -90,6 +90,7 @@ impl ProcsProcess {
      * - If there is an error reading a line from the process file.
      *
      */
+    #[tracing::instrument(level = "debug")]
     pub fn get_all_processes() -> Result<Vec<ProcsProcess>, CommonLibError> {
         let paths = fs::read_dir("/proc");
         match paths {
@@ -155,6 +156,7 @@ impl ProcsProcess {
      * - If there is an error reading a line from the process file.                  
      * 
      */
+    #[tracing::instrument(level = "debug")]
     pub fn get_process(pid: u32) -> Result<ProcsProcess, CommonLibError> {
         let path = "/proc".to_string() + "/" + &pid.to_string();
         ProcsProcess::get_process_status_with_dir(&path)
@@ -178,6 +180,7 @@ impl ProcsProcess {
      * - If there is an error reading a line from the process file.
      * 
      */
+    #[tracing::instrument(level = "debug")]
     pub fn get_process_threads(pid: u32) -> Result<Vec<ProcsProcess>, CommonLibError> {
         ProcsProcess::read_process_threads(pid, "/proc")
     }
