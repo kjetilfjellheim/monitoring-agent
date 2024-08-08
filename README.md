@@ -6,9 +6,12 @@ The goals for the code is to develop a simple monitoring agent with the followin
 - Open tcp connection.
 - Http request
 - Commands
+- Database query check
+- Load average
+- Memory consumption
+- Systemd service
 
 ## Development
-
 The codebase is most for learning more advanced rust code while trying to create something I can use in my home network.
 
 ## Testing
@@ -24,24 +27,25 @@ Run `cargo build`
 
 ### Run
 
-Run as non daemon `./monitoring-agent --config ./config.json --loggingfile ./logging.yml`
+Run as non daemon `./monitoring-agent --config ./config.json `
 Run as daemon `./monitoring-agent --daemon`
 
 ### Arguments
 | Argument  | Description | Default | 
 | ------------- | ------------- | ------------- |
 | config | Configuration file | /etc/monitoring-agent/config.json | 
-| loggingfile | Logging file | /etc/monitoring-agent/logging.yml |
+| logfile | File logger  | /var/log/monitoring-agent-daemon/monitoring-agent.log | 
 | daemon | Run application as a daemon  | false | 
+| stdout_errorlevel | Level for stdout. Valid values are TRACE, DEBUG, INFO, WARN, ERROR. | ERROR |
+| file_errorlevel | Level for file. Valid values are TRACE, DEBUG, INFO, WARN, ERROR. | ERROR |
 | test | Test a configuration file | false | 
-| stdout | stdout file. Only used in daemon mode. | /var/log/monitoring-agent.out | 
-| stderr | Test a configuration file | /var/log/monitoring-agent.err | 
 | pidfile | Location of the pid file. Only in daemon mode. | /tmp/monitoring-agent.pid |
 
-### Configuration file
+### Server configuration
 
 | Config  | Description | 
 | ------------- | ------------- |
+| Name | Name of the server. This is used when storing the monitor information. |
 | server.ip | Ip4 address | 
 | server.port | Port | 
 
@@ -66,6 +70,12 @@ Run as daemon `./monitoring-agent --daemon`
 | details.method | Method like post, put, delete, get, option, head | 
 | details.body | Body to send | 
 | details.headers | Headers to send | 
+| details.useBuiltinRootCerts | Use systems built in root certificates |
+| details.acceptInvalidCerts | Should the system accept invalid certificates |
+| details.tlsInfo | Hyper extension carrying extra TLS layer information |
+| details.rootCertificate | Import a root server certificate. Must be a pem file |
+| details.identity | Import client identity. Must be a pem file |
+| details.identityPassword | Client identity password |
 
 #### Command monitoring
 
@@ -78,57 +88,147 @@ Run as daemon `./monitoring-agent --daemon`
 | details.args | List of command arguments | 
 | details.expected | Expected response | 
 
+#### LoadAvg monitoring
+
+| Config  | Description | 
+| ------------- | ------------- |
+| name | Name for the monitoring | 
+| schedule | Cron describing how often it should run | 
+| details.type | Type of monitor. Must be loadAvg | 
+| details.threshold1min | Threshold value for 1 minute average | 
+| details.threshold5min | Threshold value for 5 minute average | 
+| details.threshold10min | Threshold value for 10 minute average | 
+| details.storeValues | Store values in the database if configured. | 
+
+#### Mem monitoring
+
+| Config  | Description | 
+| ------------- | ------------- |
+| name | Name for the monitoring | 
+| schedule | Cron describing how often it should run | 
+| details.type | Type of monitor. Must be mem | 
+| details.maxPercentageMemUsed | Max percentage of memory used | 
+| details.maxPercentageSwapUsed | Max percentage of swap used | 
+| details.storeValues | Store values in the database if configured. | 
+
+#### Systemctl monitoring
+
+| Config  | Description | 
+| ------------- | ------------- |
+| name | Name for the monitoring | 
+| schedule | Cron describing how often it should run | 
+| details.type | Type of monitor. Must be mem | 
+| details.active | Array of systemd services which must be active | 
+
+#### Database monitoring
+
+| Config  | Description | 
+| ------------- | ------------- |
+| name | Name for the monitoring | 
+| schedule | Cron describing how often it should run | 
+| details.type | Type of monitor. Must be mem | 
+| details.config | Optional. If not given the general database config must be given |
+| details.config.type | Type of database. Supported are Postgres, Mysql and Maria |
+| details.config.host | Database server host name |
+| details.config.port | Database server host port |
+| details.config.database | Database name |
+| details.config.user | Username |
+| details.config.password | Password |
+| details.config.minConnections | Connection pool minimum connections |
+| details.config.maxConnections | Connection pool maximum connections |
+
+| details.maxQueryTime | Max time for a query to take | 
+
 #### Example file
 
 ```
 {
-  "server": {
-    "ip": "127.0.0.1",
-    "port": 65000
-  },
-  "monitors": [
-    {
-          "name":"",
-          "schedule": "*/10 * * * * *",
-          "details": {
-              "type": "http",
-              "url": "http://post.com",
-              "method": "post",
-              "body": "body",
-              "headers": {}
-          }
-      },
-      {
-          "name":"Netbios TCP",
-          "schedule": "*/10 * * * * *",
-          "details": {
-              "type": "tcp",
-              "host": "127.0.0.1",
-              "port": 139
-          }
-      },
-      {
-          "name":"Systemctl memcached",
-          "schedule": "*/5 * * * * *",
-          "details": {
-              "type": "command",
-              "command": "systemctl",
-              "args": ["show", "memcached.service", "--property=ActiveState"],
-              "expected": "ActiveState=active\n"
-          }
-      }
-  ]
+    "database": {
+        "type": "Maria",
+        "host": "",
+        "port": 3306,
+        "user": "monitor-agent-rw",
+        "password": "",
+        "database": "monitor-agent",
+        "minConnections": 10,
+        "maxConnections": 100
+    },
+    "server": {
+            "name": "dev",
+            "ip": "127.0.0.1",
+            "port":64999
+    },
+    "monitors":[
+        {
+            "name":"Systemctl ssh",
+            "schedule": "0 */1 * * * *",
+            "details": {
+                "type": "systemctl",
+                "active": ["ssh"],
+                "storeValues": true
+            }
+        },
+        {
+            "name":"Apache TCP",
+            "schedule": "0 */1 * * * *",
+            "details": {
+                "type": "tcp",
+                "host": "127.0.0.1",
+                "port": 443
+            }
+        },
+        {
+            "name":"MariaDB TCP",
+            "schedule": "0 */1 * * * *",
+            "details": {
+                "type": "tcp",
+                "host": "127.0.0.1",
+                "port": 3306
+            }
+        },
+        {
+            "name":"PostgresDB TCP",
+            "schedule": "0 */1 * * * *",
+            "details": {
+                "type": "tcp",
+                "host": "127.0.0.1",
+                "port": 5432
+            }
+        },
+        {
+            "name":"Loadavg",
+            "schedule": "0 */1 * * * *",
+            "details": {
+                "type": "loadAvg",
+                "threshold1min": 2.0,
+                "threshold5min": 2.0,
+                "threshold10min": 2.0,
+                "storeValues": true
+            }
+        },
+        {
+            "name":"Mem",
+            "schedule": "0 */1 * * * *",
+            "details": {
+                "type": "mem",
+                "maxPercentageMemUsed": 75.0,
+                "maxPercentageSwapUsed": 75.0,
+                "storeValues": true
+            }
+        }
+    ]
 }
+
 ```
 
-## Setup as daemon
+## Setup as systemd service
+
 ### Important
-Type=forking This is important as the application forks a a daemon process. Without forking this setting this won't be identified and it will fail.
+Type=simple This is important as the application fails otherwise.
 
 ### Setup
 Add the monitoring-agent command to /usr/local/bin
 Add configuration file to /etc/monitoring-agent/config.json
-Add logging file to /etc/monitoring-agent/logging.yml
 
 Create a file in /etc/systemd/system/ called monitoring-agent.service
 ```
@@ -138,8 +238,8 @@ DefaultDependencies=no
 Before=shutdown.target
 
 [Service]
-ExecStart=/usr/local/bin/monitoring-agent --daemon
-Type=forking
+ExecStart=/usr/local/bin/monitoring-agent
+Type=simple
 Restart=on-failure
 TimeoutStartSec=10
 
