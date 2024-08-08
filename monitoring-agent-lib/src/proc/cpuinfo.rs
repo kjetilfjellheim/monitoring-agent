@@ -86,7 +86,8 @@ impl ProcsCpuinfo {
      *  - If there is an error reading a line from the cpuinfo file.
      *  - If there is an error parsing the data from the cpuinfo file.
      */
-    pub fn get_cpuinfo() -> Result<Vec<ProcsCpuinfo>, CommonLibError> {
+    #[tracing::instrument(level = "debug")]
+     pub fn get_cpuinfo() -> Result<Vec<ProcsCpuinfo>, CommonLibError> {
         let cpuinfo_file = "/proc/cpuinfo";
         ProcsCpuinfo::read_cpuinfo(cpuinfo_file)
     }

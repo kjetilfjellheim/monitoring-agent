@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::{Arc, Mutex}};
 
-use log::{error, info};
+use log::{debug, error, info};
 use monitoring_agent_lib::proc::ProcsMeminfo;
 use tokio_cron_scheduler::Job;
 
@@ -189,6 +189,7 @@ impl MeminfoMonitor {
      * Check the monitor.
      */
     async fn check(&mut self) {
+        debug!("Checking monitor: {}", &self.name);
         let meminfo = ProcsMeminfo::get_meminfo();
         match meminfo {
             Ok(meminfo) => {

@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::{Arc, Mutex}};
 
-use log::{error, info};
+use log::{debug, error, info};
 use tokio_cron_scheduler::Job;
 
 use crate::{common::{configuration::DatabaseStoreLevel, ApplicationError, MonitorStatus, Status}, services::{monitors::Monitor, DbService}};
@@ -103,6 +103,7 @@ impl DatabaseMonitor {
      * Check the status of the database.
      */
     async fn check(&mut self) {
+        debug!("Checking monitor: {}", &self.name);
         let Some(database_service) = &*self.database_service else {
             error!("Database service not found.");
                 return;

@@ -85,12 +85,7 @@ impl TcpMonitor {
      *
      */
     fn close_connection(tcp_stream: &std::net::TcpStream) {
-        match tcp_stream.shutdown(std::net::Shutdown::Both) {
-            Ok(()) => {}
-            Err(err) => {
-                error!("Error closing connection: {:?}", err);
-            }
-        }
+        let _ = tcp_stream.shutdown(std::net::Shutdown::Both).map_err(|err| error!("Error closing connection: {:?}", err));
     }
 
         /**
@@ -127,6 +122,7 @@ impl TcpMonitor {
      * Check the monitor.
      */
     async fn check(&mut self) {
+        debug!("Checking monitor: {}", &self.name);
         match std::net::TcpStream::connect(format!("{}:{}", &self.host, &self.port)) {
             Ok(tcp_stream) => {
                 TcpMonitor::close_connection(&tcp_stream);

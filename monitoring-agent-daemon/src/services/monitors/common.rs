@@ -47,7 +47,7 @@ pub trait Monitor {
             Ok(mut monitor_lock) => {
                 debug!(
                     "Setting monitor status for {} to: {:?}",
-                    self.get_name(), &status
+                    self.get_name(), &new_status
                 );
                 let Some(monitor_status) = monitor_lock.get_mut(self.get_name()) else {
                     error!("Monitor status not found for: {}", &self.get_name());
