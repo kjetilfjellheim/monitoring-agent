@@ -28,6 +28,15 @@ impl ProcsMeminfo {
     /**
      * Create a new `Meminfo`.
      *
+     * ```
+     * use monitoring_agent_lib::proc::meminfo::ProcsMeminfo;
+     * ProcsMeminfo::new(None, None, None, None, None);
+     * ```
+     * ```
+     * use monitoring_agent_lib::proc::meminfo::ProcsMeminfo;
+     * ProcsMeminfo::new(Some(15_538_476), Some(1_286_156), Some(4_491_376), Some(1_998_844), Some(13_952));
+     * ```
+     * 
      * `memtotal`: The total memory.
      * `memfree`: The free memory.
      * `memavailable`: The available memory.
@@ -53,7 +62,13 @@ impl ProcsMeminfo {
     }
 
     /**
-     * Get the apicid of the cpu.
+     * Get the memory of the system.
+     * 
+     * ```
+     * use monitoring_agent_lib::proc::meminfo::ProcsMeminfo;
+     * ProcsMeminfo::get_meminfo();
+     * ```
+     * 
      * 
      * Returns the cpuinfo data or an error.
      * 
@@ -62,6 +77,7 @@ impl ProcsMeminfo {
      *  - If there is an error reading a line from the meminfo file.
      *  - If there is an error parsing the data from the meminfo file.
      */
+    #[tracing::instrument(level = "debug")]
     pub fn get_meminfo() -> Result<ProcsMeminfo, CommonLibError> {
         let meminfo_file = "/proc/meminfo";
         ProcsMeminfo::read_meminfo(meminfo_file)

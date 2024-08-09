@@ -1,0 +1,70 @@
+{
+    "monitors":[
+        {
+            "name":"test command",
+            "schedule": "0 0 0 0 0 0 0",
+            "details": {
+                "type": "command",
+                "command": "ls"            
+            }
+        },
+        {
+            "name":"",
+            "schedule": "1 2 3 4 5 6 7",
+            "details": {
+                "type": "http",
+                "url": "https://post.com",
+                "method": "post",
+                "body": "body",
+                "headers": {}
+            }
+        },
+        {
+            "name":"",
+            "schedule": "0 0 0 0 0 0 0",
+            "details": {
+                "type": "http",
+                "url": "https://post.com",
+                "method": "post",
+                "body": "body",
+                "headers": {},
+                "useBuiltinRootCerts": false,
+                "acceptInvalidCerts": true,
+                "tlsInfo": true,
+                "rootCertificate": "./resources/test/server_cert/test.cer",
+                "identity": "./resources/test/client_cert/test.p12",
+                "identityPassword": "test"
+            }
+        },
+        {        
+            "name":"Loadavg",
+            "schedule": "0 0 0 0 0 0 0",
+            "details": {
+                "type": "loadAvg",
+                "threshold1min": 1.0,
+                "threshold5min": 2.0,
+                "threshold10min": 3.0,
+                "storeValues": true
+            }
+        },
+        {
+            "name":"Mem",
+            "schedule": "0 0 0 0 0 0 0",
+            "details": {
+                "type": "mem",
+                "maxPercentageMemUsed": 70.0,
+                "maxPercentageSwapUsed": 80.0,
+                "storeValues": true
+            }
+        },
+        {
+            "name":"Systemctl ssh",
+            "schedule": "0 0 0 0 0 0 0",
+            "details": {
+                "type": "systemctl",
+                "active": ["service1", "service2"],
+                "storeValues": true
+            }
+        }                   
+    ]
+}

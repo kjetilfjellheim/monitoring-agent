@@ -80,3 +80,43 @@ pub enum Status {
     /// The monitor has encountered an error. The error message is stored in the message field.
     Error { message: String },
 }
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+
+    #[test]
+    fn test_monitorstatus_new() {
+        let name = "test_monitor";
+        let status = Status::Ok;
+        let monitorstatus = MonitorStatus::new(name.to_string(), status.clone());
+        assert_eq!(monitorstatus.name, name);
+        assert_eq!(monitorstatus.status, status);
+        assert_eq!(monitorstatus.last_successful_time, None);
+        assert_eq!(monitorstatus.last_error, None);
+        assert_eq!(monitorstatus.last_error_time, None);
+    }
+
+    #[test]
+    fn test_monitorstatus_set_status() {
+        let name = "test_monitor";
+        let status = Status::Ok;
+        let mut monitorstatus = MonitorStatus::new(name.to_string(), status.clone());
+        monitorstatus.set_status(&status);
+        assert_eq!(monitorstatus.status, status);
+        assert!(monitorstatus.last_successful_time.is_some());
+        assert_eq!(monitorstatus.last_error, None);
+        assert_eq!(monitorstatus.last_error_time, None);
+
+        let status = Status::Error {
+            message: "test error".to_string(),
+        };
+        monitorstatus.set_status(&status);
+        assert_eq!(monitorstatus.status, status);
+        assert!(monitorstatus.last_successful_time.is_some());
+        assert_eq!(monitorstatus.last_error, Some("test error".to_string()));
+        assert!(monitorstatus.last_error_time.is_some());
+    }
+
+}

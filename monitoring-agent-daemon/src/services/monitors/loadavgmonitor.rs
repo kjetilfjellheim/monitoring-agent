@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::{Arc, Mutex}};
 
-use log::{error, info};
+use log::{debug, error, info};
 use monitoring_agent_lib::proc::ProcsLoadavg;
 use tokio_cron_scheduler::Job;
 
@@ -145,17 +145,10 @@ impl LoadAvgMonitor {
      * `loadavg`: The current load average.
      */
     async fn store_current_loadavg(&self, loadavg: &ProcsLoadavg) {
-        match self.database_service.as_ref() {            
-            Some(database_service) => {
-                match database_service.store_loadavg(loadavg).await {
-                    Ok(()) => {}
-                    Err(err) => {
-                        error!("Error storing load average: {:?}", err);
-                    }
-                }
-            }
-            None => {}
-        }        
+        let database_service = self.database_service.as_ref();
+        if let Some(database_service) = database_service {
+            let _ = database_service.store_loadavg(loadavg).await.map_err(|err | error!("Error storing load average: {:?}", err));
+        }
     }
 
     /**
@@ -181,7 +174,7 @@ impl LoadAvgMonitor {
         &mut self,
         schedule: &str,
     ) -> Result<Job, ApplicationError> {
-        info!("Creating Tcp monitor: {}", &self.name);
+        info!("Creating Loadavg monitor: {}", &self.name);
         let loadavg_monitor = self.clone();       
         let job_result = Job::new_async(schedule, move |_uuid, _locked| {                
             let mut loadavg_monitor = loadavg_monitor.clone();
@@ -201,6 +194,7 @@ impl LoadAvgMonitor {
      * Check the monitor.
      */
     async fn check(&mut self) {
+        debug!("Checking monitor: {}", &self.name);
         let loadavg = ProcsLoadavg::get_loadavg();
         match loadavg {
             Ok(loadavg) => {
@@ -260,7 +254,7 @@ impl super::Monitor for LoadAvgMonitor {
 #[cfg(test)]
 mod test {
     use std::{collections::HashMap, sync::{Arc, Mutex}};
-    use crate::services::monitors::LoadAvgMonitor;
+    use crate::{common::{configuration::DatabaseStoreLevel, MonitorStatus}, services::monitors::LoadAvgMonitor};
 
     use super::Monitor;
 
@@ -432,5 +426,23 @@ mod test {
         let status = monitor.get_status();
         let status = status.lock().unwrap();
         assert_eq!(status.get("test").unwrap().status, super::Status::Error { message: "Load average check failed: 1min: Ok, 5min: Ok, 10min: Error { message: \"Load average 3.1 is greater than max load average 3\" }".to_string() } );
-    }        
+    }     
+
+    #[test]
+    fn test_get_loadavg_monitor_job() {
+        let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
+            Arc::new(Mutex::new(HashMap::new()));
+        let mut monitor = LoadAvgMonitor::new(
+            "test",
+            Some(1.0),
+            Some(2.0),
+            Some(3.0),
+            &status,
+            &Arc::new(None),
+            &DatabaseStoreLevel::None,
+            false,    
+        );
+        let job = monitor.get_loadavg_monitor_job("0 0 * * * *");
+        assert!(job.is_ok());
+    }   
 }

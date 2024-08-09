@@ -85,12 +85,7 @@ impl TcpMonitor {
      *
      */
     fn close_connection(tcp_stream: &std::net::TcpStream) {
-        match tcp_stream.shutdown(std::net::Shutdown::Both) {
-            Ok(()) => {}
-            Err(err) => {
-                error!("Error closing connection: {:?}", err);
-            }
-        }
+        let _ = tcp_stream.shutdown(std::net::Shutdown::Both).map_err(|err| error!("Error closing connection: {:?}", err));
     }
 
         /**
@@ -127,6 +122,7 @@ impl TcpMonitor {
      * Check the monitor.
      */
     async fn check(&mut self) {
+        debug!("Checking monitor: {}", &self.name);
         match std::net::TcpStream::connect(format!("{}:{}", &self.host, &self.port)) {
             Ok(tcp_stream) => {
                 TcpMonitor::close_connection(&tcp_stream);
@@ -245,4 +241,20 @@ mod test {
             Status::Ok
         );
     }
+
+    #[test]
+    fn test_get_tcp_monitor_job() {
+        let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
+            Arc::new(Mutex::new(HashMap::new()));
+        let mut monitor = TcpMonitor::new(
+            "localhost",
+            65000,
+            "localhost",
+            &status,
+            &Arc::new(None),
+            &DatabaseStoreLevel::None,
+        );
+        let job = monitor.get_tcp_monitor_job("0 0 * * * *");
+        assert!(job.is_ok());
+    }      
 }

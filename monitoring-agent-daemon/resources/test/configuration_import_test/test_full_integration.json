@@ -1,0 +1,76 @@
+{
+    "database": {
+        "type": "Maria",
+        "host": "",
+        "port": 3306,
+        "user": "monitor-agent-rw",
+        "password": "",
+        "database": "monitor-agent",
+        "minConnections": 10,
+        "maxConnections": 100
+    },
+    "server": {
+            "name": "dev",
+            "ip": "127.0.0.1",
+            "port":64999
+    },
+    "monitors":[
+        {
+            "name":"Systemctl ssh",
+            "schedule": "0 */1 * * * *",
+            "details": {
+                "type": "systemctl",
+                "active": ["ssh"],
+                "storeValues": true
+            }
+        },
+        {
+            "name":"Apache TCP",
+            "schedule": "0 */1 * * * *",
+            "details": {
+                "type": "tcp",
+                "host": "127.0.0.1",
+                "port": 443
+            }
+        },
+        {
+            "name":"MariaDB TCP",
+            "schedule": "0 */1 * * * *",
+            "details": {
+                "type": "tcp",
+                "host": "127.0.0.1",
+                "port": 3306
+            }
+        },
+        {
+            "name":"PostgresDB TCP",
+            "schedule": "0 */1 * * * *",
+            "details": {
+                "type": "tcp",
+                "host": "127.0.0.1",
+                "port": 5432
+            }
+        },
+        {
+            "name":"Loadavg",
+            "schedule": "0 */1 * * * *",
+            "details": {
+                "type": "loadAvg",
+                "threshold1min": 2.0,
+                "threshold5min": 2.0,
+                "threshold10min": 2.0,
+                "storeValues": true
+            }
+        },
+        {
+            "name":"Mem",
+            "schedule": "0 */1 * * * *",
+            "details": {
+                "type": "mem",
+                "maxPercentageMemUsed": 75.0,
+                "maxPercentageSwapUsed": 75.0,
+                "storeValues": true
+            }
+        }
+    ]
+}

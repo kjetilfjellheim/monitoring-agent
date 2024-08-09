@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::{Arc, Mutex}};
 
-use log::{error, info};
+use log::{debug, error, info};
 use monitoring_agent_lib::proc::ProcsMeminfo;
 use tokio_cron_scheduler::Job;
 
@@ -189,6 +189,7 @@ impl MeminfoMonitor {
      * Check the monitor.
      */
     async fn check(&mut self) {
+        debug!("Checking monitor: {}", &self.name);
         let meminfo = ProcsMeminfo::get_meminfo();
         match meminfo {
             Ok(meminfo) => {
@@ -248,6 +249,8 @@ impl super::Monitor for MeminfoMonitor {
 #[cfg(test)]
 mod test {
     use std::{collections::HashMap, sync::{Arc, Mutex}};
+
+    use crate::{common::MonitorStatus, services::monitors::MeminfoMonitor};
 
     use super::Monitor;
 
@@ -337,5 +340,20 @@ mod test {
         assert_eq!(status.get("test").unwrap().status, super::Status::Error { message: "Meminfo check failed: mem: Error { message: \"Memory use 75.000% is more than 70.000%\" }, swap: Error { message: \"Memory use 50.000% is more than 15.000%\" }".to_string() });
     }
 
-
+    #[test]
+    fn test_get_meminfo_monitor_job() {
+        let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
+            Arc::new(Mutex::new(HashMap::new()));
+        let mut monitor = MeminfoMonitor::new(
+            "test",
+            Some(100.0),
+            Some(100.0),
+            &status,
+            &Arc::new(None),
+            &super::DatabaseStoreLevel::None,
+            false,
+        );
+        let job = monitor.get_meminfo_monitor_job("0 0 * * * *");
+        assert!(job.is_ok());
+    }  
 }

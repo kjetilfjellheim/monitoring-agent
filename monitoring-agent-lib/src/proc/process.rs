@@ -34,6 +34,16 @@ impl ProcsProcess {
     /**
     * Create a new `ProcsProcess`.
     *
+    * ```
+    * use monitoring_agent_lib::proc::process::ProcsProcess;
+    * ProcsProcess::new(None, None, None, None, None, None, None);
+    * ```
+    * ```
+    * use monitoring_agent_lib::proc::process::ProcsProcess;
+    * use monitoring_agent_lib::proc::process::ProcessState;
+    * ProcsProcess::new(Some(2914), Some(2656), Some("code".to_string()), Some("0002".to_string()), Some(ProcessState::InterruptableSleep), Some(1), Some(vec!["4".to_string(), "24".to_string(), "27".to_string(), "30".to_string(), "46".to_string(), "100".to_string(), "119".to_string(), "129".to_string(), "1000".to_string()]));
+    * ```
+    * 
     * `pid`: The process id.
     * `parent_pid`: The parent process id.
     * `name`: The name of the process.
@@ -67,6 +77,11 @@ impl ProcsProcess {
     /**
      * Get all processes.
      * 
+     * ```
+     * use monitoring_agent_lib::proc::process::ProcsProcess;
+     * ProcsProcess::get_all_processes();
+     * ```
+     * 
      * Returns the processes or an error.
      * 
      * # Errors
@@ -75,6 +90,7 @@ impl ProcsProcess {
      * - If there is an error reading a line from the process file.
      *
      */
+    #[tracing::instrument(level = "debug")]
     pub fn get_all_processes() -> Result<Vec<ProcsProcess>, CommonLibError> {
         let paths = fs::read_dir("/proc");
         match paths {
@@ -126,6 +142,11 @@ impl ProcsProcess {
     /**
      * Get process status.
      * 
+     * ```
+     * use monitoring_agent_lib::proc::process::ProcsProcess;
+     * ProcsProcess::get_process(1);
+     * ```
+     * 
      * `dir`: The directory to get the process status from.
      * 
      * Returns the process status or an error.
@@ -135,6 +156,7 @@ impl ProcsProcess {
      * - If there is an error reading a line from the process file.                  
      * 
      */
+    #[tracing::instrument(level = "debug")]
     pub fn get_process(pid: u32) -> Result<ProcsProcess, CommonLibError> {
         let path = "/proc".to_string() + "/" + &pid.to_string();
         ProcsProcess::get_process_status_with_dir(&path)
@@ -142,6 +164,11 @@ impl ProcsProcess {
 
     /**
      * Get child processes.
+     * 
+     * ```
+     * use monitoring_agent_lib::proc::process::ProcsProcess;
+     * ProcsProcess::get_process_threads(1);
+     * ```
      * 
      * `pid`: The process id to get the child processes from.
      * 
@@ -153,6 +180,7 @@ impl ProcsProcess {
      * - If there is an error reading a line from the process file.
      * 
      */
+    #[tracing::instrument(level = "debug")]
     pub fn get_process_threads(pid: u32) -> Result<Vec<ProcsProcess>, CommonLibError> {
         ProcsProcess::read_process_threads(pid, "/proc")
     }
@@ -485,7 +513,48 @@ mod test {
         assert_eq!(&processes.get(0).unwrap().state, &Some(ProcessState::Idle));
         assert_eq!(&processes.get(0).unwrap().threads, &Some(1));
         assert_eq!(&processes.get(0).unwrap().groups, &Some(vec![]));
-
     }         
+
+    #[test]
+    fn test_get_process_threads() {
+        let processes = ProcsProcess::get_process_threads(1);
+        assert!(processes.is_ok());
+    }
+
+    #[test]
+    fn test_get_process() {
+        let process = ProcsProcess::get_process(1);
+        assert!(process.is_ok());
+    }
+
+    #[test]
+    fn test_get_state() {
+        let state = ProcsProcess::get_state(Some(&"R".to_string()));
+        assert_eq!(state, Some(ProcessState::Running));
+        let state = ProcsProcess::get_state(Some(&"D".to_string()));
+        assert_eq!(state, Some(ProcessState::DiskSleep));
+        let state = ProcsProcess::get_state(Some(&"S".to_string()));
+        assert_eq!(state, Some(ProcessState::InterruptableSleep));
+        let state = ProcsProcess::get_state(Some(&"t".to_string()));
+        assert_eq!(state, Some(ProcessState::TracingStop));
+        let state = ProcsProcess::get_state(Some(&"Z".to_string()));
+        assert_eq!(state, Some(ProcessState::Zombie));
+        let state = ProcsProcess::get_state(Some(&"I".to_string()));
+        assert_eq!(state, Some(ProcessState::Idle));
+        let state = ProcsProcess::get_state(Some(&"X".to_string()));
+        assert_eq!(state, Some(ProcessState::Dead));
+        let state = ProcsProcess::get_state(Some(&"U".to_string()));
+        assert_eq!(state, Some(ProcessState::Unknown));
+        let state = ProcsProcess::get_state(Some(&"T".to_string()));
+        assert_eq!(state, Some(ProcessState::Stopped));           
+        let state = ProcsProcess::get_state(None);
+        assert_eq!(state, None);                   
+    }
+
+    #[test]
+    fn test_get_process_status_with_dir_error() {
+        let process = ProcsProcess::get_process_status_with_dir("resources/test/677676");
+        assert!(process.is_err());
+    }
 
 }

@@ -556,4 +556,28 @@ mod test {
             Status::Ok
         );
     }
+
+    #[test]
+    fn test_get_http_monitor_job() {
+        let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
+            Arc::new(Mutex::new(HashMap::new()));
+        let mut monitor = HttpMonitor::new(
+            "https://www.google.com",
+            HttpMethod::Get,
+            &None,
+            &None,
+            "Google",
+            true,
+            true,
+            false,
+            None,
+            None,
+            None,
+            &status,
+            &Arc::new(None),
+            &DatabaseStoreLevel::None
+        ).unwrap();
+        let job = monitor.get_http_monitor_job("0 0 * * * *");
+        assert!(job.is_ok());
+    }
 }

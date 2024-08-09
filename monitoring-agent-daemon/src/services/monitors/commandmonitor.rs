@@ -179,9 +179,6 @@ impl CommandMonitor {
 
 }
 
-
-
-
 /**
  * Implement the `Monitor` trait for `HttpMonitor`.
  */
@@ -276,7 +273,7 @@ mod test {
         let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
             Arc::new(Mutex::new(HashMap::new()));
         let mut monitor = CommandMonitor::new("test", "grumpy", None, None, &status, &Arc::new(None), &DatabaseStoreLevel::None);
-        let _ = monitor.check();
+        let _ = monitor.check().await;
         assert_eq!(status.lock().unwrap().get("test").unwrap().status, Status::Error { message: "Error running command: Os { code: 2, kind: NotFound, message: \"No such file or directory\" }".to_string() });
     }
 
@@ -300,7 +297,7 @@ mod test {
             &Arc::new(None),
             &DatabaseStoreLevel::None
         );
-        let _ = monitor.check();
+        let _ = monitor.check().await;
         assert_eq!(
             status.lock().unwrap().get("test").unwrap().status,
             Status::Ok
@@ -331,5 +328,14 @@ mod test {
             stderr: Vec::new(),
         };
         assert_eq!(monitor.is_command_success(&output, ""), false);
+    }
+
+    #[test]
+    fn test_get_command_monitor_job() {
+        let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
+            Arc::new(Mutex::new(HashMap::new()));
+        let mut monitor = CommandMonitor::new("test", "ls", None, None, &status, &Arc::new(None), &DatabaseStoreLevel::None);
+        let job = monitor.get_command_monitor_job("0 * * * * *");
+        assert!(job.is_ok());
     }
 }

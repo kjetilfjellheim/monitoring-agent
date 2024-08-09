@@ -1,0 +1,18 @@
+{
+    "server": {
+        "ip": "127.0.0.1",
+        "port": 8080
+    },
+    "monitors":[
+        {
+            "name":"Mem",
+            "schedule": "0 0 0 0 0 0 0",
+            "details": {
+                "type": "mem",
+                "maxPercentageMemUsed": 70.0,
+                "maxPercentageSwapUsed": 80.0,
+                "storeValues": true
+            }
+        }
+    ]
+}

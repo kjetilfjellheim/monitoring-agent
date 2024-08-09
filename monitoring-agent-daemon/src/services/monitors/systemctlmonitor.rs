@@ -7,6 +7,9 @@ use crate::{common::{configuration::DatabaseStoreLevel, ApplicationError, Monito
 
 use super::Monitor;
 
+const SYSTEMD_ACTIVE_STATUS: &str = "active";
+
+
 #[derive(Debug, Clone)]
 pub struct SystemctlMonitor {
     /// The name of the monitor.
@@ -67,7 +70,7 @@ impl SystemctlMonitor {
         &mut self,
         schedule: &str,
     ) -> Result<Job, ApplicationError> {
-        info!("Creating Tcp monitor: {}", &self.name);
+        info!("Creating Systemctl monitor: {}", &self.name);
         let systemctl_monitor = self.clone();
         let job_result = Job::new_async(schedule, move |_uuid, _locked| {
             let systemctl_monitor = systemctl_monitor.clone();
@@ -87,6 +90,7 @@ impl SystemctlMonitor {
      * Check the monitor.
      */
     async fn check(&mut self) {
+        debug!("Checking monitor: {}", &self.name);
         let output = tokio::process::Command::new("systemctl")
             .arg("--all")
             .output()
@@ -114,7 +118,7 @@ impl SystemctlMonitor {
         let active_set: HashSet<String> = HashSet::from_iter(self.active.clone());
         for line in command_output.lines() {
             let data = line.split_whitespace().collect::<Vec<&str>>();
-            if data.len() >= 3 && active_set.contains(&(data[0].replace(".service", "").clone()).to_string()) && data[2] != "active" {
+            if data.len() >= 3 && active_set.contains(&(data[0].replace(".service", "").clone()).to_string()) && data[2] != SYSTEMD_ACTIVE_STATUS {
                 non_active.push(data[0].to_string());
             }                
         }
@@ -237,5 +241,20 @@ mod test {
         let non_active = systemctl_monitor.get_nonactive_status(command_str.as_str());
         assert_eq!(non_active.len(), 1);
     }    
+
+    #[test]
+    fn test_get_systemctl_monitor_job() {
+        let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
+            Arc::new(Mutex::new(HashMap::new()));
+        let mut monitor = SystemctlMonitor::new(
+            "test",
+            &status,
+            &Arc::new(None),
+            &DatabaseStoreLevel::None,
+            vec![],
+        );
+        let job = monitor.get_systemctl_monitor_job("0 0 * * * *");
+        assert!(job.is_ok());
+    }  
 
 }

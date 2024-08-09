@@ -1,0 +1,26 @@
+{
+    "server": {
+        "ip": "127.0.0.1",
+        "port": 8080
+    },
+    "monitors":[
+        {
+            "name":"MariaDB",
+            "schedule": "0 0 0 0 0 0 0",
+            "details": {
+                "type": "database",
+                "maxQueryTime": 100,
+                "config": {
+                    "type": "Maria",
+                    "database": "test",
+                    "host": "localhost",
+                    "port": 3306,
+                    "user": "root",
+                    "password": "root",
+                    "minConnections": 1,
+                    "maxConnections": 10
+                }
+            }
+        }
+    ]
+}
