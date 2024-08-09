@@ -1,7 +1,6 @@
 use std::{fs::File, io::BufReader, io::BufRead};
 
 use crate::common::CommonLibError;
-use log::error;
 
 /**
  * Process memory structure from /proc/{pid}/statm
