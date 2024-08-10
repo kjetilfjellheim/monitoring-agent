@@ -7,6 +7,7 @@ use crate::common::CommonLibError;
  * 
  * TODO: Add more detailed text.
  */
+#[warn(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Statm {
     /// Total program size (pages)
@@ -49,13 +50,13 @@ impl Statm {
         dt: &Option<u32>
     ) -> Statm {
         Statm {
-            size: size.clone(),
-            resident: resident.clone(),
-            share: share.clone(),
-            trs: trs.clone(),
-            drs: drs.clone(),
-            lrs: lrs.clone(),
-            dt: dt.clone()
+            size: *size,
+            resident: *resident,
+            share: *share,
+            trs: *trs,
+            drs: *drs,
+            lrs: *lrs,
+            dt: *dt
         }
     }   
 
@@ -96,15 +97,10 @@ impl Statm {
     fn read_statm(file: File) -> Result<Statm, CommonLibError> {
         let mut reader = BufReader::new(file);
         let mut buffer = String::new();
-        let data = reader.read_line(&mut buffer);   
-        match data {
-            Ok(_) => {
-                Statm::handle_statm_file(buffer)
-            },
-            Err(err) => {
-                return Err(CommonLibError::new(format!("Error reading statm: {err:?}").as_str()));
-            }
-        }     
+        let _ =  reader.read_line(&mut buffer).map_err(|err| {
+            CommonLibError::new(format!("Error reading statm: {err:?}").as_str())
+        })?;
+        Ok(Statm::handle_statm_file(buffer.as_str()))        
     }
 
     /**
@@ -114,7 +110,7 @@ impl Statm {
      * 
      * Returns the statm data or an error.
      */
-    fn handle_statm_file(buffer: String) -> Result<Statm, CommonLibError> {
+    fn handle_statm_file(buffer: &str) -> Statm {
         let cols = buffer.split_whitespace().collect::<Vec<&str>>();
         let size = cols[0].parse::<u32>().ok();
         let resident = cols[1].parse::<u32>().ok();
@@ -123,7 +119,7 @@ impl Statm {
         let lrs: Option<u32> = cols[4].parse::<u32>().ok();
         let drs = cols[5].parse::<u32>().ok();
         let dt = cols[6].parse::<u32>().ok();
-        Ok(Statm::new(&size, &resident, &share, &trs, &drs, &lrs, &dt))
+        Statm::new(&size, &resident, &share, &trs, &drs, &lrs, &dt)
     }
 
 }
@@ -135,27 +131,27 @@ mod tests {
     #[test]
     fn test_handle_statm_from_buffer1() {
         let buffer = "5805 3442 2354 11 0 1082 0";
-        let statm = Statm::handle_statm_file(buffer.to_string());
-        assert_eq!(statm.as_ref().unwrap().size, Some(5805));
-        assert_eq!(statm.as_ref().unwrap().resident, Some(3442));
-        assert_eq!(statm.as_ref().unwrap().share, Some(2354));
-        assert_eq!(statm.as_ref().unwrap().trs, Some(11));
-        assert_eq!(statm.as_ref().unwrap().drs, Some(1082));
-        assert_eq!(statm.as_ref().unwrap().lrs, Some(0));
-        assert_eq!(statm.as_ref().unwrap().dt, Some(0));
+        let statm = Statm::handle_statm_file(buffer);
+        assert_eq!(statm.size, Some(5805));
+        assert_eq!(statm.resident, Some(3442));
+        assert_eq!(statm.share, Some(2354));
+        assert_eq!(statm.trs, Some(11));
+        assert_eq!(statm.drs, Some(1082));
+        assert_eq!(statm.lrs, Some(0));
+        assert_eq!(statm.dt, Some(0));
     }
     
     #[test]
     fn test_handle_statm_buffer2() {
         let buffer = "494524 21506 2214 1471 0 59164 0";
-        let statm = Statm::handle_statm_file(buffer.to_string());
-        assert_eq!(statm.as_ref().unwrap().size, Some(494524));
-        assert_eq!(statm.as_ref().unwrap().resident, Some(21506));
-        assert_eq!(statm.as_ref().unwrap().share, Some(2214));
-        assert_eq!(statm.as_ref().unwrap().trs, Some(1471));
-        assert_eq!(statm.as_ref().unwrap().drs, Some(59164));
-        assert_eq!(statm.as_ref().unwrap().lrs, Some(0));
-        assert_eq!(statm.as_ref().unwrap().dt, Some(0));
+        let statm = Statm::handle_statm_file(buffer);
+        assert_eq!(statm.size, Some(494524));
+        assert_eq!(statm.resident, Some(21506));
+        assert_eq!(statm.share, Some(2214));
+        assert_eq!(statm.trs, Some(1471));
+        assert_eq!(statm.drs, Some(59164));
+        assert_eq!(statm.lrs, Some(0));
+        assert_eq!(statm.dt, Some(0));
     }    
 
     #[test]
