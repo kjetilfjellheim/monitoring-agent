@@ -142,17 +142,14 @@ impl MeminfoMonitor {
      * `meminfo`: The current load average.
      */
     async fn store_current_meminfo(&self, meminfo: &ProcsMeminfo) {
-        match self.database_service.as_ref() {            
-            Some(database_service) => {
-                match database_service.store_meminfo(meminfo).await {
-                    Ok(()) => {}
-                    Err(err) => {
-                        error!("Error storing memory use: {:?}", err);
-                    }
+        if let Some(database_service) = self.database_service.as_ref() {
+            match database_service.store_meminfo(meminfo).await {
+                Ok(()) => {}
+                Err(err) => {
+                    error!("Error storing memory use: {:?}", err);
                 }
             }
-            None => {}
-        }        
+        }    
     }
 
     /**
