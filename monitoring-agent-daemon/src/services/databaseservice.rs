@@ -1,4 +1,4 @@
-use monitoring_agent_lib::proc::Statm;
+use monitoring_agent_lib::proc::ProcsStatm;
 use monitoring_agent_lib::proc::{ProcsLoadavg, ProcsMeminfo};
 use r2d2::Pool;
 use r2d2_mysql::mysql::params;
@@ -161,7 +161,19 @@ impl DbService {
         }
     }
 
-    pub async fn store_statm_values(&self, app_name: &str, pid: &u32, statm: &Statm) -> Result<(), ApplicationError> {
+    /**
+     * Store the statm values in the database.
+     * 
+     * `app_name`: The application name.
+     * `pid`: The process id.
+     * `statm`: The statm values.
+     * 
+     * Returns: Ok if the statm values were stored successfully.
+     * 
+     * Errors:
+     * - If there is an error storing the statm values.
+     */
+    pub async fn store_statm_values(&self, app_name: &str, pid: &u32, statm: &ProcsStatm) -> Result<(), ApplicationError> {
         match self {
             DbService::MariaDb(service) => service.store_statm_values(app_name, pid, statm),
             DbService::PostgresDb(service) => service.store_statm_values(app_name, pid, statm).await,
@@ -331,7 +343,7 @@ impl MariaDbService {
     }
 
     #[tracing::instrument(level = "debug")]
-    fn store_statm_values(&self, app_name: &str, pid: &u32, statm: &Statm) -> Result<(), ApplicationError> {
+    fn store_statm_values(&self, app_name: &str, pid: &u32, statm: &ProcsStatm) -> Result<(), ApplicationError> {
         let mut conn = self.pool.get().map_err(|err| ApplicationError::new(&err.to_string()))?;
         let mut tx = conn.start_transaction(TxOpts::default()).map_err(|err| ApplicationError::new(&err.to_string()))?;
         tx.exec_drop("INSERT INTO statm (server_name, app_name, log_time, pid, total, resident, share, trs, drs, lrs, dt) VALUES 
@@ -520,7 +532,7 @@ impl PostgresDbService {
     }
 
     #[tracing::instrument(level = "debug")]
-    async fn store_statm_values(&self, app_name: &str, pid: &u32, statm: &Statm) -> Result<(), ApplicationError> {
+    async fn store_statm_values(&self, app_name: &str, pid: &u32, statm: &ProcsStatm) -> Result<(), ApplicationError> {
         let mut conn = self.pool.get().await.map_err(|err| ApplicationError::new(&err.to_string()))?;
         let tx = conn.transaction().await.map_err(|err| ApplicationError::new(&err.to_string()))?;
         tx.execute("INSERT INTO statm (id, server_name, app_name, log_time, pid, total, resident, share, trs, drs, lrs, dt) VALUES 

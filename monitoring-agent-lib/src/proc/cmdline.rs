@@ -8,14 +8,14 @@ use crate::common::CommonLibError;
  * The `CmdLine` struct represents the command line of a process.
  */
 #[derive(Debug, Clone)]
-pub struct CmdLine {
+pub struct ProcsCmdLine {
     /// The full path of the command.
     pub fullpath: String,
     /// The process id.
     pub pid: u32,
 }
 
-impl CmdLine {
+impl ProcsCmdLine {
 
     /**
      * Create a new `CmdLine`.
@@ -26,8 +26,8 @@ impl CmdLine {
      * 
      * Returns a new `CmdLine`.
      */
-    #[must_use] pub fn new(fullpath: &str, pid: u32) -> CmdLine {
-        CmdLine {
+    #[must_use] pub fn new(fullpath: &str, pid: u32) -> ProcsCmdLine {
+        ProcsCmdLine {
             fullpath: fullpath.to_string(),
             pid
         }
@@ -44,11 +44,11 @@ impl CmdLine {
      * - If there is an error reading the cmdline file.
      */
     #[tracing::instrument(level = "debug")]
-    pub fn get_all_processes() -> Result<Vec<CmdLine>, CommonLibError> {
+    pub fn get_all_processes() -> Result<Vec<ProcsCmdLine>, CommonLibError> {
         let paths = fs::read_dir("/proc");
         match paths {
             Ok(paths) => {
-                CmdLine::read_processes(paths)
+                ProcsCmdLine::read_processes(paths)
             },
             Err(err) => {
                 Err(CommonLibError::new(&format!("Error reading /proc, err: {err:?}")))
@@ -68,17 +68,17 @@ impl CmdLine {
      * - If there is an error reading the process directory.
      * - If there is an error reading the cmdline file.
      */
-    fn read_processes(read_dir: ReadDir) -> Result<Vec<CmdLine>, CommonLibError> {        
+    fn read_processes(read_dir: ReadDir) -> Result<Vec<ProcsCmdLine>, CommonLibError> {        
         let starts_with_number_regexp = Regex::new(r"^[0-9]+$").map_err(|err|CommonLibError::new(format!("Error creating regexp: err: {err:?}").as_str()))?;
-        let mut processes: Vec<CmdLine> = Vec::new();
+        let mut processes: Vec<ProcsCmdLine> = Vec::new();
         for path in read_dir {            
             match &path {
                 Ok(path) => {
-                    if CmdLine::is_process_directory(&starts_with_number_regexp, path) {                          
+                    if ProcsCmdLine::is_process_directory(&starts_with_number_regexp, path) {                          
                         let path_buffer = path.path();
                         let use_dir = path_buffer.to_str().ok_or(CommonLibError::new("Error reading path"))?;
                         let pid: u32 = path.file_name().to_str().unwrap_or("").parse::<u32>().map_err(|err| CommonLibError::new(&format!("Error reading pid: {err:?}")))?;
-                        let process = CmdLine::get_cmdline_with_dir(use_dir, pid)?;
+                        let process = ProcsCmdLine::get_cmdline_with_dir(use_dir, pid)?;
                         processes.push(process);
                     }           
                 },
@@ -101,12 +101,12 @@ impl CmdLine {
      * # Errors
      * - If there is an error reading the cmdline file.
      */
-    fn get_cmdline_with_dir(proc_dir: &str, pid: u32) -> Result<CmdLine, CommonLibError> {
+    fn get_cmdline_with_dir(proc_dir: &str, pid: u32) -> Result<ProcsCmdLine, CommonLibError> {
         let path = proc_dir.to_string() + "/cmdline";
         let file = File::open(path);
         match file {
             Ok(file) => {
-                CmdLine::get_cmdline_from_file(file, pid)
+                ProcsCmdLine::get_cmdline_from_file(file, pid)
             },
             Err(err) => {
                 Err(CommonLibError::new(&format!("Error reading status, err: {err:?}")))
@@ -125,12 +125,12 @@ impl CmdLine {
      * # Errors
      * - If there is an error reading the cmdline file.
      */
-    pub fn read_cmdline(pid: u32) -> Result<CmdLine, CommonLibError> {
+    pub fn read_cmdline(pid: u32) -> Result<ProcsCmdLine, CommonLibError> {
         let path = "/proc/".to_string() + pid.to_string().as_str() + "/cmdline";
         let file = File::open(path);
         match file {
             Ok(file) => {
-                CmdLine::get_cmdline_from_file(file, pid)
+                ProcsCmdLine::get_cmdline_from_file(file, pid)
             },
             Err(err) => {
                 Err(CommonLibError::new(&format!("Error reading status, err: {err:?}")))
@@ -150,12 +150,12 @@ impl CmdLine {
      * # Errors
      * - If there is an error reading the cmdline file.
      */
-    fn get_cmdline_from_file(mut file: File, pid: u32) -> Result<CmdLine, CommonLibError> {
+    fn get_cmdline_from_file(mut file: File, pid: u32) -> Result<ProcsCmdLine, CommonLibError> {
         let mut buffer = String::new();
         file.read_to_string(&mut buffer).map_err(|err| {
             CommonLibError::new(&format!("Error reading cmdline, err: {err:?}"))
         })?;
-        Ok(CmdLine::new(
+        Ok(ProcsCmdLine::new(
             buffer.as_str(),
             pid
         ))
@@ -193,11 +193,11 @@ impl CmdLine {
      * Returns a list of processes or an error.
      */
     #[tracing::instrument(level = "debug")]
-     pub fn read_by_application(application: &str) -> Result<Vec<CmdLine>, CommonLibError> {
+     pub fn read_by_application(application: &str) -> Result<Vec<ProcsCmdLine>, CommonLibError> {
         fs::read_dir("/proc").map_err(|err| {
             CommonLibError::new(&format!("Error reading /proc, err: {err:?}"))
         }).and_then(|read_dir| {
-            CmdLine::get_by_application(read_dir, application)
+            ProcsCmdLine::get_by_application(read_dir, application)
         })
     }    
     /**
@@ -207,8 +207,8 @@ impl CmdLine {
      * 
      * Returns a list of processes or an error.
      */
-    fn get_by_application(file_path: ReadDir, application: &str) -> Result<Vec<CmdLine>, CommonLibError> {
-        let processes = CmdLine::read_processes(file_path)?;
+    fn get_by_application(file_path: ReadDir, application: &str) -> Result<Vec<ProcsCmdLine>, CommonLibError> {
+        let processes = ProcsCmdLine::read_processes(file_path)?;
         let processes = processes.into_iter().filter(|process| {
             debug!("Checking process: {process:?}");
             process.fullpath.contains(application)
@@ -222,18 +222,18 @@ impl CmdLine {
 mod test {
     use std::fs;
 
-    use super::CmdLine;
+    use super::ProcsCmdLine;
 
 
     #[test]
     fn test_all() {
-        let processes = super::CmdLine::get_all_processes();
+        let processes = super::ProcsCmdLine::get_all_processes();
         assert!(processes.is_ok());
     }
 
     #[test]
     fn test_testdir() {
-        let processes = CmdLine::read_processes( fs::read_dir("resources/test/processes").unwrap());
+        let processes = ProcsCmdLine::read_processes( fs::read_dir("resources/test/processes").unwrap());
         assert!(processes.is_ok());
         let processes = processes.unwrap();
         let cmdline = processes.first().unwrap();
@@ -243,7 +243,7 @@ mod test {
 
     #[test]
     fn test_testdir_by_application() {
-        let processes = CmdLine::get_by_application( fs::read_dir("resources/test/processes").unwrap(), "apache2\0-k\0start\0");
+        let processes = ProcsCmdLine::get_by_application( fs::read_dir("resources/test/processes").unwrap(), "apache2\0-k\0start\0");
         assert!(processes.is_ok());
         let processes = processes.unwrap();
         let cmdline = processes.first().unwrap();
@@ -253,7 +253,7 @@ mod test {
 
     #[test]
     fn test_testdir_by_application_not_found() {
-        let processes = CmdLine::get_by_application( fs::read_dir("resources/test/processes").unwrap(), "chrome");
+        let processes = ProcsCmdLine::get_by_application( fs::read_dir("resources/test/processes").unwrap(), "chrome");
         assert!(processes.is_ok());
         let processes = processes.unwrap();
         assert_eq!(processes.len(), 0);
@@ -261,7 +261,7 @@ mod test {
 
     #[test]
     fn test_testdir_by_application_not_found2() {
-        let processes = CmdLine::read_by_application("xyz");
+        let processes = ProcsCmdLine::read_by_application("xyz");
         assert!(processes.is_ok());
         let processes = processes.unwrap();
         assert_eq!(processes.len(), 0);
@@ -269,7 +269,7 @@ mod test {
 
     #[test]
     fn test_read_systemd() {
-        let processes = CmdLine::read_cmdline(1);
+        let processes = ProcsCmdLine::read_cmdline(1);
         assert!(processes.is_ok());
     }     
 

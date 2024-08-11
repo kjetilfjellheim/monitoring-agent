@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::{Arc, Mutex}};
 
 use log::{debug, error, info};
-use monitoring_agent_lib::proc::{CmdLine, Statm};
+use monitoring_agent_lib::proc::{ProcsCmdLine, ProcsStatm};
 use tokio_cron_scheduler::Job;
 
 use crate::{common::{configuration::DatabaseStoreLevel, ApplicationError, MonitorStatus, Status}, services::DbService};
@@ -131,7 +131,7 @@ impl ProcessMonitor {
      */
     async fn check_application(&self, app_name: &str) -> Result<Vec<Status>, ApplicationError> {
         debug!("Checking application: {app_name:?}");
-        let cmdlines_result = CmdLine::read_by_application(app_name);
+        let cmdlines_result = ProcsCmdLine::read_by_application(app_name);
         match cmdlines_result {
             Ok(cmdlines) => { 
                 Ok(self.check_processes(app_name, &cmdlines).await)
@@ -153,7 +153,7 @@ impl ProcessMonitor {
      * Returns: The statuses of the checks.
      * 
      */
-    async fn check_processes(&self, app_name: &str, cmdlines: &Vec<CmdLine>) -> Vec<Status> {
+    async fn check_processes(&self, app_name: &str, cmdlines: &Vec<ProcsCmdLine>) -> Vec<Status> {
         debug!("Checking processes: {cmdlines:?}");
         let mut statuses = Vec::new();
         for cmdline in cmdlines {
@@ -170,9 +170,9 @@ impl ProcessMonitor {
      *  
      * Returns: The status of the check.
      */
-    async fn check_process(&self, app_name: &str, cmdline: &CmdLine) -> Status {
+    async fn check_process(&self, app_name: &str, cmdline: &ProcsCmdLine) -> Status {
         debug!("Checking process: {cmdline:?}");
-        let statm = Statm::get_statm(cmdline.pid);
+        let statm = ProcsStatm::get_statm(cmdline.pid);
         if let Ok(statm) = statm {
             self.store_statm_values(app_name, cmdline, &statm).await;
             self.check_max(&statm)
@@ -189,7 +189,7 @@ impl ProcessMonitor {
      * 
      * Returns: The status of the check.
      */
-    fn check_max(&self, statm: &Statm) -> Status {        
+    fn check_max(&self, statm: &ProcsStatm) -> Status {        
         if let Some(max_mem_usage) = self.max_mem_usage {
             if statm.size > self.max_mem_usage {
                 return Status::Error { message: format!("Process memory usage is over the limit: {:?} > {max_mem_usage:?}", statm.size)};
@@ -205,7 +205,7 @@ impl ProcessMonitor {
      * `cmdline`: The command line.
      * `statm`: The statm values.
      */
-    async fn store_statm_values(&self, app_name: &str, cmdline: &CmdLine, statm: &Statm) {
+    async fn store_statm_values(&self, app_name: &str, cmdline: &ProcsCmdLine, statm: &ProcsStatm) {
         if self.store_current_statm {
             self.store_current_statm_values(app_name, cmdline, statm).await;
         }
@@ -221,7 +221,7 @@ impl ProcessMonitor {
      * Returns: The result of storing the statm values.
      * 
      */
-    async fn store_current_statm_values(&self, app_name: &str, cmdline: &CmdLine, statm: &Statm) {
+    async fn store_current_statm_values(&self, app_name: &str, cmdline: &ProcsCmdLine, statm: &ProcsStatm) {
         if let Some(database_service) = &*self.database_service {
             let store_result: Result<(), ApplicationError> = database_service.store_statm_values(app_name, &cmdline.pid, statm).await;
             match store_result {

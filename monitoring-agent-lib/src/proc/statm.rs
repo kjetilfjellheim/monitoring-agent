@@ -7,9 +7,9 @@ use crate::common::CommonLibError;
  * 
  * TODO: Add more detailed text.
  */
-#[warn(dead_code)]
+#[allow(clippy::module_name_repetitions)]
 #[derive(Debug, Clone)]
-pub struct Statm {
+pub struct ProcsStatm {
     /// Total program size (pages)
     pub size: Option<u32>,
     /// Size of memory portions (pages)
@@ -26,7 +26,7 @@ pub struct Statm {
     pub dt: Option<u32>
 }
 
-impl Statm {
+impl ProcsStatm {
     /**
      * Create a new `Statm`.
      * 
@@ -48,8 +48,8 @@ impl Statm {
         drs: &Option<u32>,
         lrs: &Option<u32>,
         dt: &Option<u32>
-    ) -> Statm {
-        Statm {
+    ) -> ProcsStatm {
+        ProcsStatm {
             size: *size,
             resident: *resident,
             share: *share,
@@ -76,11 +76,11 @@ impl Statm {
      *  - If there is an error parsing the data from the meminfo file.
      */
     #[tracing::instrument(level = "debug")]
-    pub fn get_statm(pid: u32) -> Result<Statm, CommonLibError> {
+    pub fn get_statm(pid: u32) -> Result<ProcsStatm, CommonLibError> {
         let statm_file = File::open("/proc/".to_string() + pid.to_string().as_str() + "/statm").map_err(|err| {
             CommonLibError::new(format!("Error reading statm file: {err:?}").as_str())
         })?;
-        Statm::read_statm(statm_file)
+        ProcsStatm::read_statm(statm_file)
     }
     
     /**
@@ -94,13 +94,13 @@ impl Statm {
      * # Errors
      * - If there is an error reading the statm file.
      */
-    fn read_statm(file: File) -> Result<Statm, CommonLibError> {
+    fn read_statm(file: File) -> Result<ProcsStatm, CommonLibError> {
         let mut reader = BufReader::new(file);
         let mut buffer = String::new();
         let _ =  reader.read_line(&mut buffer).map_err(|err| {
             CommonLibError::new(format!("Error reading statm: {err:?}").as_str())
         })?;
-        Ok(Statm::handle_statm_file(buffer.as_str()))        
+        Ok(ProcsStatm::handle_statm_file(buffer.as_str()))        
     }
 
     /**
@@ -110,7 +110,7 @@ impl Statm {
      * 
      * Returns the statm data or an error.
      */
-    fn handle_statm_file(buffer: &str) -> Statm {
+    fn handle_statm_file(buffer: &str) -> ProcsStatm {
         let cols = buffer.split_whitespace().collect::<Vec<&str>>();
         let size = cols[0].parse::<u32>().ok();
         let resident = cols[1].parse::<u32>().ok();
@@ -119,7 +119,7 @@ impl Statm {
         let lrs: Option<u32> = cols[4].parse::<u32>().ok();
         let drs = cols[5].parse::<u32>().ok();
         let dt = cols[6].parse::<u32>().ok();
-        Statm::new(&size, &resident, &share, &trs, &drs, &lrs, &dt)
+        ProcsStatm::new(&size, &resident, &share, &trs, &drs, &lrs, &dt)
     }
 
 }
@@ -131,7 +131,7 @@ mod tests {
     #[test]
     fn test_handle_statm_from_buffer1() {
         let buffer = "5805 3442 2354 11 0 1082 0";
-        let statm = Statm::handle_statm_file(buffer);
+        let statm = ProcsStatm::handle_statm_file(buffer);
         assert_eq!(statm.size, Some(5805));
         assert_eq!(statm.resident, Some(3442));
         assert_eq!(statm.share, Some(2354));
@@ -144,7 +144,7 @@ mod tests {
     #[test]
     fn test_handle_statm_buffer2() {
         let buffer = "494524 21506 2214 1471 0 59164 0";
-        let statm = Statm::handle_statm_file(buffer);
+        let statm = ProcsStatm::handle_statm_file(buffer);
         assert_eq!(statm.size, Some(494524));
         assert_eq!(statm.resident, Some(21506));
         assert_eq!(statm.share, Some(2214));
@@ -156,13 +156,13 @@ mod tests {
 
     #[test]
     fn test_handle_statm_pid_1() {
-        let statm = Statm::get_statm(1);
+        let statm = ProcsStatm::get_statm(1);
         assert!(statm.is_ok());
     }  
 
     #[test]
     fn test_handle_statm_pid_0() {
-        let statm = Statm::get_statm(0);
+        let statm = ProcsStatm::get_statm(0);
         assert!(statm.is_err());
     }    
 }

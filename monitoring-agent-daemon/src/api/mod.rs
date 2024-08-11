@@ -7,6 +7,8 @@
  * `cpuinfo`: The cpu information API.
  * `loadavg`: The load average API.
  * `process`: The process API.
+ * `monitor`: The monitor API.
+ * `statm`: The statm API.
  */
 mod meminfo;
 mod state;
@@ -19,7 +21,7 @@ mod monitor;
 pub use crate::api::meminfo::get_current_meminfo;
 pub use crate::api::cpuinfo::get_current_cpuinfo;
 pub use crate::api::loadavg::get_current_loadavg;
-pub use crate::api::process::{get_processes, get_process, get_threads};
+pub use crate::api::process::{get_processes, get_process, get_threads, get_current_statm};
 pub use crate::api::monitor::get_monitor_status;
 
 #[allow(clippy::module_name_repetitions)]

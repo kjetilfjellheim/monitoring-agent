@@ -15,5 +15,5 @@ pub use crate::proc::cpuinfo::ProcsCpuinfo;
 pub use crate::proc::meminfo::ProcsMeminfo;
 pub use crate::proc::loadavg::ProcsLoadavg;
 pub use crate::proc::process::ProcsProcess;
-pub use crate::proc::statm::Statm;
-pub use crate::proc::cmdline::CmdLine;
+pub use crate::proc::statm::ProcsStatm;
+pub use crate::proc::cmdline::ProcsCmdLine;

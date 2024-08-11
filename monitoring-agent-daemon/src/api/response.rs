@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use monitoring_agent_lib::proc::{process::ProcessState, ProcsCpuinfo, ProcsLoadavg, ProcsMeminfo, ProcsProcess};
+use monitoring_agent_lib::proc::{process::ProcessState, ProcsCpuinfo, ProcsLoadavg, ProcsMeminfo, ProcsProcess, ProcsStatm};
 use serde::{Deserialize, Serialize};
 
 use crate::common::{MonitorStatus, Status};
@@ -464,6 +464,70 @@ impl MonitorStatusResponse {
     }
 }
 
+/**
+ * The `StatmResponse` struct represents the response of the statm endpoint.
+ * 
+ * The statm file provides information about memory usage, measured in pages.
+ * 
+ * The statm file contains the following columns:
+ * * Total program size (pages)
+ * * Size of memory portions (pages)
+ * * Number of pages that are shared
+ * * Number of pages that are ‘code’
+ * * Number of pages of data/stack
+ * * Number of pages of library
+ * * Number of dirty pages
+ */
+#[allow(clippy::module_name_repetitions)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StatmResponse {
+    /// Total program size (pages)
+    #[serde(skip_serializing_if = "Option::is_none", rename = "totalSize")]    
+    pub size: Option<u32>,
+    /// Size of memory portions (pages)
+    #[serde(skip_serializing_if = "Option::is_none", rename = "residentSize")]         
+    pub resident: Option<u32>,
+    /// Number of pages that are shared
+    #[serde(skip_serializing_if = "Option::is_none", rename = "sharedSize")]              
+    pub share: Option<u32>,
+    /// Number of pages that are ‘code’
+    #[serde(skip_serializing_if = "Option::is_none", rename = "trsSize")]             
+    pub trs: Option<u32>,
+    /// Number of pages of data/stack
+    #[serde(skip_serializing_if = "Option::is_none", rename = "drsSize")]             
+    pub drs: Option<u32>,
+    /// Number of pages of library
+    #[serde(skip_serializing_if = "Option::is_none", rename = "lrsSize")]             
+    pub lrs: Option<u32>,
+    /// Number of dirty pages
+    #[serde(skip_serializing_if = "Option::is_none", rename = "dtSize")]             
+    pub dt: Option<u32>
+}
+
+impl StatmResponse {
+
+    /**
+     * Create a new `StatmResponse`.
+     * 
+     * `procs_statm`: The procs statm.
+     * 
+     * Returns a new `StatmResponse`.
+     */
+    pub fn from_current_statm(
+        procs_statm :&ProcsStatm
+    ) -> StatmResponse {
+        StatmResponse {
+            size: procs_statm.size,
+            resident: procs_statm.resident,
+            share: procs_statm.share,
+            trs: procs_statm.trs,
+            drs: procs_statm.drs,
+            lrs: procs_statm.lrs,
+            dt: procs_statm.dt
+        }
+    }   
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -674,4 +738,46 @@ mod test {
         assert_eq!(MonitorStatusResponse::from_status(&Status::Unknown), MonitorStatusResponse::Unknown);
         assert_eq!(MonitorStatusResponse::from_status(&Status::Error { message: "error".to_string() }), MonitorStatusResponse::Error);
     }
+
+    #[test]
+    fn test_from_statm() {
+        let procs_statm = ProcsStatm {
+            size: Some(1),
+            resident: Some(2),
+            share: Some(3),
+            trs: Some(4),
+            drs: Some(5),
+            lrs: Some(6),
+            dt: Some(7),
+        };
+        let statm_response = StatmResponse::from_current_statm(&procs_statm);
+        assert_eq!(statm_response.size, Some(1));
+        assert_eq!(statm_response.resident, Some(2));
+        assert_eq!(statm_response.share, Some(3));
+        assert_eq!(statm_response.trs, Some(4));
+        assert_eq!(statm_response.drs, Some(5));
+        assert_eq!(statm_response.lrs, Some(6));
+        assert_eq!(statm_response.dt, Some(7));        
+    }
+
+    #[test]
+    fn test_from_statm_none() {
+        let procs_statm = ProcsStatm {
+            size: None,
+            resident: None,
+            share: None,
+            trs: None,
+            drs: None,
+            lrs: None,
+            dt: None,
+        };
+        let statm_response = StatmResponse::from_current_statm(&procs_statm);
+        assert_eq!(statm_response.size, None);
+        assert_eq!(statm_response.resident, None);
+        assert_eq!(statm_response.share, None);
+        assert_eq!(statm_response.trs, None);
+        assert_eq!(statm_response.drs, None);
+        assert_eq!(statm_response.lrs, None);
+        assert_eq!(statm_response.dt, None);        
+    }    
 }
