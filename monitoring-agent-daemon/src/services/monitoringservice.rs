@@ -185,6 +185,7 @@ impl MonitoringService {
      * # Errors
      * - If there is an error getting the statm.
      */
+    #[allow(clippy::unused_self)]
     pub fn get_current_statm(&self, pid: u32) -> Result<ProcsStatm, ApplicationError> {
         let statm = ProcsStatm::get_statm(pid);
         match statm {

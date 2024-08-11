@@ -478,6 +478,7 @@ impl MonitorStatusResponse {
  * * Number of pages of library
  * * Number of dirty pages
  */
+#[allow(clippy::module_name_repetitions)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StatmResponse {
     /// Total program size (pages)

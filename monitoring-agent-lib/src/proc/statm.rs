@@ -7,7 +7,7 @@ use crate::common::CommonLibError;
  * 
  * TODO: Add more detailed text.
  */
-#[warn(dead_code)]
+#[allow(clippy::module_name_repetitions)]
 #[derive(Debug, Clone)]
 pub struct ProcsStatm {
     /// Total program size (pages)
