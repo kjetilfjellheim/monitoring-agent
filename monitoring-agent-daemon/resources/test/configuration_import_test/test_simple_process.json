@@ -1,0 +1,18 @@
+{
+    "server": {
+        "ip": "127.0.0.1",
+        "port": 8080
+    },
+    "monitors":[
+        {
+            "name":"Process monitoring-agent-daemon",
+            "schedule": "0 0 0 0 0 0",
+            "details": {
+                "type": "process",
+                "applicationNames": ["app1", "app2"],
+                "maxMemUsage": 100,
+                "storeValues": true
+            }
+        }
+    ]
+}

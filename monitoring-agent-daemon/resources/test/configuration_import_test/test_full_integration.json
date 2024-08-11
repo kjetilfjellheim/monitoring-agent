@@ -71,6 +71,16 @@
                 "maxPercentageSwapUsed": 75.0,
                 "storeValues": true
             }
+        },
+        {
+            "name":"Process monitoring-agent-daemon",
+            "schedule": "0 */1 * * * *",
+            "details": {
+                "type": "process",
+                "applicationNames": ["monitoring-agent-daemon"],
+                "maxMemUsage": 100,
+                "storeValues": true
+            }
         }
     ]
 }

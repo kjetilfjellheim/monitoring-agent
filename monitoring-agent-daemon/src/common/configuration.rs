@@ -79,7 +79,18 @@ pub enum MonitorType {
         database_config: Option<DatabaseConfig>,
         #[serde(skip_serializing_if = "Option::is_none", rename = "maxQueryTime")]
         max_query_time: Option<u32>,          
-    },    
+    },
+    Process {
+        /// Aplication names to monitor.
+        #[serde(rename = "applicationNames")]
+        application_names: Vec<String>,
+        /// The maximum memory usage.
+        #[serde(skip_serializing_if = "Option::is_none", rename = "maxMemUsage")]
+        max_mem_usage: Option<u32>,        
+        /// Store vales in database        
+        #[serde(rename = "storeValues", default = "default_as_false")]
+        store_values: bool,         
+    }
 }
 
 /**
@@ -515,6 +526,28 @@ mod tests {
             }
         );
         Ok(())
-    }        
+    }   
+
+    /**
+     * Test for a simple process monitor.
+     */
+    #[test]
+    fn test_simple_process_file() -> Result<(), ApplicationError> {
+        let monitoring: MonitoringConfig =
+            MonitoringConfig::new("resources/test/configuration_import_test/test_simple_process.json")?;
+        assert_eq!("0 0 0 0 0 0".to_string(), monitoring.monitors[0].schedule);
+        assert_eq!(1, monitoring.monitors.len());
+        let monitor = monitoring.monitors[0].details.clone();
+        assert_eq!(
+            monitor,
+            MonitorType::Process { 
+                application_names: vec!["app1".to_string(), "app2".to_string()],
+                max_mem_usage: Some(100),
+                store_values: true,
+                
+            }
+        );
+        Ok(())
+    }             
 
 }

@@ -5,7 +5,7 @@ use tokio_cron_scheduler::{Job, JobScheduler};
 
 use crate::common::{configuration::MonitoringConfig, ApplicationError, MonitorStatus};
 use crate::services::DbService;
-use super::monitors::{CommandMonitor, HttpMonitor, LoadAvgMonitor, MeminfoMonitor, SystemctlMonitor, TcpMonitor, DatabaseMonitor};
+use super::monitors::{CommandMonitor, HttpMonitor, LoadAvgMonitor, MeminfoMonitor, SystemctlMonitor, TcpMonitor, DatabaseMonitor, ProcessMonitor};
 
 /**
  * Scheduling Service.
@@ -215,6 +215,12 @@ impl SchedulingService {
                     &monitor.store,
                 );
                 let job = database_monitor.get_database_monitor_job(monitor.schedule.as_str())?;
+                self.add_job(scheduler, job).await
+            },
+            crate::common::MonitorType::Process { application_names, max_mem_usage, store_values 
+            } => {
+                let mut process_monitor = ProcessMonitor::new(&monitor.name, &application_names, max_mem_usage, &self.status, &self.database_service.clone(), &monitor.store, store_values);
+                let job = process_monitor.get_process_monitor_job(monitor.schedule.as_str())?;
                 self.add_job(scheduler, job).await
             },
         }?;   
