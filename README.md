@@ -10,6 +10,7 @@ The goals for the code is to develop a simple monitoring agent with the followin
 - Load average
 - Memory consumption
 - Systemd service
+- Process monitoring
 
 ## Development
 The codebase is most for learning more advanced rust code while trying to create something I can use in my home network.
@@ -136,8 +137,20 @@ Run as daemon `./monitoring-agent --daemon`
 | details.config.password | Password |
 | details.config.minConnections | Connection pool minimum connections |
 | details.config.maxConnections | Connection pool maximum connections |
-
 | details.maxQueryTime | Max time for a query to take | 
+
+#### Process monitoring
+
+| Config  | Description | 
+| ------------- | ------------- |
+| name | Name for the monitoring | 
+| schedule | Cron describing how often it should run | 
+| details.type | Type of monitor. Must be process | 
+| details.config | Optional. If not given the general database config must be given |
+| details.config.type | Type of database. Supported are Postgres, Mysql and Maria |
+| details.config.applicationNames | Array of application names to monitor |
+| details.config.maxMemUsage | Max memory use befor monitor changes to error |
+| details.config.storeValues | Store values from the monitor in the statm table |
 
 #### Example file
 
