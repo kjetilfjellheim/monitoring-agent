@@ -346,8 +346,8 @@ impl MariaDbService {
     fn store_statm_values(&self, app_name: &str, pid: &u32, statm: &ProcsStatm) -> Result<(), ApplicationError> {
         let mut conn = self.pool.get().map_err(|err| ApplicationError::new(&err.to_string()))?;
         let mut tx = conn.start_transaction(TxOpts::default()).map_err(|err| ApplicationError::new(&err.to_string()))?;
-        tx.exec_drop("INSERT INTO statm (server_name, app_name, log_time, pid, total, resident, share, trs, drs, lrs, dt) VALUES 
-                    (:server_name, :app_name, now(3), :pid, :total, :resident, :share, :trs, :drs, :lrs, :dt)", params! {
+        tx.exec_drop("INSERT INTO statm (server_name, app_name, log_time, pid, total, resident, share, trs, drs, lrs, dt, pagesize) VALUES 
+                    (:server_name, :app_name, now(3), :pid, :total, :resident, :share, :trs, :drs, :lrs, :dt, :pagesize)", params! {
             "server_name" => self.server_name.to_string(),
             "app_name" => app_name,
             "pid" => pid,
@@ -358,6 +358,7 @@ impl MariaDbService {
             "drs" => statm.drs,
             "lrs" => statm.lrs,
             "dt" => statm.dt,
+            "pagesize" => statm.pagesize,
         }).map_err(|err| ApplicationError::new(&err.to_string()))?;
         tx.commit().map_err(|err| ApplicationError::new(&err.to_string()))?;       
         Ok(())
@@ -535,8 +536,8 @@ impl PostgresDbService {
     async fn store_statm_values(&self, app_name: &str, pid: &u32, statm: &ProcsStatm) -> Result<(), ApplicationError> {
         let mut conn = self.pool.get().await.map_err(|err| ApplicationError::new(&err.to_string()))?;
         let tx = conn.transaction().await.map_err(|err| ApplicationError::new(&err.to_string()))?;
-        tx.execute("INSERT INTO statm (id, server_name, app_name, log_time, pid, total, resident, share, trs, drs, lrs, dt) VALUES 
-                    (nextval('seq_statm'), $1, $2, now(), $3, $4, $5, $6, $7, $8, $9)", &[
+        tx.execute("INSERT INTO statm (id, server_name, app_name, log_time, pid, total, resident, share, trs, drs, lrs, dt, pagesize) VALUES 
+                    (nextval('seq_statm'), $1, $2, now(), $3, $4, $5, $6, $7, $8, $9, $10)", &[
             &self.server_name,
             &app_name,
             &pid,
@@ -547,6 +548,7 @@ impl PostgresDbService {
             &statm.drs,
             &statm.lrs,
             &statm.dt,
+            &statm.pagesize,
 
         ]).await.map_err(|err| ApplicationError::new(&err.to_string()))?;
         tx.commit().await.map_err(|err| ApplicationError::new(&err.to_string()))?;
