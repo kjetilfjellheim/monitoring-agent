@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use log::error;
-use monitoring_agent_lib::proc::{ProcsCpuinfo, ProcsLoadavg, ProcsMeminfo, ProcsProcess};
+use monitoring_agent_lib::proc::{ProcsCpuinfo, ProcsLoadavg, ProcsMeminfo, ProcsProcess, ProcsStatm};
 
 use crate::common::{ApplicationError, MonitorStatus};
 
@@ -171,6 +171,27 @@ impl MonitoringService {
             Err(err) => {
                 error!("Error getting monitor statuses: {:?}", err);
                 Vec::new()
+            }
+        }
+    }
+
+    /**
+     * Get the current statm.
+     * 
+     * `pid`: The process id.
+     * 
+     * result: The result of getting the current statm.
+     * 
+     * # Errors
+     * - If there is an error getting the statm.
+     */
+    pub fn get_current_statm(&self, pid: u32) -> Result<ProcsStatm, ApplicationError> {
+        let statm = ProcsStatm::get_statm(pid);
+        match statm {
+            Ok(statm) => Ok(statm),
+            Err(err) => {
+                error!("Error: {}", err.message);
+                Err(ApplicationError::new("Error getting statm"))                
             }
         }
     }
