@@ -1,6 +1,6 @@
 [package]
 name = "monitoring-agent-daemon"
-version = "0.0.17"
+version = "0.0.19"
 edition = "2021"
 description = "A monitoring agent that can be used to monitor the health of a system."
 license = "Apache 2.0"
@@ -11,11 +11,11 @@ authors = ["Kjetil Fjellheim <kjetil@forgottendonkey.net>"]
 categories = ["monitoring", "health", "system"]
 
 [dependencies]
-serde = { version = "1.0.204", features = ["derive", ] }                                # For serializing/deserializing.
+serde = { version = "1.0.205", features = ["derive", ] }                                # For serializing/deserializing.
 serde_json = { version = "1.0.122", features = []}                                      # For serializing/deserializing.
-tokio-cron-scheduler = "0.10.2"                                                         # For schduling jobs.
+tokio-cron-scheduler = "0.11.0"                                                         # For schduling jobs.
 tokio = { version = "1.39.2", features = ["full"] }                                     # For schduling jobs.
-clap = { version = "4.5.13", features = ["derive"] }                                    # For parsing input arguments.
+clap = { version = "4.5.14", features = ["derive"] }                                    # For parsing input arguments.
 daemonize = "0.5.0"                                                                     # For daemonizing the process.
 reqwest = { version = "0.12.5", features = ["blocking", "native-tls"]}                  # For handling http requests.
 futures = "0.3.30"                                                                      # For better handling of futures.
@@ -29,7 +29,7 @@ r2d2 = { version = "0.8.10", features = [   ]}                                  
 r2d2_mysql = "25.0.0"                                                                   # For handling mysql connections. 
 r2d2_postgres = "0.18.1"                                                                # For handling postgres connections.
 bb8 = "0.8.5"                                                                           # For handling connection pools.
-bb8-postgres = "0.8.0"                                                                  # For handling postgres connections.
+bb8-postgres = "0.8.1"                                                                  # For handling postgres connections.
 rust_decimal = { version = "1.35.0", features = ["db-postgres"] }                       # For handling decimal numbers towards databases.
 tracing = "0.1.40"                                                                      # For logging.
 tracing-subscriber = "0.3.18"                                                           # For logging.

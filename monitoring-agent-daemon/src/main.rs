@@ -134,6 +134,7 @@ async fn start_application(monitoring_config: &MonitoringConfig, args: &Applicat
             .service(api::get_process)
             .service(api::get_threads)
             .service(api::get_monitor_status)
+            .service(api::get_current_statm)
     })
     .bind((ip, port))?
     .run()

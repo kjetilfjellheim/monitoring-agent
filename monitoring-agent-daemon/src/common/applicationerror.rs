@@ -4,6 +4,7 @@
 #[derive(Debug)]
 pub struct ApplicationError {
     /// The error message.
+    #[allow(dead_code)]
     pub message: String,
 }
 
@@ -20,7 +21,7 @@ impl ApplicationError {
             message: message.to_string(),
         }
     }
-
+    #[allow(dead_code)]
     pub fn get_message(&self) -> String {
         self.message.clone()
     }

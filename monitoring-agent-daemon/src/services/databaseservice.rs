@@ -1,3 +1,4 @@
+use monitoring_agent_lib::proc::ProcsStatm;
 use monitoring_agent_lib::proc::{ProcsLoadavg, ProcsMeminfo};
 use r2d2::Pool;
 use r2d2_mysql::mysql::params;
@@ -157,6 +158,25 @@ impl DbService {
         match self {
             DbService::MariaDb(service) => service.query_long_running_queries(max_query_time),
             DbService::PostgresDb(service) => service.query_long_running_queries(max_query_time).await,
+        }
+    }
+
+    /**
+     * Store the statm values in the database.
+     * 
+     * `app_name`: The application name.
+     * `pid`: The process id.
+     * `statm`: The statm values.
+     * 
+     * Returns: Ok if the statm values were stored successfully.
+     * 
+     * Errors:
+     * - If there is an error storing the statm values.
+     */
+    pub async fn store_statm_values(&self, app_name: &str, pid: &u32, statm: &ProcsStatm) -> Result<(), ApplicationError> {
+        match self {
+            DbService::MariaDb(service) => service.store_statm_values(app_name, pid, statm),
+            DbService::PostgresDb(service) => service.store_statm_values(app_name, pid, statm).await,
         }
     }
 }
@@ -320,6 +340,27 @@ impl MariaDbService {
         }).map_err(|err| ApplicationError::new(&err.to_string()))?;
         tx.commit().map_err(|err| ApplicationError::new(&err.to_string()))?;
         Ok(result)
+    }
+
+    #[tracing::instrument(level = "debug")]
+    fn store_statm_values(&self, app_name: &str, pid: &u32, statm: &ProcsStatm) -> Result<(), ApplicationError> {
+        let mut conn = self.pool.get().map_err(|err| ApplicationError::new(&err.to_string()))?;
+        let mut tx = conn.start_transaction(TxOpts::default()).map_err(|err| ApplicationError::new(&err.to_string()))?;
+        tx.exec_drop("INSERT INTO statm (server_name, app_name, log_time, pid, total, resident, share, trs, drs, lrs, dt) VALUES 
+                    (:server_name, :app_name, now(3), :pid, :total, :resident, :share, :trs, :drs, :lrs, :dt)", params! {
+            "server_name" => self.server_name.to_string(),
+            "app_name" => app_name,
+            "pid" => pid,
+            "total" => statm.size,
+            "resident" => statm.resident,
+            "share" => statm.share,
+            "trs" => statm.trs,
+            "drs" => statm.drs,
+            "lrs" => statm.lrs,
+            "dt" => statm.dt,
+        }).map_err(|err| ApplicationError::new(&err.to_string()))?;
+        tx.commit().map_err(|err| ApplicationError::new(&err.to_string()))?;       
+        Ok(())
     }
 
 }
@@ -488,5 +529,28 @@ impl PostgresDbService {
             queries.push(format!("id: {id}, client: {client}"));
         }
         queries
+    }
+
+    #[tracing::instrument(level = "debug")]
+    async fn store_statm_values(&self, app_name: &str, pid: &u32, statm: &ProcsStatm) -> Result<(), ApplicationError> {
+        let mut conn = self.pool.get().await.map_err(|err| ApplicationError::new(&err.to_string()))?;
+        let tx = conn.transaction().await.map_err(|err| ApplicationError::new(&err.to_string()))?;
+        tx.execute("INSERT INTO statm (id, server_name, app_name, log_time, pid, total, resident, share, trs, drs, lrs, dt) VALUES 
+                    (nextval('seq_statm'), $1, $2, now(), $3, $4, $5, $6, $7, $8, $9)", &[
+            &self.server_name,
+            &app_name,
+            &pid,
+            &statm.size,
+            &statm.resident,
+            &statm.share,
+            &statm.trs,
+            &statm.drs,
+            &statm.lrs,
+            &statm.dt,
+
+        ]).await.map_err(|err| ApplicationError::new(&err.to_string()))?;
+        tx.commit().await.map_err(|err| ApplicationError::new(&err.to_string()))?;
+        Ok(())
+
     }
 }
