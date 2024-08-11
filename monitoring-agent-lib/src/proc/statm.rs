@@ -11,19 +11,19 @@ use crate::common::CommonLibError;
 #[derive(Debug, Clone)]
 pub struct Statm {
     /// Total program size (pages)
-    size: Option<u32>,
+    pub size: Option<u32>,
     /// Size of memory portions (pages)
-    resident: Option<u32>,
+    pub resident: Option<u32>,
     /// Number of pages that are shared
-    share: Option<u32>,
+    pub share: Option<u32>,
     /// Number of pages that are ‘code’
-    trs: Option<u32>,
+    pub trs: Option<u32>,
     /// Number of pages of data/stack
-    drs: Option<u32>,
+    pub drs: Option<u32>,
     /// Number of pages of library
-    lrs: Option<u32>,
+    pub lrs: Option<u32>,
     /// Number of dirty pages
-    dt: Option<u32>
+    pub dt: Option<u32>
 }
 
 impl Statm {

@@ -1,4 +1,5 @@
 use std::{fs::{self, DirEntry, File, ReadDir}, io::Read};
+use log::debug;
 use regex::Regex;
 
 use crate::common::CommonLibError;
@@ -9,11 +10,9 @@ use crate::common::CommonLibError;
 #[derive(Debug, Clone)]
 pub struct CmdLine {
     /// The full path of the command.
-    fullpath: String,
-    /// The application name.
-    application: String,
+    pub fullpath: String,
     /// The process id.
-    pid: u32,
+    pub pid: u32,
 }
 
 impl CmdLine {
@@ -27,10 +26,9 @@ impl CmdLine {
      * 
      * Returns a new `CmdLine`.
      */
-    #[must_use] pub fn new(fullpath: &str, application: &str, pid: u32) -> CmdLine {
+    #[must_use] pub fn new(fullpath: &str, pid: u32) -> CmdLine {
         CmdLine {
             fullpath: fullpath.to_string(),
-            application: application.to_string(),
             pid
         }
     }
@@ -159,7 +157,6 @@ impl CmdLine {
         })?;
         Ok(CmdLine::new(
             buffer.as_str(),
-            buffer.split('/').last().unwrap_or("").split_whitespace().next().unwrap_or(""),
             pid
         ))
     }    
@@ -213,7 +210,8 @@ impl CmdLine {
     fn get_by_application(file_path: ReadDir, application: &str) -> Result<Vec<CmdLine>, CommonLibError> {
         let processes = CmdLine::read_processes(file_path)?;
         let processes = processes.into_iter().filter(|process| {
-            process.application == application
+            debug!("Checking process: {process:?}");
+            process.fullpath.contains(application)
         }).collect();
         Ok(processes)
     }
@@ -240,7 +238,6 @@ mod test {
         let processes = processes.unwrap();
         let cmdline = processes.first().unwrap();
         assert_eq!(cmdline.fullpath, "/usr/sbin/apache2\0-k\0start\0");
-        assert_eq!(cmdline.application, "apache2\0-k\0start\0");
         assert_eq!(cmdline.pid, 2914);
     }
 
@@ -251,7 +248,6 @@ mod test {
         let processes = processes.unwrap();
         let cmdline = processes.first().unwrap();
         assert_eq!(cmdline.fullpath, "/usr/sbin/apache2\0-k\0start\0");
-        assert_eq!(cmdline.application, "apache2\0-k\0start\0");
         assert_eq!(cmdline.pid, 2914);
     }    
 

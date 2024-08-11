@@ -81,6 +81,26 @@ pub enum Status {
     Error { message: String },
 }
 
+impl Status {
+    /**
+     * Get the maximum status from a list of statuses.
+     * Ok < Error (Unknown is ignored)
+     *
+     * `statuses`: The list of statuses.
+     *
+     */
+    pub fn get_max_status(statuses: Vec<Status>) -> Status {
+        let mut max_status = Status::Ok;
+        for status in statuses {
+            if let Status::Error { .. } = status {
+                max_status = status;
+            }                
+        }
+        max_status
+    }
+
+}
+
 #[cfg(test)]
 mod test {
 
@@ -117,6 +137,17 @@ mod test {
         assert!(monitorstatus.last_successful_time.is_some());
         assert_eq!(monitorstatus.last_error, Some("test error".to_string()));
         assert!(monitorstatus.last_error_time.is_some());
+    }
+
+    #[test]
+    fn test_status_get_max_status() {
+        let statuses = vec![Status::Ok, Status::Error { message: "test error".to_string() }];
+        let max_status = Status::get_max_status(statuses);
+        assert_eq!(max_status, Status::Error { message: "test error".to_string() });
+
+        let statuses = vec![Status::Ok, Status::Unknown];
+        let max_status = Status::get_max_status(statuses);
+        assert_eq!(max_status, Status::Ok);
     }
 
 }

@@ -9,6 +9,7 @@
  * `meminfomonitor`: Monitor that checks the memory information of the system.
  * `systemctlmonitor`: Monitor that checks the status of a systemd service.
  * `databasemonitor`: Monitor that checks the status of a database service.
+ * `processmonitor`: Monitor that checks the status of a process.
  */
 mod common;
 mod commandmonitor;
@@ -18,6 +19,7 @@ mod loadavgmonitor;
 mod meminfomonitor;
 mod systemctlmonitor;
 mod databasemonitor;
+mod processmonitor;
 
 pub use common::Monitor;
 pub use commandmonitor::CommandMonitor;
@@ -27,3 +29,4 @@ pub use loadavgmonitor::LoadAvgMonitor;
 pub use meminfomonitor::MeminfoMonitor;
 pub use systemctlmonitor::SystemctlMonitor;
 pub use databasemonitor::DatabaseMonitor;
+pub use processmonitor::ProcessMonitor;
