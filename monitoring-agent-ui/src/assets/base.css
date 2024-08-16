@@ -1,0 +1,158 @@
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  font-family: 'Roboto', sans-serif;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background-color: #3C3D37;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.layout {
+  width: 100vw;
+  height: 100vh;
+
+  display: grid;
+  grid:
+    "header header header" 0.05fr
+    "sidebar main main" 0.85fr
+    "footer footer footer" 0.05fr
+    / 0.02fr 0.9fr 0.05fr;
+  gap: 0px;
+  background-color: #3C3D37;
+}
+
+.header { 
+  grid-area: header; 
+  background-image: linear-gradient(to bottom left, #646464, #000000);
+  padding: 0.0em; 
+  margin: 0;
+  display: flex;
+}
+
+.sidebar { 
+  grid-area: sidebar; 
+  background-color: #acacac; 
+  padding: 0.0em; 
+  margin: 1px;
+}
+
+.main { 
+  grid-area: main; 
+  background-color: #d4d4d4; 
+  padding: 0;
+  margin: 0;
+}
+
+.footer {
+  grid-area: footer; 
+  background-color: #3C3D37; 
+  padding: 0; 
+  margin: 0;
+  display: flex;
+
+}
+
+.nav {
+  align-items: center;
+  padding: 0px;
+  margin: 0;
+  background-color: #43698a;
+}
+
+.logo {
+  order: 1;
+  place-content: left;
+  padding: 0px;
+  margin-top: auto;
+  margin-bottom: auto;  
+}
+
+.navbar-title {
+  order: 2;  
+  flex-grow: 99;
+  padding-left: 4px;
+  place-content: left;
+  font-size: 1.5em;
+  color: rgb(184, 184, 184);
+  margin-top: auto;
+  margin-bottom: auto;
+}
+
+.navbar-description {
+  order: 8;  
+  flex: auto;
+  padding-left: 4px;
+  place-content: right;
+  font-size: 1em;
+  color: rgb(120, 120, 120);
+  margin-top: auto;
+  margin-bottom: auto;
+  font-style: italic;
+}
+
+.footer-text {
+  font-size: 16px;
+  font-family: Verdana, Geneva, Tahoma, sans-serif;
+  color: rgb(184, 184, 184);
+  padding: 5px;
+}
+
+.footerorder1 {
+  order: 1;
+  flex-grow: 1;
+}
+
+.footerorder2 {
+  order: 2;
+  flex-grow: 1;
+}
+
+.footerorder3 {
+  order: 3;
+  flex-grow: 0;
+}
+
+.list-group {
+  font-size: 6px;
+}
+
+.sidebarflex {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: aliceblue;
+}
+
+.siderbarchoice {
+  order: 1;
+  flex-grow: 99; 
+  background-color: #43698a; 
+}
+
+.nav-link {
+  font-size: 0.5em;
+  color: rgb(184, 184, 184);
+}
+
+.activeStyle {
+  font-size: 6px;
+}
+
+.nonActiveStyle {
+  font-size: 10px;
+}
+
+.about {
+  background-image: url('/src/assets/about.png');
+  background-size: 100% 100%;
+  height: 100%;
+  width: 100%;
+}
