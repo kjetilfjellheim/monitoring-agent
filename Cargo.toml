@@ -2,14 +2,9 @@
 resolver = "2"
 
 members = [ 
-    "monitoring-agent-daemon",
-    "monitoring-agent-daemon",
-    "monitoring-agent-ui"
+    "monitoring-agent-lib",
+    "monitoring-agent-daemon"
 ]
-
-[workspace.metadata.spellcheck]
-config = "spellcheck.toml"
-
 
 [profile.release]
 lto = true

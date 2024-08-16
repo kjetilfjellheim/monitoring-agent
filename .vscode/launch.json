@@ -2,6 +2,13 @@
     "version": "0.2.0",
     "configurations": [        
         {
+            "cwd": "${workspaceFolder}/monitoring-agent-ui/monitoring-agent-ui",
+            "command": "npm run dev",
+            "name": "Start ui dev",
+            "request": "launch",
+            "type": "node-terminal"
+        },
+        {
             "type": "lldb",
             "request": "launch",
             "name": "Debug",
