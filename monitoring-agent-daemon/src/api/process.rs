@@ -1,6 +1,6 @@
 use actix_web::{get, web, HttpResponse, Responder};
 
-use crate::api::{response::StatmResponse, StateApi};
+use crate::api::{common::set_cors_headers, response::StatmResponse, StateApi};
 
 use super::response::ProcessResponse;
 
@@ -49,7 +49,11 @@ pub async fn get_threads(state: web::Data<StateApi>, path: web::Path<u32>) -> im
     let pid: u32 = path.into_inner();
     let procs = state.monitoring_service.get_process_threads(pid);    
     match procs {
-        Ok(procs) => HttpResponse::Ok().json(ProcessResponse::from_processes(&procs)),
+        Ok(procs) => {
+            let mut response_builder = HttpResponse::Ok();
+            set_cors_headers(&mut response_builder, &state.server_config);
+            response_builder.json(ProcessResponse::from_processes(&procs))
+        },
         Err(err) => HttpResponse::InternalServerError().body(format!("Error occured: {err:?}")),
     }
 }
@@ -67,7 +71,11 @@ pub async fn get_current_statm(state: web::Data<StateApi>, path: web::Path<u32>)
     let pid: u32 = path.into_inner();
     let procs_statm = state.monitoring_service.get_current_statm(pid);
     match procs_statm {
-        Ok(procs_statm) => HttpResponse::Ok().json(StatmResponse::from_current_statm(&procs_statm)),
+        Ok(procs_statm) => {
+            let mut response_builder = HttpResponse::Ok();
+            set_cors_headers(&mut response_builder, &state.server_config);
+            response_builder.json(StatmResponse::from_current_statm(&procs_statm))
+        },
         Err(err) => HttpResponse::InternalServerError().body(format!("Error occured: {err:?}")),
     }
 }

@@ -1,6 +1,0 @@
-[package]
-name = "monitoring-agent-ui"
-version = "0.0.19"
-edition = "2021"
-
-[dependencies]

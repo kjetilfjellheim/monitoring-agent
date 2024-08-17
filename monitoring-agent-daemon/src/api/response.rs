@@ -501,7 +501,10 @@ pub struct StatmResponse {
     pub lrs: Option<u32>,
     /// Number of dirty pages
     #[serde(skip_serializing_if = "Option::is_none", rename = "dtSize")]             
-    pub dt: Option<u32>
+    pub dt: Option<u32>,
+    /// Pagesize
+    #[serde(skip_serializing_if = "Option::is_none", rename = "pagesize")]             
+    pub pagesize: Option<u32>,
 }
 
 impl StatmResponse {
@@ -523,7 +526,8 @@ impl StatmResponse {
             trs: procs_statm.trs,
             drs: procs_statm.drs,
             lrs: procs_statm.lrs,
-            dt: procs_statm.dt
+            dt: procs_statm.dt,
+            pagesize: procs_statm.pagesize,
         }
     }   
 }
@@ -749,6 +753,7 @@ mod test {
             drs: Some(5),
             lrs: Some(6),
             dt: Some(7),
+            pagesize: Some(4096),
         };
         let statm_response = StatmResponse::from_current_statm(&procs_statm);
         assert_eq!(statm_response.size, Some(1));
@@ -757,7 +762,8 @@ mod test {
         assert_eq!(statm_response.trs, Some(4));
         assert_eq!(statm_response.drs, Some(5));
         assert_eq!(statm_response.lrs, Some(6));
-        assert_eq!(statm_response.dt, Some(7));        
+        assert_eq!(statm_response.dt, Some(7));
+        assert_eq!(statm_response.pagesize, Some(4096));        
     }
 
     #[test]
@@ -770,6 +776,7 @@ mod test {
             drs: None,
             lrs: None,
             dt: None,
+            pagesize: None,
         };
         let statm_response = StatmResponse::from_current_statm(&procs_statm);
         assert_eq!(statm_response.size, None);
@@ -779,5 +786,7 @@ mod test {
         assert_eq!(statm_response.drs, None);
         assert_eq!(statm_response.lrs, None);
         assert_eq!(statm_response.dt, None);        
+        assert_eq!(statm_response.pagesize, None);        
+
     }    
 }

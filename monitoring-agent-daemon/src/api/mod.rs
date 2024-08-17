@@ -17,6 +17,7 @@ mod cpuinfo;
 mod loadavg;
 mod process;
 mod monitor;
+mod common;
 
 pub use crate::api::meminfo::get_current_meminfo;
 pub use crate::api::cpuinfo::get_current_cpuinfo;

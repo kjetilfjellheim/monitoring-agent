@@ -1,0 +1,14 @@
+{
+    "server": {
+        "name": "dev",
+        "ip": "127.0.0.1",
+        "port":64999,
+        "accessControlAllowOrigin": "*",
+        "accessControlAllowMethods": "GET, POST, PUT, DELETE, OPTIONS",
+        "accessControlAllowHeaders": "Content-Type, Authorization, Content-Length, X-Requested-With",
+        "accessControlMaxAge": 10
+    },
+    "monitors":[
+
+    ]
+}

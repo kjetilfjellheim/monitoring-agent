@@ -1,4 +1,4 @@
-use crate::services::MonitoringService;
+use crate::{common::configuration::ServerConfig, services::MonitoringService};
 
 /**
  * State object for the API modules.
@@ -7,6 +7,8 @@ use crate::services::MonitoringService;
 pub struct StateApi {
     /// Monitoring service object.
     pub monitoring_service: MonitoringService,
+    /// Server configuration object.
+    pub server_config: ServerConfig,
 }
 
 impl StateApi {
@@ -18,9 +20,10 @@ impl StateApi {
      * @return `StateApi`
      * 
      */
-    pub fn new(monitoring_service: MonitoringService) -> StateApi {
+    pub fn new(monitoring_service: MonitoringService, server_config: ServerConfig) -> StateApi {
         StateApi {
-            monitoring_service
+            monitoring_service,
+            server_config,
         }
     }
 }
