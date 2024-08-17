@@ -189,7 +189,7 @@ impl ProcessMonitor {
      * 
      * Returns: The status of the check.
      */
-    fn check_max(&self, statm: &ProcsStatm) -> Status {    
+    fn check_max(&self, statm: &ProcsStatm) -> Status {        
         let Some(statm_size) = statm.size else { return Status::Ok };   
         let Some(max_mem_usage) = self.max_mem_usage else { return Status::Ok };    
         if statm_size > max_mem_usage {
