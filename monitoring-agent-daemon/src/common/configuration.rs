@@ -241,6 +241,21 @@ pub struct ServerConfig {
     pub access_control_allow_credentials: Option<bool>,
     #[serde(rename = "accessControlMaxAge", skip_serializing_if = "Option::is_none", default = "default_none")]
     pub access_control_max_age: Option<u32>,
+    #[serde(rename = "tlsConfig", skip_serializing_if = "Option::is_none", default = "default_none")]
+    pub tls_config: Option<TlsConfig>,
+}
+
+/**
+ * Tls configuration.
+ */
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+pub struct TlsConfig {
+    #[serde(rename = "certificate")]
+    pub certificate: String,
+    #[serde(rename = "identity")]
+    pub identity: String,
+    #[serde(skip_serializing, rename = "password")]
+    pub identity_password: Option<String>
 }
 
 /**
@@ -300,6 +315,7 @@ fn default_server() -> ServerConfig {
         access_control_allow_methods: None,
         access_control_allow_credentials: default_none(),
         access_control_max_age: default_none(),
+        tls_config: default_none(),
     }
 }
 
