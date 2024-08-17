@@ -117,16 +117,17 @@ async fn start_application(monitoring_config: &MonitoringConfig, args: &Applicat
      */
     let ip = monitoring_config.server.ip.clone();
     let port = monitoring_config.server.port;
+    let cloned_monitoring_config = monitoring_config.clone();
     /*
-        * If this is a test, return.
-        */
+     * If this is a test, return.
+     */
     if args.test {
         return Ok(());
     }
     info!("Starting HTTP server on {}:{}", ip, port);
     HttpServer::new(move || {
         App::new()
-            .app_data(web::Data::new(StateApi::new(monitoring_service.clone())))
+            .app_data(web::Data::new(StateApi::new(monitoring_service.clone(), cloned_monitoring_config.server.clone())))
             .service(api::get_current_meminfo)   
             .service(api::get_current_cpuinfo)   
             .service(api::get_current_loadavg)   

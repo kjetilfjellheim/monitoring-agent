@@ -230,6 +230,17 @@ pub struct ServerConfig {
     /// The name of the server.
     #[serde(rename = "name", default="default_server_name")]  
     pub name: String,
+    // The cors headers.
+    #[serde(skip_serializing_if = "Option::is_none", rename = "accessControlAllowOrigin")]
+    pub access_control_allow_origin: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "accessControlAllowHeaders")]
+    pub access_control_allow_headers: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "accessControlAllowMethods")]
+    pub access_control_allow_methods: Option<String>,
+    #[serde(rename = "accessControlAllowCredentials",skip_serializing_if = "Option::is_none", default = "default_none")]
+    pub access_control_allow_credentials: Option<bool>,
+    #[serde(rename = "accessControlMaxAge", skip_serializing_if = "Option::is_none", default = "default_none")]
+    pub access_control_max_age: Option<u32>,
 }
 
 /**
@@ -284,9 +295,25 @@ fn default_server() -> ServerConfig {
         port: default_server_port(),
         ip: default_server_ip(),
         name: default_server_name(),
+        access_control_allow_origin: None,
+        access_control_allow_headers: None,
+        access_control_allow_methods: None,
+        access_control_allow_credentials: default_none(),
+        access_control_max_age: default_none(),
     }
 }
 
+/**
+ * Default none.
+ */
+fn default_none<T>() -> Option<T> {
+    debug!("Using default none");
+    None
+}
+
+/**
+ * Default server name.
+ */
 fn default_server_name() -> String {
     debug!("Using default server name");
     "Default".to_string()
@@ -548,6 +575,23 @@ mod tests {
             }
         );
         Ok(())
-    }             
+    }    
+
+    /**
+     * Test for a simple server.
+     */
+    #[test]
+    fn test_simple_server_file() -> Result<(), ApplicationError> {
+        let monitoring: MonitoringConfig =
+            MonitoringConfig::new("resources/test/configuration_import_test/test_simple_server.json")?;
+        assert_eq!("64999".to_string(), monitoring.server.clone().port.to_string());
+        assert_eq!("dev".to_string(), monitoring.server.clone().name.to_string());
+        assert_eq!("127.0.0.1".to_string(), monitoring.server.clone().ip.to_string());
+        assert_eq!("10".to_string(), monitoring.server.clone().access_control_max_age.unwrap().to_string());
+        assert_eq!("*".to_string(), monitoring.server.clone().access_control_allow_origin.unwrap());
+        assert_eq!("GET, POST, PUT, DELETE, OPTIONS".to_string(), monitoring.server.clone().access_control_allow_methods.unwrap());
+        assert_eq!("Content-Type, Authorization, Content-Length, X-Requested-With".to_string(), monitoring.server.clone().access_control_allow_headers.unwrap());
+        Ok(())
+    }                   
 
 }
