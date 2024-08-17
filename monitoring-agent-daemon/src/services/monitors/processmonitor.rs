@@ -189,11 +189,11 @@ impl ProcessMonitor {
      * 
      * Returns: The status of the check.
      */
-    fn check_max(&self, statm: &ProcsStatm) -> Status {        
-        if let Some(max_mem_usage) = self.max_mem_usage {
-            if statm.size > self.max_mem_usage {
-                return Status::Error { message: format!("Process memory usage is over the limit: {:?} > {max_mem_usage:?}", statm.size)};
-            }
+    fn check_max(&self, statm: &ProcsStatm) -> Status {    
+        let Some(statm_size) = statm.size else { return Status::Ok };   
+        let Some(max_mem_usage) = self.max_mem_usage else { return Status::Ok };    
+        if statm_size > max_mem_usage {
+            return Status::Error { message: format!("Process memory usage is over the limit: {statm_size:?} > {max_mem_usage:?}")};
         }
         Status::Ok
     }
