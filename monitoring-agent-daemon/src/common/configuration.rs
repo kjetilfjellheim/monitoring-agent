@@ -41,7 +41,7 @@ pub enum MonitorType {
         root_certificate: Option<String>,
         #[serde(skip_serializing_if = "Option::is_none", rename = "identity")]
         identity: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none", rename = "identityPassword")]
+        #[serde(skip_serializing, rename = "identityPassword")]
         identity_password: Option<String>,
     },
     Command {
@@ -271,7 +271,7 @@ pub struct DatabaseConfig {
     #[serde(rename = "user")]
     pub user: String,
     /// The password.
-    #[serde(rename = "password")]
+    #[serde(skip_serializing, rename = "password")]
     pub password: String,
     /// The port.
     #[serde(rename = "port")]
