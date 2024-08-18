@@ -532,6 +532,29 @@ impl StatmResponse {
     }   
 }
 
+/**
+ * The `PingResponse` struct represents the response of the ping endpoint.
+ * The ping endpoint is used to check if the monitoring agent daemon is running.
+ * 
+ * `status`: The status of the monitoring agent daemon. Should always be Ok.
+ * `system`: The system the monitoring agent daemon is running on. Should always be monitoring-agent-daemon.
+ */
+#[allow(clippy::module_name_repetitions)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PingResponse {
+    status: String,
+    system: String
+}
+
+impl PingResponse {
+    pub fn new(status: &str, system: &str) -> PingResponse {
+        PingResponse {
+            status: status.to_string(),
+            system: system.to_string()
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

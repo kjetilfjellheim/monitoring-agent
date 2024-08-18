@@ -140,6 +140,7 @@ async fn start_application(monitoring_config: &MonitoringConfig, args: &Applicat
             .service(api::get_threads)
             .service(api::get_monitor_status)
             .service(api::get_current_statm)
+            .service(api::get_ping)
     });
     let http_server = match monitoring_config.server.tls_config.clone() {
         Some(tls_config) => {
