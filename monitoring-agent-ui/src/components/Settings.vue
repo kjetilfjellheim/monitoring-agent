@@ -40,9 +40,9 @@ export default {
     // Ping a URL to check if it is reachable
     async ping(url) {
       try {
-        fetch_result = await fetch(url);
+        let fetch_result = await fetch(url);
         let response = await fetch_result.json();
-        if (check_ping(response)) { return true } else { return false; } 
+        if (this.check_ping(response)) { return true } else { return false; } 
       } catch (error) {
         return false;
       }
