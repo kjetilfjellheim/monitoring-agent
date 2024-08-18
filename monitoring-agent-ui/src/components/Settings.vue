@@ -67,14 +67,20 @@ export default {
     },
     // Check all URLs
     async checkAll() {      
+      let failed = [];
       for (let url of this.urls) {
         this.ping(url).then(success => {
           if (!success) {
-            alert('Ping failed for: ' + url);
+            failed.push(url);            
           }
         });
-      }      
+      } 
+      if (failed.length > 0) {
+        alert('Ping failed for: ' + failed.join(', '));
+      } else {
+        alert('Ping successful for all URLs');     
     }
+  }
   }
 }
 </script>
