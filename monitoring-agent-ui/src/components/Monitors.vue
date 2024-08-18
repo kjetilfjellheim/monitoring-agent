@@ -8,7 +8,12 @@ let urls = JSON.parse(currentUrls);
 for (let url of urls) {
     fetch(url + "/monitors/status")
         .then(response => response.json())
-        .then(response => monitors.value.push(...response))
+        .then(json => {
+            json.forEach(element => {
+                element.url = url;
+            });
+            monitors.value.push(...json)
+        })
         .catch(error => alert(error));
 }                
 </script>
@@ -34,7 +39,8 @@ export default {
                     <label class="form-check-label text-light" for="showOErrorStatus">Show Error</label>
                 </li>
                 <li class="nav-item">
-                    <input class="form-check-input toolbar-item" type="checkbox" id="showOkStatus" v-model="showOkStatus">
+                    <input class="form-check-input toolbar-item" type="checkbox" id="showOkStatus"
+                        v-model="showOkStatus">
                     <label class="form-check-label text-light" for="showOkStatus">Show Ok</label>
                 </li>
             </ul>
@@ -79,7 +85,7 @@ export default {
                                     <dd class="col-sm-7 small text-truncate bg-light no-margin">{{ monitor.status }}
                                     </dd>
                                     <dt class="col-sm-5 small no-margin">Server</dt>
-                                    <dd class="col-sm-7 small text-truncate no-margin">Localhost</dd>
+                                    <dd class="col-sm-7 small text-truncate no-margin">{{ monitor.url }}</dd>
                                     <dt class="col-sm-5 small no-margin" v-if="monitor.lastSuccessfulTime != null">Last
                                         successful time</dt>
                                     <dd class="col-sm-7 small no-margin text-truncate"
