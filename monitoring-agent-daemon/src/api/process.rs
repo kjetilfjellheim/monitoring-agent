@@ -15,7 +15,11 @@ use super::response::ProcessResponse;
 pub async fn get_processes(state: web::Data<StateApi>) -> impl Responder {
     let procs = state.monitoring_service.get_processes();    
     match procs {
-        Ok(procs) => HttpResponse::Ok().json(ProcessResponse::from_processes(&procs)),
+        Ok(procs) => { 
+            let mut response_builder = HttpResponse::Ok();
+            set_cors_headers(&mut response_builder, &state.server_config);
+            response_builder.json(ProcessResponse::from_processes(&procs))
+        },
         Err(err) => HttpResponse::InternalServerError().body(format!("Error occured: {err:?}")),
     }
 }
@@ -32,7 +36,11 @@ pub async fn get_process(state: web::Data<StateApi>, path: web::Path<u32>) -> im
     let pid: u32 = path.into_inner();
     let procs = state.monitoring_service.get_process(pid);    
     match procs {
-        Ok(procs) => HttpResponse::Ok().json(ProcessResponse::from_process(&procs)),
+        Ok(procs) => { 
+            let mut response_builder = HttpResponse::Ok();
+            set_cors_headers(&mut response_builder, &state.server_config);            
+            response_builder.json(ProcessResponse::from_process(&procs)) 
+        },
         Err(err) => HttpResponse::InternalServerError().body(format!("Error occured: {err:?}")),
     }
 }
