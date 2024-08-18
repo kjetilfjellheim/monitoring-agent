@@ -42,7 +42,7 @@
                 </a>
               </li>
               <li class="nav-item">
-                <a class="nav-link" href="/settings" data-toggle="tooltip" data-placement="top" title="Show settings for the systems being monitored.">
+                <a class="nav-link" href="/settings" data-toggle="tooltip" data-placement="top" title="Configuration.">
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-gear"
                     viewBox="0 0 16 16">
                     <path
@@ -64,7 +64,7 @@
           </div>          
         </div>
       </div>
-      <div class="main"><router-view /></div>
+      <div class="main bg-dark"><router-view /></div>
       <div class="footer">
         <div class="footer-text footerorder1">Developed by Kjetil Fjellheim</div>
         <div class="footer-text footerorder2">Github project: <a class="text-info"
