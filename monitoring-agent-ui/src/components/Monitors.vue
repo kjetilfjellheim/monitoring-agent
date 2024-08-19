@@ -1,29 +1,40 @@
 <script setup>
-import { ref } from 'vue';
-const monitors = ref(null);
-const URL_NAME = 'apiUrls';
-monitors.value = [];
-let currentUrls = localStorage.getItem(URL_NAME);
-let urls = JSON.parse(currentUrls);
-for (let url of urls) {
-    fetch(url + "/monitors/status")
-        .then(response => response.json())
-        .then(json => {
-            json.forEach(element => {
-                element.url = url;
-            });
-            monitors.value.push(...json)
-        })
-        .catch(error => alert(error));
-}                
+    import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+    import { faRefresh} from '@fortawesome/free-solid-svg-icons';
 </script>
-
 <script>
+import { ref } from 'vue';
+
 export default {
     data() {
         return {
             showErrorStatus: true,
-            showOkStatus: true
+            showOkStatus: true,
+            monitors: []
+        }
+    },
+    mounted() {
+        this.refreshMonitors();
+    },
+    methods: {
+        refreshMonitors() {
+            const monitors = ref(null);     
+            const URL_NAME = 'apiUrls';
+            monitors.value = [];
+            let currentUrls = localStorage.getItem(URL_NAME);
+            let urls = JSON.parse(currentUrls);
+            for (let url of urls) {
+                fetch(url + "/monitors/status")
+                    .then(response => response.json())
+                    .then(json => {
+                        json.forEach(element => {
+                            element.url = url;
+                        });
+                        monitors.value.push(...json)
+                    })
+                    .catch(error => alert(error));
+            }
+            this.monitors = monitors.value;
         }
     }
 };
@@ -33,6 +44,9 @@ export default {
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="collapse navbar-collapse">
             <ul class="navbar-nav mr-auto mt-2 mt-lg-0">
+                <li class="nav-item">
+                    <button class="btn btn-info small" @click="this.refreshMonitors()"><FontAwesomeIcon :icon="faRefresh" />&nbsp;Refresh</button>
+                </li>                                            
                 <li class="nav-item">
                     <input class="form-check-input toolbar-item" type="checkbox" id="showOErrorStatus"
                         v-model="showErrorStatus"></input>
