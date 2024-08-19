@@ -1,3 +1,7 @@
+<script setup>
+    import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+    import { faListCheck, faCircleMinus } from '@fortawesome/free-solid-svg-icons';
+</script>
 <script>
 const URL_NAME = 'apiUrls';
 
@@ -85,13 +89,13 @@ export default {
 }
 </script>
 <template>
-  <div class="container">
+  <div class="container-fluid">
     <div class="row">
       <nav class="navbar navbar-expand-lg navbar-dark bg-dark ">
         <div class="container-fluid">
           <div class="collapse navbar-collapse" id="navbarSupportedContent">
             <div class="input-group mb-3">
-              <button class="btn btn-info small" @click="checkAll()">Check all</button>
+              <button class="btn btn-info small" @click="this.checkAll()"><FontAwesomeIcon :icon="faListCheck" />&nbsp;Check all</button>
             </div>
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
             </ul>
@@ -118,8 +122,10 @@ export default {
           <tr v-for="url in urls" id="{{ url }}">
             <th scope="row"></th>
             <td class="vertical-align-middle"><label class="form-check-label text-light">{{ url }}</label></td>
-            <td><button class="btn btn-danger function" @click="removeUrl(url)">Remove</button><button
-                class="btn btn-info function" @click="check(url)">Check</button></td>
+            <td>
+              <button class="btn btn-danger btn-sm function" @click="removeUrl(url)"><FontAwesomeIcon :icon="faCircleMinus" />&nbsp;Remove</button>
+              <button class="btn btn-info btn-sm function" @click="this.check(url)"><FontAwesomeIcon :icon="faListCheck" />&nbsp;Check all</button>
+            </td>
           </tr>
         </tbody>
       </table>

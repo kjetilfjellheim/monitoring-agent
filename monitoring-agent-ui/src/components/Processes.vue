@@ -1,6 +1,9 @@
+<script setup>
+    import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+    import { faRefresh, faBook } from '@fortawesome/free-solid-svg-icons';
+</script>
 <script>
 import { ref } from 'vue';
-
 
 export default {
     data() {
@@ -77,7 +80,7 @@ export default {
         <div class="collapse navbar-collapse">
             <ul class="navbar-nav mr-auto mt-2 mt-lg-0">
                 <li class="nav-item">
-                    <button class="btn btn-info small" @click="this.refreshProcesses()">Refresh</button>
+                    <button class="btn btn-info small" @click="this.refreshProcesses()"><FontAwesomeIcon :icon="faRefresh" />&nbsp;Refresh</button>
                 </li>                
             </ul>
         </div>
@@ -140,10 +143,8 @@ export default {
                                     process.processState }}</label></td>
                             <td class="vertical-align-middle"><label class="form-check-label text-light">{{
                                     process.numThreads }}</label></td>
-                            <td class="vertical-align-middle"><input class="btn btn-info btn-sm" type="button"
-                                    value="Get" disabled /></td>
-                            <td class="vertical-align-middle"><input class="btn btn-info btn-sm" type="button"
-                                    value="Get" disabled /></td>
+                            <td class="vertical-align-middle"><button class="btn btn-info small"><FontAwesomeIcon :icon="faBook" />&nbsp;Get</button></td>
+                            <td class="vertical-align-middle"><button class="btn btn-info small"><FontAwesomeIcon :icon="faBook" />&nbsp;Get</button></td>
                         </tr>
                     </template>
                 </tbody>
