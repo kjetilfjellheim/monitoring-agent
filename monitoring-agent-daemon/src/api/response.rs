@@ -157,8 +157,8 @@ pub struct LoadavgResponse {
     #[serde(skip_serializing_if = "Option::is_none", rename = "loadAvg5Min")]        
     pub loadavg5min:  Option<f32>,
     /// Load average last 10 minutes.
-    #[serde(skip_serializing_if = "Option::is_none", rename = "loadAvg10Min")]        
-    pub loadavg10min:  Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "loadAvg15Min")]        
+    pub loadavg15min:  Option<f32>,
     /// The number of currently running processes.
     pub current_running_processes: Option<u32>,
     /// The total number of processes.
@@ -171,7 +171,7 @@ impl LoadavgResponse {
      *
      * `loadavg1min`: The 1 minute load average.
      * `loadavg5min`: The 5 minute load average.
-     * `loadavg10min`: The 10 minute load average.
+     * `loadavg15min`: The 10 minute load average.
      * 
      * Returns a new `CpuinfoResponse`.
      */
@@ -179,14 +179,14 @@ impl LoadavgResponse {
     pub fn new(        
         loadavg1min: Option<f32>,
         loadavg5min: Option<f32>,
-        loadavg10min: Option<f32>,
+        loadavg15min: Option<f32>,
         current_running_processes: Option<u32>,
         total_number_of_processes: Option<u32>,
     ) -> LoadavgResponse {
         LoadavgResponse {
             loadavg1min,
             loadavg5min,
-            loadavg10min,
+            loadavg15min,
             current_running_processes,
             total_number_of_processes,
         }
@@ -203,7 +203,7 @@ impl LoadavgResponse {
         LoadavgResponse::new(
             procs_loadavg.loadavg1min, 
             procs_loadavg.loadavg5min, 
-            procs_loadavg.loadavg10min, 
+            procs_loadavg.loadavg15min, 
             procs_loadavg.current_running_processes, 
             procs_loadavg.total_number_of_processes)
     }    
@@ -624,7 +624,7 @@ mod test {
         let loadavg_response = LoadavgResponse::new(Some(1.0), Some(2.0), Some(3.0), Some(4), Some(5));
         assert_eq!(loadavg_response.loadavg1min, Some(1.0));
         assert_eq!(loadavg_response.loadavg5min, Some(2.0));
-        assert_eq!(loadavg_response.loadavg10min, Some(3.0));
+        assert_eq!(loadavg_response.loadavg15min, Some(3.0));
         assert_eq!(loadavg_response.current_running_processes, Some(4));
         assert_eq!(loadavg_response.total_number_of_processes, Some(5));
     }
@@ -634,14 +634,14 @@ mod test {
         let procs_loadavg = ProcsLoadavg {
             loadavg1min: Some(1.0),
             loadavg5min: Some(2.0),
-            loadavg10min: Some(3.0),
+            loadavg15min: Some(3.0),
             current_running_processes: Some(4),
             total_number_of_processes: Some(5),
         };
         let loadavg_response = LoadavgResponse::from_loadavg(&procs_loadavg);
         assert_eq!(loadavg_response.loadavg1min, Some(1.0));
         assert_eq!(loadavg_response.loadavg5min, Some(2.0));
-        assert_eq!(loadavg_response.loadavg10min, Some(3.0));
+        assert_eq!(loadavg_response.loadavg15min, Some(3.0));
         assert_eq!(loadavg_response.current_running_processes, Some(4));
         assert_eq!(loadavg_response.total_number_of_processes, Some(5));
     }

@@ -11,7 +11,7 @@
                 "type": "loadAvg",
                 "threshold1min": 1.0,
                 "threshold5min": 2.0,
-                "threshold10min": 3.0,
+                "threshold15min": 3.0,
                 "storeValues": true
             }
         }

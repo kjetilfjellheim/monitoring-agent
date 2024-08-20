@@ -17,7 +17,7 @@ pub struct LoadAvgMonitor {
     /// Max load average for 5 minutes.
     pub loadavg5min_max: Option<f32>,
     /// Max load average for 10 minutes.
-    pub loadavg10min_max: Option<f32>,
+    pub loadavg15min_max: Option<f32>,
     /// The status of the monitor.
     pub status: Arc<Mutex<HashMap<String, MonitorStatus>>>,
     /// The database service.
@@ -36,7 +36,7 @@ impl LoadAvgMonitor {
      * `name`: The name of the monitor.
      * `loadavg1min_max`: The max load average for 1 minute.
      * `loadavg5min_max`: The max load average for 5 minutes.
-     * `loadavg10min_max`: The max load average for 10 minutes.
+     * `loadavg15min_max`: The max load average for 10 minutes.
      * `status`: The status of the monitor.
      * `database_service`: The database service.
      * `database_store_level`: The database store level.
@@ -51,7 +51,7 @@ impl LoadAvgMonitor {
         name: &str,
         loadavg1min_max: Option<f32>,
         loadavg5min_max: Option<f32>,
-        loadavg10min_max: Option<f32>,
+        loadavg15min_max: Option<f32>,
         status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
         database_service: &Arc<Option<DbService>>,
         database_store_level: &DatabaseStoreLevel,
@@ -72,7 +72,7 @@ impl LoadAvgMonitor {
             name: name.to_string(),
             loadavg1min_max,
             loadavg5min_max,
-            loadavg10min_max,
+            loadavg15min_max,
             status: status.clone(),
             database_service: database_service.clone(),
             database_store_level: database_store_level.clone(),
@@ -90,12 +90,12 @@ impl LoadAvgMonitor {
     async fn check_loadavg(&mut self, loadavg: &ProcsLoadavg) {    
         let status_1min = LoadAvgMonitor::check_loadavg_values(self.loadavg1min_max, loadavg.loadavg1min);
         let status_5min = LoadAvgMonitor::check_loadavg_values(self.loadavg5min_max, loadavg.loadavg5min);
-        let status_10min = LoadAvgMonitor::check_loadavg_values(self.loadavg10min_max, loadavg.loadavg10min);
+        let status_15min = LoadAvgMonitor::check_loadavg_values(self.loadavg15min_max, loadavg.loadavg15min);
         
-        if status_1min != Status::Ok || status_5min != Status::Ok || status_10min != Status::Ok {
+        if status_1min != Status::Ok || status_5min != Status::Ok || status_15min != Status::Ok {
             self.set_status(&Status::Error {
                 message: format!(
-                    "Load average check failed: 1min: {status_1min:?}, 5min: {status_5min:?}, 10min: {status_10min:?}"
+                    "Load average check failed: 1min: {status_1min:?}, 5min: {status_5min:?}, 15min: {status_15min:?}"
                 ),
             }).await;
         } else {
@@ -158,7 +158,7 @@ impl LoadAvgMonitor {
      * `name`: The name of the monitor.
      * `threshold_1min`: The threshold for the 1 minute load average.
      * `threshold_5min`: The threshold for the 5 minute load average.
-     * `threshold_10min`: The threshold for the 10 minute load average.
+     * `threshold_15min`: The threshold for the 10 minute load average.
      * `store_values`: Store the values in the database.
      * `status`: The status.
      * `database_store_level`: The database store level.
@@ -311,7 +311,7 @@ mod test {
         let loadavg = monitoring_agent_lib::proc::ProcsLoadavg {
             loadavg1min: Some(1.0),
             loadavg5min: Some(2.0),
-            loadavg10min: Some(3.0),
+            loadavg15min: Some(3.0),
             current_running_processes: Some(1),
             total_number_of_processes: Some(10)
         };
@@ -346,7 +346,7 @@ mod test {
         let loadavg = monitoring_agent_lib::proc::ProcsLoadavg {
             loadavg1min: Some(1.1),
             loadavg5min: Some(2.0),
-            loadavg10min: Some(3.0),
+            loadavg15min: Some(3.0),
             current_running_processes: Some(1),
             total_number_of_processes: Some(10)
         };
@@ -355,7 +355,7 @@ mod test {
 
         let status = monitor.get_status();
         let status = status.lock().unwrap();
-        assert_eq!(status.get("test").unwrap().status, super::Status::Error { message: "Load average check failed: 1min: Error { message: \"Load average 1.1 is greater than max load average 1\" }, 5min: Ok, 10min: Ok".to_string() } );
+        assert_eq!(status.get("test").unwrap().status, super::Status::Error { message: "Load average check failed: 1min: Error { message: \"Load average 1.1 is greater than max load average 1\" }, 5min: Ok, 15min: Ok".to_string() } );
     }
 
     /**
@@ -381,7 +381,7 @@ mod test {
         let loadavg = monitoring_agent_lib::proc::ProcsLoadavg {
             loadavg1min: Some(1.0),
             loadavg5min: Some(2.1),
-            loadavg10min: Some(3.0),
+            loadavg15min: Some(3.0),
             current_running_processes: Some(1),
             total_number_of_processes: Some(10)
         };
@@ -390,7 +390,7 @@ mod test {
 
         let status = monitor.get_status();
         let status = status.lock().unwrap();
-        assert_eq!(status.get("test").unwrap().status, super::Status::Error { message: "Load average check failed: 1min: Ok, 5min: Error { message: \"Load average 2.1 is greater than max load average 2\" }, 10min: Ok".to_string() } );
+        assert_eq!(status.get("test").unwrap().status, super::Status::Error { message: "Load average check failed: 1min: Ok, 5min: Error { message: \"Load average 2.1 is greater than max load average 2\" }, 15min: Ok".to_string() } );
     }
 
     /**
@@ -400,7 +400,7 @@ mod test {
      * - Load average is higher on 10 minutes.
      */ 
     #[tokio::test]
-    async fn test_check_loadavg_10min_higher() {
+    async fn test_check_loadavg_15min_higher() {
         // Test success. Loadaverage lower on all
         let mut monitor = super::LoadAvgMonitor::new(
             "test",
@@ -416,7 +416,7 @@ mod test {
         let loadavg = monitoring_agent_lib::proc::ProcsLoadavg {
             loadavg1min: Some(1.0),
             loadavg5min: Some(2.0),
-            loadavg10min: Some(3.1),
+            loadavg15min: Some(3.1),
             current_running_processes: Some(1),
             total_number_of_processes: Some(10)
         };
@@ -425,7 +425,7 @@ mod test {
 
         let status = monitor.get_status();
         let status = status.lock().unwrap();
-        assert_eq!(status.get("test").unwrap().status, super::Status::Error { message: "Load average check failed: 1min: Ok, 5min: Ok, 10min: Error { message: \"Load average 3.1 is greater than max load average 3\" }".to_string() } );
+        assert_eq!(status.get("test").unwrap().status, super::Status::Error { message: "Load average check failed: 1min: Ok, 5min: Ok, 15min: Error { message: \"Load average 3.1 is greater than max load average 3\" }".to_string() } );
     }     
 
     #[test]

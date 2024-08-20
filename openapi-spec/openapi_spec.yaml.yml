@@ -214,7 +214,7 @@ components:
       required:
         - loadavg1min
         - loadavg5min
-        - loadAvg10Min
+        - loadAvg15Min
         - currentRunningProcesses
         - totalNumberOfProcesses
       properties:
@@ -228,7 +228,7 @@ components:
           format: float
           example: 0.42
           description: 'Load average for the last 5 minutes'          
-        loadAvg10Min:
+        loadAvg15Min:
           type: number
           format: float
           example: 0.42

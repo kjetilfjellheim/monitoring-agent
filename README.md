@@ -98,7 +98,7 @@ Run as daemon `./monitoring-agent --daemon`
 | details.type | Type of monitor. Must be loadAvg | 
 | details.threshold1min | Threshold value for 1 minute average | 
 | details.threshold5min | Threshold value for 5 minute average | 
-| details.threshold10min | Threshold value for 10 minute average | 
+| details.threshold15min | Threshold value for 15 minute average | 
 | details.storeValues | Store values in the database if configured. | 
 
 #### Mem monitoring
@@ -215,7 +215,7 @@ Run as daemon `./monitoring-agent --daemon`
                 "type": "loadAvg",
                 "threshold1min": 2.0,
                 "threshold5min": 2.0,
-                "threshold10min": 2.0,
+                "threshold15min": 2.0,
                 "storeValues": true
             }
         },

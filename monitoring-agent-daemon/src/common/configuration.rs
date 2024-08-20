@@ -56,8 +56,8 @@ pub enum MonitorType {
         threshold_1min: Option<f32>,
         #[serde(skip_serializing_if = "Option::is_none", rename = "threshold5min")]
         threshold_5min: Option<f32>,
-        #[serde(skip_serializing_if = "Option::is_none", rename = "threshold10min")]
-        threshold_10min: Option<f32>,
+        #[serde(skip_serializing_if = "Option::is_none", rename = "threshold15min")]
+        threshold_15min: Option<f32>,
         #[serde(rename = "storeValues", default = "default_as_false")]
         store_values: bool,    
     },  
@@ -522,7 +522,7 @@ mod tests {
             MonitorType::LoadAvg {
                 threshold_1min: Some(1.0),
                 threshold_5min: Some(2.0),
-                threshold_10min: Some(3.0),
+                threshold_15min: Some(3.0),
                 store_values: true,               
             }
         );
