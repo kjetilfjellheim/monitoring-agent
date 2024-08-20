@@ -17,7 +17,7 @@ pub struct ProcsLoadavg {
     pub loadavg5min:  Option<f32>,
     #[allow(clippy::similar_names)]
     /// The load average for the last 10 minutes.
-    pub loadavg10min:  Option<f32>,
+    pub loadavg15min:  Option<f32>,
     /// The number of currently running processes.
     pub current_running_processes: Option<u32>,
     /// The total number of processes.
@@ -40,7 +40,7 @@ impl ProcsLoadavg {
      * 
      * `loadavg1min`: The load average for the last minute.
      * `loadavg5min`: The load average for the last 5 minutes.
-     * `loadavg10min`: The load average for the last 10 minutes.
+     * `loadavg15min`: The load average for the last 10 minutes.
      * `current_running_processes`: The number of currently running processes.
      * `total_number_of_processes`: The total number of processes.
      * 
@@ -50,14 +50,14 @@ impl ProcsLoadavg {
     #[allow(clippy::similar_names)]
     #[must_use] pub fn new( loadavg1min: Option<f32>,
                             loadavg5min:  Option<f32>,
-                            loadavg10min:  Option<f32>,
+                            loadavg15min:  Option<f32>,
                             current_running_processes: Option<u32>,
                             total_number_of_processes: Option<u32>
     ) -> Self {
         ProcsLoadavg {
             loadavg1min,
             loadavg5min,
-            loadavg10min,
+            loadavg15min,
             current_running_processes,
             total_number_of_processes
         }
@@ -162,7 +162,7 @@ mod test {
             let binding = ProcsLoadavg::read_loadavg("resources/test/test_loadavg").unwrap();
             assert_eq!(&binding.loadavg1min.unwrap(), &0.59);
             assert_eq!(&binding.loadavg5min.clone().unwrap(), &0.63);
-            assert_eq!(&binding.loadavg10min.clone().unwrap(), &0.32);
+            assert_eq!(&binding.loadavg15min.clone().unwrap(), &0.32);
             assert_eq!(&binding.current_running_processes.clone().unwrap(), &1);
             assert_eq!(&binding.total_number_of_processes.clone().unwrap(), &1419);
         }
