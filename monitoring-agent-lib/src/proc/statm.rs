@@ -149,7 +149,7 @@ impl ProcsStatm {
         let resident = cols[1].parse::<u32>().ok();
         let share = cols[2].parse::<u32>().ok();
         let trs = cols[3].parse::<u32>().ok();
-        let lrs: Option<u32> = cols[4].parse::<u32>().ok();
+        let lrs = cols[4].parse::<u32>().ok();
         let drs = cols[5].parse::<u32>().ok();
         let dt = cols[6].parse::<u32>().ok();
         ProcsStatm::new(&size, &resident, &share, &trs, &drs, &lrs, &dt, &pagesize)

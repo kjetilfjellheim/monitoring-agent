@@ -276,11 +276,11 @@ impl MariaDbService {
     pub fn store_loadavg(&self, loadavg: &ProcsLoadavg) -> Result<(), ApplicationError> {
         let mut conn = self.pool.get().map_err(|err| ApplicationError::new(&err.to_string()))?;
         let mut tx = conn.start_transaction(TxOpts::default()).map_err(|err| ApplicationError::new(&err.to_string()))?;
-        tx.exec_drop("INSERT INTO loadavg (server_name, loadavg1min, loadavg5min, loadavg10min, num_processes, num_running_processes, log_time) VALUES (:server_name, :loadavg1min, :loadavg5min, :loadavg10min, :num_processes, :num_running_processes, now(3))", params! {
+        tx.exec_drop("INSERT INTO loadavg (server_name, loadavg1min, loadavg5min, loadavg15min, num_processes, num_running_processes, log_time) VALUES (:server_name, :loadavg1min, :loadavg5min, :loadavg15min, :num_processes, :num_running_processes, now(3))", params! {
             "server_name" => self.server_name.to_string(),
             "loadavg1min" => loadavg.loadavg1min,
             "loadavg5min" => loadavg.loadavg5min,
-            "loadavg10min" => loadavg.loadavg10min,
+            "loadavg15min" => loadavg.loadavg15min,
             "num_processes" => loadavg.total_number_of_processes,
             "num_running_processes" => loadavg.current_running_processes,
         }).map_err(|err| ApplicationError::new(&err.to_string()))?;
@@ -456,11 +456,11 @@ impl PostgresDbService {
     pub async fn store_loadavg(&self, loadavg: &ProcsLoadavg) -> Result<(), ApplicationError> {
         let mut conn = self.pool.get().await.map_err(|err| ApplicationError::new(&err.to_string()))?;
         let tx = conn.transaction().await.map_err(|err| ApplicationError::new(&err.to_string()))?;
-        tx.execute("INSERT INTO loadavg (id, server_name, loadavg1min, loadavg5min, loadavg10min, num_processes, num_running_processes, log_time) VALUES (nextval('seq_loadavg'), $1, $2, $3, $4, $5, $6, now())", &[
+        tx.execute("INSERT INTO loadavg (id, server_name, loadavg1min, loadavg5min, loadavg15min, num_processes, num_running_processes, log_time) VALUES (nextval('seq_loadavg'), $1, $2, $3, $4, $5, $6, now())", &[
             &self.server_name,
             &loadavg.loadavg1min.map(|f|Decimal::try_from(f).ok()),
             &loadavg.loadavg5min.map(|f|Decimal::try_from(f).ok()),
-            &loadavg.loadavg10min.map(|f|Decimal::try_from(f).ok()),
+            &loadavg.loadavg15min.map(|f|Decimal::try_from(f).ok()),
             &loadavg.total_number_of_processes.map(i64::from),
             &loadavg.current_running_processes.map(i64::from),
         ]).await.map_err(|err| ApplicationError::new(&err.to_string()))?;

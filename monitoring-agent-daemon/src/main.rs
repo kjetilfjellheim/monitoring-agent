@@ -3,6 +3,7 @@ mod services;
 mod api;
 
 use std::fs::File;
+use std::io::Read;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -12,6 +13,8 @@ use common::ApplicationError;
 use daemonize::Daemonize;
 use log::{debug, error, info};
 use actix_web::{web, App, HttpServer};
+use openssl::pkey::{PKey, Private};
+use openssl::ssl::{SslAcceptor, SslMethod};
 use services::SchedulingService;
 use tracing_subscriber::{filter, prelude::*};
 
@@ -124,8 +127,9 @@ async fn start_application(monitoring_config: &MonitoringConfig, args: &Applicat
     if args.test {
         return Ok(());
     }
+
     info!("Starting HTTP server on {}:{}", ip, port);
-    HttpServer::new(move || {
+    let http_server = HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(StateApi::new(monitoring_service.clone(), cloned_monitoring_config.server.clone())))
             .service(api::get_current_meminfo)   
@@ -136,11 +140,47 @@ async fn start_application(monitoring_config: &MonitoringConfig, args: &Applicat
             .service(api::get_threads)
             .service(api::get_monitor_status)
             .service(api::get_current_statm)
-    })
-    .bind((ip, port))?
-    .run()
+            .service(api::get_stat)
+            .service(api::get_ping)
+    });
+    let http_server = match monitoring_config.server.tls_config.clone() {
+        Some(tls_config) => {
+            let mut builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, format!("Error creating SSL acceptor: {err:?}")))?;
+            let private_key = load_private_key(&tls_config.identity, tls_config.identity_password).map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, format!("Error loading private key: {err:?}")))?;
+            builder.set_certificate_chain_file(tls_config.certificate).map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, format!("Error setting certificate chain file: {err:?}")))?;        
+            builder.set_private_key(&private_key).map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, format!("Error setting private key: {err:?}")))?;
+            http_server.bind_openssl((ip, port), builder)?
+        }
+        None => {
+            http_server.bind((ip, port))?
+        }
+    }; 
+    http_server.run()
     .await
 }
+
+/** 
+ * Load the encrypted private key.
+ * 
+ * Returns the private key.
+ * 
+ * # Errors
+ * Error loading private key.
+ * 
+*/
+fn load_private_key(private_key_path: &str, private_key_password: Option<String>) -> Result<PKey<Private>, ApplicationError> {
+    let mut file = File::open(private_key_path).map_err(|err| ApplicationError::new(format!("Failed to open file: {err:?}").as_str()))?;
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).map_err(|err| ApplicationError::new(format!("Failed to read file: {err:?}").as_str()))?;
+    match private_key_password {
+        Some(private_key_password) => {
+            PKey::private_key_from_pem_passphrase(&buffer, private_key_password.as_bytes()).map_err(|err| ApplicationError::new(format!("Failed to load private key: {err:?}").as_str()))
+        }
+        None => {
+            PKey::private_key_from_pem(&buffer).map_err(|err| ApplicationError::new(format!("Failed to load private key: {err:?}").as_str()))
+        }
+    }
+ }
 
 /**
  * Initialize the database service.
