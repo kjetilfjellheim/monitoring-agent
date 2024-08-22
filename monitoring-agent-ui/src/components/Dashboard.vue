@@ -9,7 +9,7 @@ export default {
   data() {
     return {
       data: [],
-      tooltip_statistics: "Statistics\User: normal processes executing in user mode\\Nice: niced processes executing in user mode\nSystem: processes executing in kernel mode\nIdle: twiddling thumbs\nIOwait: waiting for I/O to complete\nIrq: servicing interrupts\nsoftirq: servicing softirqs\nSteal: It counts the ticks spent executing other virtual hosts.",
+      tooltip_statistics: "Statistics\nUser: normal processes executing in user mode\nNice: niced processes executing in user mode\nSystem: processes executing in kernel mode\nIdle: twiddling thumbs\nIOwait: waiting for I/O to complete\nIrq: servicing interrupts\nsoftirq: servicing softirqs\nSteal: It counts the ticks spent executing other virtual hosts.",
       tooltip_load_average: "Load average figures giving the number of jobs in the run queue (state R) or waiting for disk I/O (state D) aver‐ aged over 1, 5, and 15 minutes. They are the same as the load average numbers given by uptime(1) and other programs.",
       tooltip_meminfo: "Memory information\nTotal: total usable RAM\nUsed: The total amount of RAM used by the system\nAvailable: An estimate of how much memory is available for starting new applications, without swapping.",
       tooltip_swap: "Swap information\nTotal: total swap space in bytes\nFree: free swap space in bytes",
@@ -31,11 +31,13 @@ export default {
           url: url,
           loadavg: ref(null),
           meminfo: ref(null),
-          cpuinfo: ref(null),          
+          cpuinfo: ref(null),    
+          stat: ref(null)      
         };
         this.get_loadavg(server, url);
         this.get_meminfo(server, url);
         this.get_cpuinfo(server, url);
+        this.get_stat(server, url);
         data.value.push(server);
       }
       this.data = data.value;
@@ -63,6 +65,14 @@ export default {
           server.cpuinfo.value = json;
         })
         .catch(error => console.error('Error:', error));
+    },
+    get_stat(server, url) {
+      fetch(url + "/stat/current")
+        .then(response => response.json())
+        .then(json => {
+          server.stat.value = json;
+        })
+        .catch(error => console.error('Error:', error));
     }
   }
 };
@@ -72,7 +82,7 @@ export default {
     <div class="collapse navbar-collapse">
       <ul class="navbar-nav mr-auto mt-2 mt-lg-0">
         <li class="nav-item">
-          <button class="btn btn-info small" @click="this.refresh()">
+          <button class="btn btn-info small toolbar-item" @click="this.refresh()">
             <FontAwesomeIcon :icon="faRefresh" />&nbsp;Refresh
           </button>
         </li>
@@ -83,10 +93,10 @@ export default {
     <br />
     <template v-for="server in data">
       <div class="jumbotron">
-        <h5 class="text-info" v-if="server?.cpuinfo?.length > 0">{{ server.url }}&nbsp;&nbsp;({{
+        <h5 class="text-info title" v-if="server?.cpuinfo?.length > 0">{{ server.url }}&nbsp;&nbsp;({{
           server?.cpuinfo[0]?.modelName }})</h5>
         <div class="row">
-          <div class="col col-1">
+          <div class="col col-sm-2">
             <div class="card">
               <div class="card-header bg-success">
                 <h5 class="card-title" data-bs-toggle="tooltip" data-bs-placement="bottom" v-bind:title="tooltip_load_average">
@@ -113,7 +123,7 @@ export default {
               </div>
             </div>
           </div>
-          <div class="col col-1">
+          <div class="col col-sm-2">
             <div class="card">
               <div class="card-header bg-success" data-bs-toggle="tooltip" data-bs-placement="bottom" v-bind:title="tooltip_meminfo">
                 <h5 class="card-title">
@@ -140,7 +150,7 @@ export default {
               </div>
             </div>
           </div>
-          <div class="col col-1">
+          <div class="col col-sm-2">
             <div class="card">
               <div class="card-header bg-success" data-bs-toggle="tooltip" data-bs-placement="bottom" v-bind:title="tooltip_swap">
                 <h5 class="card-title">
@@ -164,7 +174,7 @@ export default {
               </div>
             </div>
           </div>
-          <div class="col col-2">
+          <div class="col col-sm-3">
             <div class="card">
               <div class="card-header bg-success" data-bs-toggle="tooltip" data-bs-placement="bottom" v-bind:title="tooltip_processes">
                 <h5 class="card-title">
@@ -187,25 +197,6 @@ export default {
               </div>
             </div>                       
           </div>   
-          <div class="col col-2">
-            <div class="card">
-              <div class="card-header bg-success">
-                <h5 class="card-title">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-info-circle" viewBox="0 0 16 16">
-                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
-                    <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0"/>
-                  </svg>                    
-                  Uptime
-                </h5>
-              </div>
-              <div class="card-body">
-                <dl class="row">
-                  <dt class="col-sm-5 small bg-light no-margin">Uptime</dt>
-                  <dd class="col-sm-7 small text-truncate bg-light no-margin"></dd>
-                </dl>
-              </div>
-            </div>                       
-          </div>                      
           <div class="col col-8">
             <div class="card">
               <div class="card-header bg-success" data-bs-toggle="tooltip" data-bs-placement="bottom" v-bind:title="tooltip_statistics">
@@ -218,15 +209,30 @@ export default {
                 </h5>
               </div>
               <div class="card-body">
+                <dl class="row">
+                  <dt class="col-sm-5 small bg-light no-margin">Number of processes</dt>
+                  <dd class="col-sm-7 small text-truncate bg-light no-margin">{{ server?.stat?.numProcesses }}</dd>
+                </dl>  
+                <dl class="row">
+                  <dt class="col-sm-5 small bg-light no-margin">Processes running</dt>
+                  <dd class="col-sm-7 small text-truncate bg-light no-margin">{{ server?.stat?.processesRunning }}</dd>
+                </dl>  
+                <dl class="row">
+                  <dt class="col-sm-5 small bg-light no-margin">Processes blocked</dt>
+                  <dd class="col-sm-7 small text-truncate bg-light no-margin">{{ server?.stat?.processesBlocked }}</dd>
+                </dl>                                  
+                <dl class="row">
+                  <dt class="col-sm-5 small bg-light no-margin">Number of interrupts</dt>
+                  <dd class="col-sm-7 small text-truncate bg-light no-margin">{{ server?.stat?.numInterrupts }}</dd>
+                </dl>                                
                 <table class="table table-">
                   <dl class="row">
                     <table table table-responsive>
                       <thead>
                         <th scope="col">Cpu</th>
                         <th scope="col">User</th>
-                        <th scope="col">Kernel</th>
-                        <th scope="col">Nice</th>
                         <th scope="col">System</th>
+                        <th scope="col">Nice</th>
                         <th scope="col">Idle</th>
                         <th scope="col">Iowait</th>
                         <th scope="col">Irq</th>
@@ -234,16 +240,16 @@ export default {
                         <th scope="col">Steal</th>
                       </thead>
                       <tbody>
-                        <tr>
-                          <td></td>
-                          <td></td>
-                          <td></td>
-                          <td></td>
-                          <td></td>
-                          <td></td>
-                          <td></td>
-                          <td></td>
-                          <td></td>
+                        <tr v-for="cpu in server?.stat?.cpus">
+                          <td>{{ cpu.name }}</td>
+                          <td>{{ cpu.user }}</td>
+                          <td>{{ cpu.system }}</td>
+                          <td>{{ cpu.nice }}</td>
+                          <td>{{ cpu.idle }}</td>
+                          <td>{{ cpu.iowait }}</td>
+                          <td>{{ cpu.irq }}</td>
+                          <td>{{ cpu.softirq }}</td>
+                          <td>{{ cpu.steal }}</td>
                         </tr>
                       </tbody>
                     </table>
@@ -278,5 +284,9 @@ export default {
 .toolbar-item {
   margin-left: 10px;
   margin-right: 5px;
+}
+
+.title {
+  padding-left: 6px;
 }
 </style>
