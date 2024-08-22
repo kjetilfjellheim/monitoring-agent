@@ -1,5 +1,5 @@
-use chrono::{DateTime, Utc};
-use monitoring_agent_lib::proc::{process::ProcessState, ProcsCpuinfo, ProcsLoadavg, ProcsMeminfo, ProcsProcess, ProcsStatm};
+use chrono::{DateTime, TimeZone, Utc };
+use monitoring_agent_lib::proc::{process::ProcessState, ProcStat, ProcsCpuinfo, ProcsLoadavg, ProcsMeminfo, ProcsProcess, ProcsStatm};
 use serde::{Deserialize, Serialize};
 
 use crate::common::{MonitorStatus, Status};
@@ -555,8 +555,146 @@ impl PingResponse {
     }
 }
 
+/**
+ * The `StatResponse` struct represents the response of the stat endpoint.
+ * The stat endpoint is used to get the current statistics of the cpu.
+ * 
+ * 
+ */
+#[allow(clippy::module_name_repetitions)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StatResponse {
+    /// Cpu statistics
+    #[serde(skip_serializing_if = "Option::is_none", rename = "cpus")]               
+    pub cpus: Option<Vec<CpuStat>>,
+    /// Number of interrupts serviced since boot
+    #[serde(skip_serializing_if = "Option::is_none", rename = "numInterrupts")]                    
+    pub intr: Option<u64>,
+    /// Number of context switches since boot
+    #[serde(skip_serializing_if = "Option::is_none", rename = "contextSwitches")]
+    pub ctxt: Option<u64>,
+    /// Time at which the system booted, in seconds since the Unix epoch
+    #[serde(skip_serializing_if = "Option::is_none", rename = "bootTime")]
+    pub btime: Option<u64>,
+    /// Time at which the system booted
+    #[serde(skip_serializing_if = "Option::is_none", rename = "bootTimeDate")]
+    pub boot_date: Option<DateTime<Utc>>,    
+    /// Number of processes and threads created since boot
+    #[serde(skip_serializing_if = "Option::is_none", rename = "numProcesses")]
+    pub processes: Option<u64>,
+    /// Number of processes currently running on CPUs
+    #[serde(skip_serializing_if = "Option::is_none", rename = "processesRunning")]
+    pub procs_running: Option<u64>,
+    /// Number of processes currently blocked, waiting for I/O to complete
+    #[serde(skip_serializing_if = "Option::is_none", rename = "processesBlocked")]    
+    pub procs_blocked: Option<u64>,
+}
+
+/**
+ * The `CpuStat` struct represents the cpu statistics.
+ * 
+ * The cpu statistics are:
+ * * Time spent in user mode
+ * * Time spent in system mode
+ * * Time spent in user mode with low priority (nice)
+ * * Time spent idle
+ * * Time spent waiting for I/O to complete
+ * * Time spent servicing interrupts
+ * * Time spent servicing softirqs
+ * * Time spent in other operating systems when running in a virtualized environment
+ */
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CpuStat {
+    /// Name of the cpu
+    #[serde(skip_serializing_if = "Option::is_none", rename = "name")]
+    pub name: Option<String>,    
+    /// Time spent in user mode
+    #[serde(skip_serializing_if = "Option::is_none", rename = "user")]
+    pub user: Option<u64>,
+    /// Time spent in system mode
+    #[serde(skip_serializing_if = "Option::is_none", rename = "system")]
+    pub system: Option<u64>,
+    /// Time spent in user mode with low priority (nice)
+    #[serde(skip_serializing_if = "Option::is_none", rename = "nice")]
+    pub nice: Option<u64>,
+    /// Time spent idle
+    #[serde(skip_serializing_if = "Option::is_none", rename = "idle")]
+    pub idle: Option<u64>,
+    /// Time spent waiting for I/O to complete
+    #[serde(skip_serializing_if = "Option::is_none", rename = "iowait")]
+    pub iowait: Option<u64>,
+    /// Time spent servicing interrupts
+    #[serde(skip_serializing_if = "Option::is_none", rename = "irq")]
+    pub irq: Option<u64>,
+    /// Time spent servicing softirqs
+    #[serde(skip_serializing_if = "Option::is_none", rename = "softirq")]
+    pub softirq: Option<u64>,
+    /// Time spent in other operating systems when running in a virtualized environment
+    #[serde(skip_serializing_if = "Option::is_none", rename = "steal")]
+    pub steal: Option<u64>,
+}
+
+impl StatResponse {
+
+    /**
+     * Create a new `StatResponse`.
+     * 
+     * `cpus`: The cpu statistics.
+     * `intr`: Number of interrupts serviced since boot.
+     * `ctxt`: Number of context switches since boot.
+     * `btime`: Time at which the system booted, in seconds since the Unix epoch.
+     * `processes`: Number of processes and threads created since boot.
+     * `procs_running`: Number of processes currently running on CPUs.
+     * `procs_blocked`: Number of processes currently blocked, waiting for I/O to complete.
+     *  
+
+     */
+    pub fn from_stat(
+        procs_stat: &ProcStat
+    ) -> StatResponse {
+
+        StatResponse {
+            cpus: procs_stat.clone().cpus.map(|f| f.iter().map(|cpu| CpuStat {
+                name: cpu.name.clone(),
+                user: cpu.user,
+                system: cpu.system,
+                nice: cpu.nice,
+                idle: cpu.idle,
+                iowait: cpu.iowait,
+                irq: cpu.irq,
+                softirq: cpu.softirq,
+                steal: cpu.steal,
+            }).collect()),
+            intr: procs_stat.intr,
+            ctxt: procs_stat.ctxt,
+            btime: procs_stat.btime,
+            boot_date: Self::get_boot_datetime(procs_stat.btime),
+            processes: procs_stat.processes,
+            procs_running: procs_stat.procs_running,
+            procs_blocked: procs_stat.procs_blocked,
+        }
+    }
+
+    /**
+     * Get the boot date and time.
+     * 
+     * `time`: The time at which the system booted, in seconds since the Unix epoch.
+     * 
+     * Returns the boot date and time.
+     * 
+     */
+    fn get_boot_datetime(time: Option<u64>) -> Option<DateTime<Utc>> {
+        let time = time?;
+        let time = i64::try_from(time).map_err(|_| "Invalid time").ok()?;
+        Utc.timestamp_opt(time, 0).single()
+    }
+
+}
+
 #[cfg(test)]
 mod test {
+    use monitoring_agent_lib::proc::ProcCpuStat;
+
     use super::*;
 
     #[test]
@@ -810,6 +948,66 @@ mod test {
         assert_eq!(statm_response.lrs, None);
         assert_eq!(statm_response.dt, None);        
         assert_eq!(statm_response.pagesize, None);        
-
     }    
+
+    #[test]
+    fn test_stat_response_none() {
+        let procs_stat = ProcStat {
+            cpus: None,
+            intr: None,
+            ctxt: None,
+            btime: None,
+            processes: None,
+            procs_running: None,
+            procs_blocked: None,
+        };
+        let stat_response = StatResponse::from_stat(&procs_stat);
+        assert_eq!(stat_response.intr, None);
+        assert_eq!(stat_response.ctxt, None);
+        assert_eq!(stat_response.btime, None);
+        assert_eq!(stat_response.processes, None);
+        assert_eq!(stat_response.procs_running, None);
+        assert_eq!(stat_response.procs_blocked, None);
+    }
+
+    #[test]
+    fn test_stat_response_some() {
+        let procs_stat = ProcStat {
+            cpus: Some(vec![ProcCpuStat {
+                name: Some("cpu".to_string()),
+                user: Some(1),
+                system: Some(2),
+                nice: Some(3),
+                idle: Some(4),
+                iowait: Some(5),
+                irq: Some(6),
+                softirq: Some(7),
+                steal: Some(8),
+            }]),
+            intr: Some(1),
+            ctxt: Some(2),
+            btime: Some(3),
+            processes: Some(4),
+            procs_running: Some(5),
+            procs_blocked: Some(6),
+        };
+        let stat_response = StatResponse::from_stat(&procs_stat);
+        assert_eq!(stat_response.cpus.clone().is_some(), true);
+        assert_eq!(stat_response.cpus.clone().unwrap()[0].name, Some("cpu".to_string()));
+        assert_eq!(stat_response.cpus.clone().unwrap()[0].user, Some(1));
+        assert_eq!(stat_response.cpus.clone().unwrap()[0].system, Some(2));
+        assert_eq!(stat_response.cpus.clone().unwrap()[0].nice, Some(3));
+        assert_eq!(stat_response.cpus.clone().unwrap()[0].idle, Some(4));
+        assert_eq!(stat_response.cpus.clone().unwrap()[0].iowait, Some(5));
+        assert_eq!(stat_response.cpus.clone().unwrap()[0].irq, Some(6));
+        assert_eq!(stat_response.cpus.clone().unwrap()[0].softirq, Some(7));
+        assert_eq!(stat_response.cpus.clone().unwrap()[0].steal, Some(8));
+        assert_eq!(stat_response.intr, Some(1));
+        assert_eq!(stat_response.ctxt, Some(2));
+        assert_eq!(stat_response.btime, Some(3));
+        assert_eq!(stat_response.processes, Some(4));
+        assert_eq!(stat_response.procs_running, Some(5));
+        assert_eq!(stat_response.procs_blocked, Some(6));
+    }
+        
 }
