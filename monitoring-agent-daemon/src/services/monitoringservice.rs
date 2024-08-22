@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use log::error;
-use monitoring_agent_lib::proc::{ProcsCpuinfo, ProcsLoadavg, ProcsMeminfo, ProcsProcess, ProcsStatm};
+use monitoring_agent_lib::proc::{ProcStat, ProcsCpuinfo, ProcsLoadavg, ProcsMeminfo, ProcsProcess, ProcsStatm};
 
 use crate::common::{ApplicationError, MonitorStatus};
 
@@ -193,6 +193,26 @@ impl MonitoringService {
             Err(err) => {
                 error!("Error: {}", err.message);
                 Err(ApplicationError::new("Error getting statm"))                
+            }
+        }
+    }
+
+    /**
+     * Get the current stat.
+     * 
+     * result: The result of getting the current stat.
+     * 
+     * # Errors
+     * - If there is an error getting the stat.
+     */
+    #[allow(clippy::unused_self)]
+    pub fn get_stat(&self) -> Result<ProcStat, ApplicationError> {
+        let stat = ProcStat::get_stat();
+        match stat {
+            Ok(stat) => Ok(stat),
+            Err(err) => {
+                error!("Error: {}", err.message);
+                Err(ApplicationError::new("Error getting stat"))                
             }
         }
     }
