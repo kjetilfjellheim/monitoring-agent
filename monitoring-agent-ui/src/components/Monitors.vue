@@ -45,7 +45,7 @@ export default {
         <div class="collapse navbar-collapse">
             <ul class="navbar-nav mr-auto mt-2 mt-lg-0">
                 <li class="nav-item">
-                    <button class="btn btn-info small" @click="this.refreshMonitors()"><FontAwesomeIcon :icon="faRefresh" />&nbsp;Refresh</button>
+                    <button class="btn btn-info small toolbar-item" @click="this.refreshMonitors()"><FontAwesomeIcon :icon="faRefresh" />&nbsp;Refresh</button>
                 </li>                                            
                 <li class="nav-item">
                     <input class="form-check-input toolbar-item" type="checkbox" id="showOErrorStatus"
@@ -62,10 +62,9 @@ export default {
     </nav>
     <div v-if="monitors">
         <div class="container-fluid">
-            <div class="row row-cols-1 row-cols-sm-1 row-cols-md-4 row-cols-lg-6">
+            <div class="row">
                 <template v-for="monitor in monitors">
-
-                    <div class="col"
+                    <div class="col col-12 col-sm-12 col-md-12 col-lg-6 col-xl-6"
                         v-if="(monitor.status === 'Ok' && showOkStatus) || (monitor.status === 'Error' && showErrorStatus)">
                         <div class="card">
                             <div v-if="monitor.status === 'Ok'" class="card-header bg-success">
@@ -131,13 +130,12 @@ export default {
 
 <style scoped>
 .col {
-    padding: 5px;
-    margin: 5px;
+    margin-bottom: 5px;
 }
 
 .card {
     height: 100%;
-    margin: 2px;
+    margin: 1px;
 }
 
 .no-margin {
