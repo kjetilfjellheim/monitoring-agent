@@ -11,6 +11,7 @@ use crate::{common::{configuration::DatabaseStoreLevel, ApplicationError, Monito
  * This struct represents a database monitor.
  * 
  * `name`: The name of the monitor.
+ * `description`: The description of the monitor.
  * `query_max_time`: The max query time.
  * `status`: The status of the monitor.
  * `database_service`: The database service.
@@ -19,7 +20,7 @@ use crate::{common::{configuration::DatabaseStoreLevel, ApplicationError, Monito
 #[derive(Debug, Clone)]
 pub struct DatabaseMonitor {
     /// The name of the monitor.
-    pub name: String,
+    pub name: String, 
     /// Max query time.
     pub query_max_time: Option<u32>,
     /// The current status of the monitor.
@@ -44,6 +45,7 @@ impl DatabaseMonitor {
      */
     pub fn new(
         name: &str,
+        description: &Option<String>,
         query_max_time: Option<u32>,
         status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
         database_service: &Arc<Option<DbService>>,
@@ -53,7 +55,7 @@ impl DatabaseMonitor {
         let status_lock = status.lock();
         match status_lock {
             Ok(mut lock) => {
-                lock.insert(name.to_string(), MonitorStatus::new(name.to_string(),Status::Unknown));
+                lock.insert(name.to_string(), MonitorStatus::new(name, description, Status::Unknown));
             }
             Err(err) => {
                 error!("Error creating command monitor: {:?}", err);
@@ -184,7 +186,7 @@ mod test {
         let status = Arc::new(Mutex::new(HashMap::new()));
         let database_service = Arc::new(None);
         let database_store_level = DatabaseStoreLevel::None;
-        let database_monitor = DatabaseMonitor::new(name, None, &status, &database_service, &database_store_level);
+        let database_monitor = DatabaseMonitor::new(name, &None, None, &status, &database_service, &database_store_level);
         assert_eq!(database_monitor.name, name);
     }
 
@@ -194,7 +196,7 @@ mod test {
         let status = Arc::new(Mutex::new(HashMap::new()));
         let database_service = Arc::new(None);
         let database_store_level = DatabaseStoreLevel::None;
-        let mut database_monitor = DatabaseMonitor::new(name, None, &status, &database_service, &database_store_level);
+        let mut database_monitor = DatabaseMonitor::new(name, &None, None, &status, &database_service, &database_store_level);
         let job = database_monitor.get_database_monitor_job("* * * * * *");
         assert!(job.is_ok());
     }
@@ -205,7 +207,7 @@ mod test {
         let status = Arc::new(Mutex::new(HashMap::new()));
         let database_service = Arc::new(None);
         let database_store_level = DatabaseStoreLevel::None;
-        let mut database_monitor = DatabaseMonitor::new(name, None, &status, &database_service, &database_store_level);
+        let mut database_monitor = DatabaseMonitor::new(name, &None, None, &status, &database_service, &database_store_level);
         let check = database_monitor.check().await;
         assert_eq!(check, ());
     }
@@ -216,7 +218,7 @@ mod test {
         let status = Arc::new(Mutex::new(HashMap::new()));
         let database_service = Arc::new(None);
         let database_store_level = DatabaseStoreLevel::None;
-        let database_monitor = DatabaseMonitor::new(name, None, &status, &database_service, &database_store_level);
+        let database_monitor = DatabaseMonitor::new(name, &None, None, &status, &database_service, &database_store_level);
         assert_eq!(database_monitor.get_name(), name);
     }
 
@@ -226,7 +228,7 @@ mod test {
         let status = Arc::new(Mutex::new(HashMap::new()));
         let database_service = Arc::new(None);
         let database_store_level = DatabaseStoreLevel::None;
-        let database_monitor = DatabaseMonitor::new(name, None, &status, &database_service, &database_store_level);
+        let database_monitor = DatabaseMonitor::new(name, &None, None, &status, &database_service, &database_store_level);
         assert_eq!(database_monitor.get_status().lock().unwrap().get("test").unwrap().status, Status::Unknown);
     }
 }

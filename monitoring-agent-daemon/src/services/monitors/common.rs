@@ -109,7 +109,7 @@ mod test {
     fn test_monitorstatus_new() {
         let name = "test_monitor";
         let status = Status::Ok;
-        let monitorstatus = MonitorStatus::new(name.to_string(), status.clone());
+        let monitorstatus = MonitorStatus::new(name, &None, status.clone());
         assert_eq!(monitorstatus.name, name);
         assert_eq!(monitorstatus.status, status);
         assert_eq!(monitorstatus.last_successful_time, None);
@@ -121,7 +121,7 @@ mod test {
     fn test_monitorstatus_set_status() {
         let name = "test_monitor";
         let status = Status::Ok;
-        let mut monitorstatus = MonitorStatus::new(name.to_string(), status.clone());
+        let mut monitorstatus = MonitorStatus::new(name, &None, status.clone());
         monitorstatus.set_status(&status);
         assert_eq!(monitorstatus.status, status);
         assert!(monitorstatus.last_successful_time.is_some());
