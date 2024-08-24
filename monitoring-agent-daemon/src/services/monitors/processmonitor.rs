@@ -53,6 +53,7 @@ impl ProcessMonitor {
      * 
      * Returns a new `ProcessMonitor`.
      */
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         name: &str,
         description: &Option<String>,

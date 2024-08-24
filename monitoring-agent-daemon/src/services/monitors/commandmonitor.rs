@@ -56,6 +56,7 @@ impl CommandMonitor {
      * Returns: A new command monitor.
      * 
      */
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         name: &str,
         description: &Option<String>,
