@@ -45,12 +45,12 @@ jobs:
           node-version: '18.x'
       - run: npm ci --prefix ./monitoring-agent-ui/
       - run: NODE_ENV=production npm run build --prefix ./monitoring-agent-ui/
-      - run: tar --create -f monitoring-agent-ui.tar.gz ./monitoring-agent-ui/dist
+      - run: tar --create -f monitoring-agent-ui.tar.gz ./monitoring-agent-ui/dist/*
       - uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.get_release.outputs.upload_url }}
-          asset_path: monitoring-agent-ui.tar.gz
+          asset_path: ./monitoring-agent-ui.tar.gz
           asset_name: monitoring-agent-ui.tar.gz
           asset_content_type: application/gzip
