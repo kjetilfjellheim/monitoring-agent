@@ -363,6 +363,9 @@ pub struct MonitorResponse {
     /// Name of the monitor.
     #[serde(rename = "name")]
     name: String,
+    /// Description of the monitor.
+    #[serde(skip_serializing_if = "Option::is_none", rename = "description")]
+    description: Option<String>,
     /// The status of the monitor.
     #[serde(rename = "status")]
     status: MonitorStatusResponse,
@@ -390,6 +393,7 @@ impl MonitorResponse {
      */
     pub fn new(
         name: String,
+        description: Option<String>,
         status: MonitorStatusResponse,
         last_successful_time: Option<DateTime<Utc>>,
         last_error: Option<String>,
@@ -397,6 +401,7 @@ impl MonitorResponse {
     ) -> MonitorResponse {
         MonitorResponse {
             name,
+            description,
             status,
             last_successful_time,
             last_error,
@@ -415,6 +420,7 @@ impl MonitorResponse {
     pub fn from_monitor_status_message(monitor_status: &MonitorStatus) -> MonitorResponse {
         MonitorResponse::new(
             monitor_status.name.clone(),
+            monitor_status.description.clone(),
             MonitorStatusResponse::from_status(&monitor_status.status),
             monitor_status.last_successful_time,
             monitor_status.last_error.clone(),
@@ -857,6 +863,7 @@ mod test {
     fn test_from_monitor_status_message() {
         let monitor_status = MonitorStatus {
             name: "name".to_string(),
+            description: None,
             status: Status::Ok,
             last_successful_time: Some(Utc::now()),
             last_error: Some("error".to_string()),
@@ -872,7 +879,7 @@ mod test {
 
     #[test]
     fn test_new_moniorresponse() {
-        let monitor_response = MonitorResponse::new("name".to_string(), MonitorStatusResponse::Ok, Some(Utc::now()), Some("error".to_string()), Some(Utc::now()));
+        let monitor_response = MonitorResponse::new("name".to_string(), None, MonitorStatusResponse::Ok, Some(Utc::now()), Some("error".to_string()), Some(Utc::now()));
         assert_eq!(monitor_response.name, "name".to_string());
         assert_eq!(monitor_response.status, MonitorStatusResponse::Ok);
         assert_eq!(monitor_response.last_successful_time.is_some(), true);
@@ -884,6 +891,7 @@ mod test {
     fn test_from_monitor_status_messages() {
         let monitor_status = vec![MonitorStatus {
             name: "name".to_string(),
+            description: None,
             status: Status::Ok,
             last_successful_time: Some(Utc::now()),
             last_error: Some("error".to_string()),

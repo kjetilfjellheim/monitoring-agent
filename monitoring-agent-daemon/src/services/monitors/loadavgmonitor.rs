@@ -7,7 +7,22 @@ use tokio_cron_scheduler::Job;
 use crate::{common::{configuration::DatabaseStoreLevel, ApplicationError, MonitorStatus, Status}, DbService};
 
 use super::Monitor;
-
+/**
+ * Load average monitor.
+ * 
+ * This struct represents a load average monitor.
+ * 
+ * `name`: The name of the monitor.
+ * `description`: The description of the monitor.
+ * `loadavg1min_max`: The max load average for 1 minute.
+ * `loadavg5min_max`: The max load average for 5 minutes.
+ * `loadavg15min_max`: The max load average for 10 minutes.
+ * `status`: The status of the monitor.
+ * `database_service`: The database service.
+ * `database_store_level`: The database store level.
+ * `store_current_loadavg`: Store the current load average.
+ * 
+ */
 #[derive(Debug, Clone)]
 pub struct LoadAvgMonitor {
     /// The name of the monitor.
@@ -49,6 +64,7 @@ impl LoadAvgMonitor {
     #[allow(clippy::similar_names)]    
     pub fn new(
         name: &str,
+        description: &Option<String>,
         loadavg1min_max: Option<f32>,
         loadavg5min_max: Option<f32>,
         loadavg15min_max: Option<f32>,
@@ -61,7 +77,7 @@ impl LoadAvgMonitor {
         let status_lock = status.lock();
         match status_lock {
             Ok(mut lock) => {
-                lock.insert(name.to_string(), MonitorStatus::new(name.to_string(), Status::Unknown));
+                lock.insert(name.to_string(), MonitorStatus::new(name, description, Status::Unknown));
             }
             Err(err) => {
                 error!("Error creating loadavg monitor: {:?}", err);
@@ -299,6 +315,7 @@ mod test {
         // Test success. Loadaverage lower on all
         let mut monitor = super::LoadAvgMonitor::new(
             "test",
+            &None,
             Some(1.0),
             Some(2.0),
             Some(3.0),
@@ -334,6 +351,7 @@ mod test {
         // Test success. Loadaverage lower on all
         let mut monitor = super::LoadAvgMonitor::new(
             "test",
+            &None,
             Some(1.0),
             Some(2.0),
             Some(3.0),
@@ -369,6 +387,7 @@ mod test {
         // Test success. Loadaverage lower on all
         let mut monitor = super::LoadAvgMonitor::new(
             "test",
+            &None,
             Some(1.0),
             Some(2.0),
             Some(3.0),
@@ -404,6 +423,7 @@ mod test {
         // Test success. Loadaverage lower on all
         let mut monitor = super::LoadAvgMonitor::new(
             "test",
+            &None,
             Some(1.0),
             Some(2.0),
             Some(3.0),
@@ -434,6 +454,7 @@ mod test {
             Arc::new(Mutex::new(HashMap::new()));
         let mut monitor = LoadAvgMonitor::new(
             "test",
+            &None,
             Some(1.0),
             Some(2.0),
             Some(3.0),
