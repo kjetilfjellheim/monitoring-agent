@@ -8,10 +8,24 @@ use crate::{common::{configuration::DatabaseStoreLevel, ApplicationError, Monito
 
 use super::Monitor;
 
+/**
+ * Meminfo monitor.
+ * 
+ * This struct represents a meminfo monitor.
+ * 
+ * `name`: The name of the monitor.
+ * `description`: The description of the monitor.
+ * `max_percentage_mem`: The maximum percentage memory.
+ * `max_percentage_swap`: The maximum percentage swap.
+ * `status`: The status of the monitor.
+ * `database_service`: The database service.
+ * `database_store_level`: The database store level.
+ * `store_current_meminfo`: Store the current meminfo.
+ */
 #[derive(Debug, Clone)]
 pub struct MeminfoMonitor {
     /// The name of the monitor.
-    pub name: String,
+    pub name: String,   
     /// Minimum free percentage memory.
     pub max_percentage_mem: Option<f64>,
     /// Minimum free percentage swap memory.
@@ -46,6 +60,7 @@ impl MeminfoMonitor {
     #[allow(clippy::similar_names)]    
     pub fn new(
         name: &str,
+        description: &Option<String>,
         max_percentage_mem: Option<f64>,
         max_percentage_swap: Option<f64>,
         status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
@@ -57,7 +72,7 @@ impl MeminfoMonitor {
         let status_lock = status.lock();
         match status_lock {
             Ok(mut lock) => {
-                lock.insert(name.to_string(), MonitorStatus::new(name.to_string(), Status::Unknown));
+                lock.insert(name.to_string(), MonitorStatus::new(name, description, Status::Unknown));
             }
             Err(err) => {
                 error!("Error creating meminfo monitor: {:?}", err);
@@ -255,6 +270,7 @@ mod test {
     async fn test_check() {
         let mut monitor = super::MeminfoMonitor::new(
             "test",
+            &None,
             Some(100.0),
             Some(100.0),
             &Arc::new(Mutex::new(HashMap::new())),
@@ -279,6 +295,7 @@ mod test {
         // Test success. Memory lower on all
         let mut monitor = super::MeminfoMonitor::new(
             "test",
+            &None,
             Some(80.0),
             Some(80.0),
             &Arc::new(Mutex::new(HashMap::new())),
@@ -314,6 +331,7 @@ mod test {
         // Test success. Memory lower on all
         let mut monitor = super::MeminfoMonitor::new(
             "test",
+            &None,
             Some(70.0),
             Some(15.0),
             &Arc::new(Mutex::new(HashMap::new())),
@@ -343,6 +361,7 @@ mod test {
             Arc::new(Mutex::new(HashMap::new()));
         let mut monitor = MeminfoMonitor::new(
             "test",
+            &None,
             Some(100.0),
             Some(100.0),
             &status,

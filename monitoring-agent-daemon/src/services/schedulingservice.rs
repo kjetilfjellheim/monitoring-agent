@@ -139,7 +139,7 @@ impl SchedulingService {
         let monitor_type = monitor.details.clone();
         match monitor_type {
             crate::common::MonitorType::Tcp { host, port } => {
-                let mut tcp_monitor = TcpMonitor::new(host.as_str(), port, &monitor.name, &self.status.clone(), &self.database_service.clone(), &monitor.store);
+                let mut tcp_monitor = TcpMonitor::new(host.as_str(), port, &monitor.name, &monitor.description, &self.status.clone(), &self.database_service.clone(), &monitor.store);
                 let job = tcp_monitor.get_tcp_monitor_job(monitor.schedule.as_str())?;
                 self.add_job(scheduler, job).await
             },
@@ -161,6 +161,7 @@ impl SchedulingService {
                     &body,
                     &headers,
                     &monitor.name,
+                    &monitor.description.clone(),
                     use_builtin_root_certs,
                     accept_invalid_certs,
                     tls_info,
@@ -179,7 +180,7 @@ impl SchedulingService {
                 args,
                 expected,
             } => {
-                let mut command_monitor = CommandMonitor::new(&monitor.name, command.as_str(), args, expected, &self.status, &self.database_service.clone(), &monitor.store);
+                let mut command_monitor = CommandMonitor::new(&monitor.name, &monitor.description, command.as_str(), args, expected, &self.status, &self.database_service.clone(), &monitor.store);
                 let job = command_monitor.get_command_monitor_job(monitor.schedule.as_str())?;
                 self.add_job(scheduler, job).await
             },
@@ -189,19 +190,19 @@ impl SchedulingService {
                 threshold_15min,
                 store_values,
             } => {               
-                let mut loadavg_monitor = LoadAvgMonitor::new(&monitor.name, threshold_1min, threshold_5min, threshold_15min, &self.status, &self.database_service.clone(), &monitor.store, store_values);
+                let mut loadavg_monitor = LoadAvgMonitor::new(&monitor.name, &monitor.description, threshold_1min, threshold_5min, threshold_15min, &self.status, &self.database_service.clone(), &monitor.store, store_values);
                 let job = loadavg_monitor.get_loadavg_monitor_job(monitor.schedule.as_str())?;
                 self.add_job(scheduler, job).await
             },
             crate::common::MonitorType::Mem {max_percentage_mem, max_percentage_swap, store_values
             } => {
-                let mut meminfo_monitor = MeminfoMonitor::new(&monitor.name, max_percentage_mem, max_percentage_swap, &self.status, &self.database_service.clone(), &monitor.store, store_values);
+                let mut meminfo_monitor = MeminfoMonitor::new(&monitor.name, &monitor.description, max_percentage_mem, max_percentage_swap, &self.status, &self.database_service.clone(), &monitor.store, store_values);
                 let job = meminfo_monitor.get_meminfo_monitor_job(monitor.schedule.as_str())?;
                 self.add_job(scheduler, job).await
             },
             crate::common::MonitorType::Systemctl { active 
             } => {
-                let mut systemctl_monitor = SystemctlMonitor::new(&monitor.name, &self.status, &self.database_service.clone(), &monitor.store, active);
+                let mut systemctl_monitor = SystemctlMonitor::new(&monitor.name, &monitor.description, &self.status, &self.database_service.clone(), &monitor.store, active);
                 let job = systemctl_monitor.get_systemctl_monitor_job(monitor.schedule.as_str())?;
                 self.add_job(scheduler, job).await
             },
@@ -209,6 +210,7 @@ impl SchedulingService {
             } => {
                 let mut database_monitor = DatabaseMonitor::new(
                     &monitor.name,
+                    &monitor.description,
                     max_query_time,
                     &self.status,
                     &self.get_database_service(&self.database_service, &database_config).await?,
@@ -219,7 +221,7 @@ impl SchedulingService {
             },
             crate::common::MonitorType::Process { application_names, max_mem_usage, store_values 
             } => {
-                let mut process_monitor = ProcessMonitor::new(&monitor.name, &application_names, max_mem_usage, &self.status, &self.database_service.clone(), &monitor.store, store_values);
+                let mut process_monitor = ProcessMonitor::new(&monitor.name, &monitor.description, &application_names, max_mem_usage, &self.status, &self.database_service.clone(), &monitor.store, store_values);
                 let job = process_monitor.get_process_monitor_job(monitor.schedule.as_str())?;
                 self.add_job(scheduler, job).await
             },
@@ -391,6 +393,7 @@ mod test {
         let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("resources/test/configuration_import_test/test_simple_tcp.json").unwrap(), &status, &Arc::new(None));
         let res = scheduling_service.create_and_add_job(&crate::common::Monitor {
             name: "test".to_string(),
+            description: None,
             schedule: "* * * * * *".to_string(),
             store: DatabaseStoreLevel::None,
             details: crate::common::MonitorType::Tcp {
@@ -407,6 +410,7 @@ mod test {
         let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("resources/test/configuration_import_test/test_simple_http.json").unwrap(), &status, &Arc::new(None));
         let res = scheduling_service.create_and_add_job(&crate::common::Monitor {
             name: "test".to_string(),
+            description: None,
             schedule: "* * * * * *".to_string(),
             store: DatabaseStoreLevel::None,
             details: crate::common::MonitorType::Http {
@@ -432,6 +436,7 @@ mod test {
         let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("resources/test/configuration_import_test/test_simple_systemctl.json").unwrap(), &status, &Arc::new(None));
         let res = scheduling_service.create_and_add_job(&crate::common::Monitor {
             name: "test".to_string(),
+            description: None,
             schedule: "* * * * * *".to_string(),
             store: DatabaseStoreLevel::None,
             details: crate::common::MonitorType::Systemctl { 
@@ -447,6 +452,7 @@ mod test {
         let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("resources/test/configuration_import_test/test_simple_command.json").unwrap(), &status, &Arc::new(None));
         let res = scheduling_service.create_and_add_job(&crate::common::Monitor {
             name: "test".to_string(),
+            description: None,
             schedule: "* * * * * *".to_string(),
             store: DatabaseStoreLevel::None,
             details: crate::common::MonitorType::Command {
@@ -464,6 +470,7 @@ mod test {
         let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("resources/test/configuration_import_test/test_simple_loadavg.json").unwrap(), &status, &Arc::new(None));
         let res = scheduling_service.create_and_add_job(&crate::common::Monitor {
             name: "test".to_string(),
+            description: None,
             schedule: "* * * * * *".to_string(),
             store: DatabaseStoreLevel::None,
             details: crate::common::MonitorType::LoadAvg { 
@@ -482,6 +489,7 @@ mod test {
         let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("resources/test/configuration_import_test/test_simple_meminfo.json").unwrap(), &status, &Arc::new(None));
         let res = scheduling_service.create_and_add_job(&crate::common::Monitor {
             name: "test".to_string(),
+            description: None,
             schedule: "* * * * * *".to_string(),
             store: DatabaseStoreLevel::None,
             details: crate::common::MonitorType::Mem {

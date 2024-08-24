@@ -115,6 +115,12 @@ export default {
                                         v-if="monitor.lastError != null" :key="monitor._id" data-bs-toggle="tooltip"
                                         data-bs-placement="top" v-bind:title="monitor.lastError">{{ monitor.lastError }}
                                     </dd>
+                                    <dt class="col-sm-12 small no-margin" v-if="monitor.description">Description
+                                    </dt>                                    
+                                    <dd class="col-sm-12 small no-margin xtext-truncate"
+                                        v-if="monitor.description != null" :key="monitor._id" data-bs-toggle="tooltip"
+                                        data-bs-placement="top" v-bind:title="monitor.description">{{ monitor.description }}
+                                    </dd>                                    
                                 </dl>
                             </div>
                         </div>

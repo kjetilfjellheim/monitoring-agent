@@ -10,6 +10,16 @@ use super::Monitor;
 
 /**
  * The `ProcessMonitor` struct represents a moniitor for checking processes.
+ * 
+ * `name`: The monitor name.
+ * `description`: The description of the monitor.
+ * `application_names`: The application names to monitor.
+ * `max_mem_usage`: The max memory usage.
+ * `status`: The status of the monitor.
+ * `database_service`: The database service.
+ * `database_store_level`: The database store level.
+ * `store_current_statm`: Store the current statm.
+ * 
  */
 #[derive(Debug, Clone)]
 pub struct ProcessMonitor {
@@ -43,8 +53,10 @@ impl ProcessMonitor {
      * 
      * Returns a new `ProcessMonitor`.
      */
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         name: &str,
+        description: &Option<String>,
         application_names: &[String],
         max_mem_usage: Option<u32>,
         status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
@@ -56,7 +68,7 @@ impl ProcessMonitor {
         let status_lock = status.lock();
         match status_lock {
             Ok(mut lock) => {
-                lock.insert(name.to_string(), MonitorStatus::new(name.to_string(), Status::Unknown));
+                lock.insert(name.to_string(), MonitorStatus::new(name, description, Status::Unknown));
             }
             Err(err) => {
                 error!("Error creating systemctl monitor: {err:?}");
@@ -288,6 +300,7 @@ mod test {
     fn test_get_monitor_job() {
         let mut process_monitor = ProcessMonitor::new(
             "test_monitor",
+            &None,
             &vec!["test_app".to_string()],
             Some(100),
             &Arc::new(Mutex::new(HashMap::new())),
@@ -303,6 +316,7 @@ mod test {
     async fn test_check() {
         let mut process_monitor = ProcessMonitor::new(
             "test_monitor",
+            &None,
             &vec!["test_app".to_string()],
             Some(100),
             &Arc::new(Mutex::new(HashMap::new())),
@@ -318,6 +332,7 @@ mod test {
     async fn test_check_systemd_status_not_ok() {
         let mut process_monitor = ProcessMonitor::new(
             "systemd monitor",
+            &None,
             &vec!["/sbin/init".to_string()],
             Some(0),
             &Arc::new(Mutex::new(HashMap::new())),
@@ -334,6 +349,7 @@ mod test {
     async fn test_check_systemd_status_ok() {
         let mut process_monitor = ProcessMonitor::new(
             "systemd monitor",
+            &None,
             &vec!["/sbin/init".to_string()],
             Some(1000000),
             &Arc::new(Mutex::new(HashMap::new())),
