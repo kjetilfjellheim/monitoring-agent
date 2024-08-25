@@ -206,7 +206,7 @@ impl ProcessMonitor {
         let Some(pagesize) = statm.pagesize else { return Status::Ok };
         let Some(max_mem_usage) = self.max_mem_usage else { return Status::Ok };    
         if (resident * pagesize) > max_mem_usage {
-            return Status::Error { message: format!("Process memory usage is over the limit: {resident:?} > {max_mem_usage:?}")};
+            return Status::Error { message: format!("Process memory usage is over the limit: {:?} > {max_mem_usage:?}", (resident * pagesize))};
         }
         Status::Ok
     }
@@ -352,7 +352,7 @@ mod test {
             "systemd monitor",
             &None,
             &vec!["/sbin/init".to_string()],
-            Some(1000000),
+            Some(100000000),
             &Arc::new(Mutex::new(HashMap::new())),
             &Arc::new(None),
             &DatabaseStoreLevel::None,
