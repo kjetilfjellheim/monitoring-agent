@@ -234,6 +234,9 @@ pub struct ProcessResponse {
     /// The groups the process belongs to.
     #[serde(skip_serializing_if = "Option::is_none", rename = "groups")]          
     pub groups: Option<Vec<String>>,
+    /// Whether the process is monitored.
+    #[serde(rename = "monitored")]          
+    pub monitored: bool
 }
 
 impl ProcessResponse {
@@ -252,6 +255,7 @@ impl ProcessResponse {
      * Returns a new `ProcessResponse`.
      * 
      */
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         pid: Option<u32>,
         parent_pid: Option<u32>,
@@ -260,6 +264,7 @@ impl ProcessResponse {
         state: Option<ProcessStateResponse>,
         threads: Option<u32>,
         groups: Option<Vec<String>>,
+        monitored: bool,
     ) -> ProcessResponse {
         ProcessResponse {
             pid,
@@ -269,6 +274,7 @@ impl ProcessResponse {
             state,
             threads,
             groups,
+            monitored,
         }
     }
 
@@ -280,7 +286,7 @@ impl ProcessResponse {
      * Returns a new `ProcessResponse`.
      * 
      */
-    pub fn from_process(proc: &ProcsProcess) -> ProcessResponse {
+    pub fn from_process(proc: &ProcsProcess, monitered_application_names: &[String]) -> ProcessResponse {
         ProcessResponse::new(
             proc.pid,
             proc.parent_pid,
@@ -288,8 +294,27 @@ impl ProcessResponse {
             proc.umask.clone(),
             ProcessStateResponse::from_state(&proc.state),
             proc.threads,
-            proc.groups.clone()
+            proc.groups.clone(),
+            Self::is_monitored(&proc.name, monitered_application_names),
         )
+    }
+
+    /**
+     * Check if the process is monitored.
+     * 
+     * `name`: The name of the process.
+     * `monitered_application_names`: The names of the monitored applications.
+     * 
+     * Returns true if the process is monitored, false otherwise.
+     * 
+     */
+    fn is_monitored(name: &Option<String>, monitered_application_names: &[String]) -> bool {  
+        match name {
+            Some(name) => { 
+                monitered_application_names.contains(name)
+            },
+            None => false
+        }
     }
 
    /** 
@@ -300,8 +325,8 @@ impl ProcessResponse {
     * Returns a new `ProcessResponse`.
     * 
     */
-    pub fn from_processes(proc: &[ProcsProcess]) -> Vec<ProcessResponse> {
-            proc.iter().map(ProcessResponse::from_process).collect()
+    pub fn from_processes(proc: &[ProcsProcess], monitered_application_names: &[String]) -> Vec<ProcessResponse> {
+        proc.iter().map(|process| ProcessResponse::from_process(process, monitered_application_names)).collect()
     }
 }
 
@@ -699,6 +724,8 @@ impl StatResponse {
 
 #[cfg(test)]
 mod test {
+    use std::vec;
+
     use monitoring_agent_lib::proc::ProcCpuStat;
 
     use super::*;
@@ -792,7 +819,7 @@ mod test {
 
     #[test]
     fn test_process_response_new() {
-        let process_response = ProcessResponse::new(Some(1), Some(2), Some("name".to_string()), Some("umask".to_string()), Some(ProcessStateResponse::Running), Some(3), Some(vec!["group1".to_string(), "group2".to_string()]));
+        let process_response = ProcessResponse::new(Some(1), Some(2), Some("name".to_string()), Some("umask".to_string()), Some(ProcessStateResponse::Running), Some(3), Some(vec!["group1".to_string(), "group2".to_string()]), true);
         assert_eq!(process_response.pid, Some(1));
         assert_eq!(process_response.parent_pid, Some(2));
         assert_eq!(process_response.name, Some("name".to_string()));
@@ -813,7 +840,7 @@ mod test {
             threads: Some(3),
             groups: Some(vec!["group1".to_string(), "group2".to_string()]),
         };
-        let process_response = ProcessResponse::from_process(&procs_process);
+        let process_response = ProcessResponse::from_process(&procs_process, &Vec::new());
         assert_eq!(process_response.pid, Some(1));
         assert_eq!(process_response.parent_pid, Some(2));
         assert_eq!(process_response.name, Some("name".to_string()));
@@ -849,7 +876,7 @@ mod test {
             threads: Some(3),
             groups: Some(vec!["group1".to_string(), "group2".to_string()]),
         }];
-        let process_response = ProcessResponse::from_processes(&procs_process);
+        let process_response = ProcessResponse::from_processes(&procs_process, &Vec::new());
         assert_eq!(process_response[0].pid, Some(1));
         assert_eq!(process_response[0].parent_pid, Some(2));
         assert_eq!(process_response[0].name, Some("name".to_string()));

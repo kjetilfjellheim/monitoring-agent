@@ -6,10 +6,11 @@ use std::fs::File;
 use std::io::Read;
 use std::str::FromStr;
 use std::sync::Arc;
+use std::vec;
 
 use clap::Parser;
 use common::configuration::{DatabaseConfig, MonitoringConfig, ServerConfig};
-use common::ApplicationError;
+use common::{ApplicationError, MonitorType};
 use daemonize::Daemonize;
 use log::{debug, error, info};
 use actix_web::{web, App, HttpServer};
@@ -92,7 +93,7 @@ async fn start_application(monitoring_config: &MonitoringConfig, args: &Applicat
         info!("No database configuration found!");
         Arc::new(None)
     };
-        
+    
     /*
      * Initialize monitoring service.
      */
@@ -128,10 +129,12 @@ async fn start_application(monitoring_config: &MonitoringConfig, args: &Applicat
         return Ok(());
     }
 
+    let monitered_application_names = get_applications(monitoring_config);
+
     info!("Starting HTTP server on {}:{}", ip, port);
     let http_server = HttpServer::new(move || {
         App::new()
-            .app_data(web::Data::new(StateApi::new(monitoring_service.clone(), cloned_monitoring_config.server.clone())))
+            .app_data(web::Data::new(StateApi::new(monitoring_service.clone(), cloned_monitoring_config.server.clone(), &monitered_application_names)))
             .service(api::get_current_meminfo)   
             .service(api::get_current_cpuinfo)   
             .service(api::get_current_loadavg)   
@@ -157,6 +160,33 @@ async fn start_application(monitoring_config: &MonitoringConfig, args: &Applicat
     }; 
     http_server.run()
     .await
+}
+
+/**
+ * Get applications that are being monitored.
+ * 
+ * `monitoring_config`: The monitoring configuration.
+ * 
+ * Returns the applications.
+ * 
+ */
+fn get_applications(monitoring_config: &MonitoringConfig) -> Vec<String> {
+    monitoring_config
+        .monitors
+        .iter()
+        .flat_map(|monitor| match monitor.details.clone() {
+            MonitorType::Process { application_names, max_mem_usage: _, store_values } => {
+                if store_values {
+                    application_names.clone()
+                } else {
+                    vec![]
+                }
+            }
+            _ => {
+                vec![]
+            }
+        })
+        .collect()
 }
 
 /** 

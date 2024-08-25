@@ -31,7 +31,7 @@ impl MonitoringService {
      */
     pub fn new() -> MonitoringService {
         MonitoringService {
-            status: Arc::new(Mutex::new(HashMap::new())),
+            status: Arc::new(Mutex::new(HashMap::new())),            
         }
     }
 
