@@ -1,6 +1,6 @@
 <script setup>
     import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-    import { faRefresh, faBook } from '@fortawesome/free-solid-svg-icons';
+    import { faRefresh, faStar, faChartSimple } from '@fortawesome/free-solid-svg-icons';
 </script>
 <script>
 import { ref } from 'vue';
@@ -71,6 +71,13 @@ export default {
                 this.searchUmask === "" &&
                 this.searchState === "" &&
                 this.searchThreads === "";
+        },
+        isMonitored(process) {
+            if (process.monitored) {
+                return "monitored";
+            } else {
+                return "";
+            }
         }
     }
 };
@@ -97,8 +104,7 @@ export default {
                         <th scope="col">Umask</th>
                         <th scope="col">State</th>
                         <th scope="col">Threads</th>
-                        <th scope="col">Memory</th>
-                        <th scope="col">Cpu</th>
+                        <th scope="col">Details</th>
                     </tr>
                     <tr>
                         <th scope="col"><input id="idSearchServer" type="text" class="form-control"
@@ -122,29 +128,29 @@ export default {
                         <th scope="col"><input id="isSearchThreads" type="text" class="form-control"
                                 aria-describedby="basic-addon2" v-model="searchThreads" minlength="3" maxLength="3"
                                 size="3" /></th>
-                        <th scope="col"></th>
-                        <th scope="col"></th>
+                        <th scope="col"></th>                                
                     </tr>
                 </thead>
                 <tbody>
                     <template v-for="process in processes">
                         <tr v-if="filter(process)">
-                            <td class="vertical-align-middle"><label class="form-check-label text-light">{{ process.url
+                            <td class="vertical-align-middle"><label class="form-check-label text-light" v-bind:class="isMonitored(process)">{{ process.url
                                     }}</label></td>
-                            <td class="vertical-align-middle"><label class="form-check-label text-light">{{ process.pid
+                            <td class="vertical-align-middle"><label class="form-check-label text-light" v-bind:class="isMonitored(process)">{{ process.pid
                                     }}</label></td>
-                            <td class="vertical-align-middle"><label class="form-check-label text-light">{{
+                            <td class="vertical-align-middle"><label class="form-check-label text-light" v-bind:class="isMonitored(process)">{{
                                     process.parentPid }}</label></td>
-                            <td class="vertical-align-middle"><label class="form-check-label text-light">{{ process.name
+                            <td class="vertical-align-middle"><label class="form-check-label text-light" v-bind:class="isMonitored(process)">{{ process.name
                                     }}</label></td>
-                            <td class="vertical-align-middle"><label class="form-check-label text-light">{{
+                            <td class="vertical-align-middle"><label class="form-check-label text-light" v-bind:class="isMonitored(process)">{{
                                     process.umask }}</label></td>
-                            <td class="vertical-align-middle"><label class="form-check-label text-light">{{
+                            <td class="vertical-align-middle"><label class="form-check-label text-light" v-bind:class="isMonitored(process)">{{
                                     process.processState }}</label></td>
-                            <td class="vertical-align-middle"><label class="form-check-label text-light">{{
+                            <td class="vertical-align-middle"><label class="form-check-label text-light" v-bind:class="isMonitored(process)">{{
                                     process.numThreads }}</label></td>
-                            <td class="vertical-align-middle"><button class="btn btn-info small"><FontAwesomeIcon :icon="faBook" />&nbsp;Get</button></td>
-                            <td class="vertical-align-middle"><button class="btn btn-info small"><FontAwesomeIcon :icon="faBook" />&nbsp;Get</button></td>
+                            <td class="vertical-align-middle">
+                                <button class="btn btn-info small"><FontAwesomeIcon :icon="faChartSimple" /></button>
+                            </td>
                         </tr>
                     </template>
                 </tbody>
@@ -188,5 +194,8 @@ export default {
 table {
     width: 100%;
     margin: 5px;
+}
+.monitored {
+    color: #d8ffab !important
 }
 </style>
