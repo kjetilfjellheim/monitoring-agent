@@ -234,6 +234,12 @@ pub struct ProcessResponse {
     /// The groups the process belongs to.
     #[serde(skip_serializing_if = "Option::is_none", rename = "groups")]          
     pub groups: Option<Vec<String>>,
+    /// The uids of the process changed to usernames.
+    #[serde(skip_serializing_if = "Option::is_none", rename = "uid")]          
+    pub uids: Option<Vec<String>>,
+    /// The gids of the process changed to group names.
+    #[serde(skip_serializing_if = "Option::is_none", rename = "gid")]          
+    pub gids: Option<Vec<String>>,
     /// Whether the process is monitored.
     #[serde(rename = "monitored")]          
     pub monitored: bool
@@ -265,16 +271,20 @@ impl ProcessResponse {
         threads: Option<u32>,
         groups: Option<Vec<String>>,
         monitored: bool,
+        gids: Option<Vec<String>>,
+        uids: Option<Vec<String>>,
     ) -> ProcessResponse {
         ProcessResponse {
-            pid,
-            parent_pid,
-            name,
-            umask,
-            state,
-            threads,
-            groups,
-            monitored,
+            pid, 
+            parent_pid, 
+            name, 
+            umask, 
+            state, 
+            threads, 
+            groups, 
+            uids, 
+            gids, 
+            monitored
         }
     }
 
@@ -296,6 +306,8 @@ impl ProcessResponse {
             proc.threads,
             proc.groups.clone(),
             Self::is_monitored(&proc.name, monitered_application_names),
+            proc.gid.clone(),
+            proc.uid.clone(),
         )
     }
 
@@ -819,7 +831,7 @@ mod test {
 
     #[test]
     fn test_process_response_new() {
-        let process_response = ProcessResponse::new(Some(1), Some(2), Some("name".to_string()), Some("umask".to_string()), Some(ProcessStateResponse::Running), Some(3), Some(vec!["group1".to_string(), "group2".to_string()]), true);
+        let process_response = ProcessResponse::new(Some(1), Some(2), Some("name".to_string()), Some("umask".to_string()), Some(ProcessStateResponse::Running), Some(3), Some(vec!["group1".to_string(), "group2".to_string()]), true, Some(Vec::new()), Some(Vec::new()));
         assert_eq!(process_response.pid, Some(1));
         assert_eq!(process_response.parent_pid, Some(2));
         assert_eq!(process_response.name, Some("name".to_string()));
@@ -839,6 +851,8 @@ mod test {
             state: Some(ProcessState::Running),
             threads: Some(3),
             groups: Some(vec!["group1".to_string(), "group2".to_string()]),
+            uid: Some(Vec::new()),
+            gid: Some(Vec::new()),
         };
         let process_response = ProcessResponse::from_process(&procs_process, &Vec::new());
         assert_eq!(process_response.pid, Some(1));
@@ -875,6 +889,9 @@ mod test {
             state: Some(ProcessState::Running),
             threads: Some(3),
             groups: Some(vec!["group1".to_string(), "group2".to_string()]),
+            uid: Some(Vec::new()),
+            gid: Some(Vec::new()),
+            
         }];
         let process_response = ProcessResponse::from_processes(&procs_process, &Vec::new());
         assert_eq!(process_response[0].pid, Some(1));

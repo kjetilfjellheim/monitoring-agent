@@ -98,7 +98,7 @@ export default {
                     <dd class="col col-sm-12 col-md-12 col-lg-12 col-xl-6 text-light">{{ processStatus?.numThreads }}</dd>
                 </dl>
             </div>
-            <div class="col col-sm-12 col-md-6 col-lg-6 col-xl-3">
+            <div class="col col-sm-12 col-md-6 col-lg-6 col-xl-4">
                 <dl class="row">
                     <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-6 text-light">Total</dt>
                     <dd class="col col-sm-12 col-md-12 col-lg-12 col-xl-6 text-light">{{ processStatm?.totalSize }} Kb</dd>
@@ -116,12 +116,22 @@ export default {
                     <dd class="col col-sm-12 col-md-12 col-lg-12 col-xl-6 text-light">{{ processStatm?.dtSize }} Kb</dd>
                 </dl>
             </div>
-            <div class="col col-sm-12 col-md-6 col-lg-6 col-xl-3">
+            <div class="col col-sm-12 col-md-6 col-lg-6 col-xl-4">
                 <dl class="row">                   
-                    <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-6 text-light">Groups</dt>
-                    <dd class="col col-sm-12 col-md-12 col-lg-12 col-xl-6 text-light">
+                    <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-4 text-light">Groups</dt>
+                    <dd class="col col-sm-12 col-md-12 col-lg-12 col-xl-8 text-light">
                         <span v-for="group in processStatus?.groups" class="badge rounded-pill bg-primary group">{{ group }}</span>
-                    </dd>
+                    </dd>                    
+                    <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-12 text-light">&nbsp</dt>
+                    <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-4 text-light"></dt>
+                    <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-2 text-light">Real</dt>
+                    <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-2 text-light">Eff</dt>
+                    <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-2 text-light">Saved</dt>
+                    <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-2 text-light">File</dt>
+                    <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-4 text-light" v-if="processStatus?.uid">Uid</dt>
+                    <dd class="col col-sm-12 col-md-12 col-lg-12 col-xl-2 text-light" v-for="uid in processStatus?.uid">{{ uid }}</dd>
+                    <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-4 text-light" v-if="processStatus?.gid">Gid</dt>
+                    <dd class="col col-sm-12 col-md-12 col-lg-12 col-xl-2 text-light" v-for="gid in processStatus?.gid">{{ gid }}</dd>                    
                 </dl>
             </div>
             <div class="col col-sm-12 col-md-6 col-lg-6 col-xl-6">

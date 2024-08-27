@@ -12,6 +12,10 @@ pub mod statm;
 pub mod cmdline;
 /// Structure and methods to read and parse /proc/stat
 pub mod stat;
+/// Structure and methods to read and parse /etc/group
+pub mod group;
+/// Structure and methods to read and parse /etc/passwd
+pub mod user;
 
 pub use crate::proc::cpuinfo::ProcsCpuinfo;
 pub use crate::proc::meminfo::ProcsMeminfo;
@@ -21,3 +25,5 @@ pub use crate::proc::statm::ProcsStatm;
 pub use crate::proc::cmdline::ProcsCmdLine;
 #[allow(clippy::module_name_repetitions)]
 pub use crate::proc::stat::{ ProcStat, ProcCpuStat };
+pub use crate::proc::group::Group;
+pub use crate::proc::user::User;
