@@ -37,6 +37,12 @@ const router = createRouter({
       path: '/processes',
       name: 'processes',
       component: () => import('../components/Processes.vue')
+    }, 
+    {
+      path: '/processes/:server/:pid',
+      name: 'process',
+      component: () => import('../components/ProcessDetails.vue'),
+      props: true
     }
   ]
 })

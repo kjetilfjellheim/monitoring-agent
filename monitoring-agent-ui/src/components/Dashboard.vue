@@ -109,16 +109,16 @@ export default {
               </div>
               <div class="card-body">
                 <dl class="row">
-                  <dt class="col-sm-5 small bg-light no-margin">1 min</dt>
-                  <dd class="col-sm-7 small text-truncate bg-light no-margin">{{ server?.loadavg?.loadAvg1Min }}</dd>
+                  <dt class="col-sm-5 small no-margin">1 min</dt>
+                  <dd class="col-sm-7 small text-truncate no-margin">{{ server?.loadavg?.loadAvg1Min }}</dd>
                 </dl>
                 <dl class="row">
-                  <dt class="col-sm-5 small bg-light no-margin">5 min</dt>
-                  <dd class="col-sm-7 small text-truncate bg-light no-margin">{{ server?.loadavg?.loadAvg5Min }}</dd>
+                  <dt class="col-sm-5 small no-margin">5 min</dt>
+                  <dd class="col-sm-7 small text-truncate no-margin">{{ server?.loadavg?.loadAvg5Min }}</dd>
                 </dl>
                 <dl class="row">
-                  <dt class="col-sm-5 small bg-light no-margin">15 min</dt>
-                  <dd class="col-sm-7 small text-truncate bg-light no-margin">{{ server?.loadavg?.loadAvg15Min }}</dd>
+                  <dt class="col-sm-5 small no-margin">15 min</dt>
+                  <dd class="col-sm-7 small text-truncate no-margin">{{ server?.loadavg?.loadAvg15Min }}</dd>
                 </dl>
               </div>
             </div>
@@ -135,16 +135,16 @@ export default {
               </div>
               <div class="card-body">
                 <dl class="row">
-                  <dt class="col-sm-5 small bg-light no-margin">Total</dt>
-                  <dd class="col-sm-7 small text-truncate bg-light no-margin">{{ server?.meminfo?.totalMem }} bytes</dd>
+                  <dt class="col-sm-5 small no-margin">Total</dt>
+                  <dd class="col-sm-7 small text-truncate no-margin">{{ server?.meminfo?.totalMem }} bytes</dd>
                 </dl>
                 <dl class="row">
-                  <dt class="col-sm-5 small bg-light no-margin">Free</dt>
-                  <dd class="col-sm-7 small text-truncate bg-light no-margin">{{ server?.meminfo?.freeMem }} bytes</dd>
+                  <dt class="col-sm-5 small no-margin">Free</dt>
+                  <dd class="col-sm-7 small text-truncate no-margin">{{ server?.meminfo?.freeMem }} bytes</dd>
                 </dl>
                 <dl class="row">
-                  <dt class="col-sm-5 small bg-light no-margin">Available</dt>
-                  <dd class="col-sm-7 small text-truncate bg-light no-margin">{{ server?.meminfo?.availableMem }} bytes
+                  <dt class="col-sm-5 small no-margin">Available</dt>
+                  <dd class="col-sm-7 small text-truncate no-margin">{{ server?.meminfo?.availableMem }} bytes
                   </dd>
                 </dl>
               </div>
@@ -163,13 +163,13 @@ export default {
               </div>
               <div class="card-body">
                 <dl class="row">
-                  <dt class="col-sm-5 small bg-light no-margin">Total</dt>
-                  <dd class="col-sm-7 small text-truncate bg-light no-margin">{{ server?.meminfo?.swapTotal }} bytes
+                  <dt class="col-sm-5 small no-margin">Total</dt>
+                  <dd class="col-sm-7 small text-truncate no-margin">{{ server?.meminfo?.swapTotal }} bytes
                   </dd>
                 </dl>
                 <dl class="row">
-                  <dt class="col-sm-5 small bg-light no-margin">Free</dt>
-                  <dd class="col-sm-7 small text-truncate bg-light no-margin">{{ server?.meminfo?.swapFree }} bytes</dd>
+                  <dt class="col-sm-5 small no-margin">Free</dt>
+                  <dd class="col-sm-7 small text-truncate no-margin">{{ server?.meminfo?.swapFree }} bytes</dd>
                 </dl>
               </div>
             </div>
@@ -187,12 +187,12 @@ export default {
               </div>
               <div class="card-body">
                 <dl class="row">
-                  <dt class="col-sm-5 small bg-light no-margin">Total processes</dt>
-                  <dd class="col-sm-7 small text-truncate bg-light no-margin"></dd>
+                  <dt class="col-sm-5 small no-margin">Total processes</dt>
+                  <dd class="col-sm-7 small text-truncate no-margin"></dd>
                 </dl>
                 <dl class="row">
-                  <dt class="col-sm-5 small bg-light no-margin">Running processes</dt>
-                  <dd class="col-sm-7 small text-truncate bg-light no-margin"></dd>
+                  <dt class="col-sm-5 small no-margin">Running processes</dt>
+                  <dd class="col-sm-7 small text-truncate no-margin"></dd>
                 </dl>
               </div>
             </div>                       
@@ -210,20 +210,20 @@ export default {
               </div>
               <div class="card-body">
                 <dl class="row">
-                  <dt class="col-sm-5 small bg-light no-margin">Number of processes</dt>
-                  <dd class="col-sm-7 small text-truncate bg-light no-margin">{{ server?.stat?.numProcesses }}</dd>
+                  <dt class="col-sm-5 small no-margin">Number of processes</dt>
+                  <dd class="col-sm-7 small text-truncate no-margin">{{ server?.stat?.numProcesses }}</dd>
                 </dl>  
                 <dl class="row">
-                  <dt class="col-sm-5 small bg-light no-margin">Processes running</dt>
-                  <dd class="col-sm-7 small text-truncate bg-light no-margin">{{ server?.stat?.processesRunning }}</dd>
+                  <dt class="col-sm-5 small no-margin">Processes running</dt>
+                  <dd class="col-sm-7 small text-truncate no-margin">{{ server?.stat?.processesRunning }}</dd>
                 </dl>  
                 <dl class="row">
-                  <dt class="col-sm-5 small bg-light no-margin">Processes blocked</dt>
-                  <dd class="col-sm-7 small text-truncate bg-light no-margin">{{ server?.stat?.processesBlocked }}</dd>
+                  <dt class="col-sm-5 small no-margin">Processes blocked</dt>
+                  <dd class="col-sm-7 small text-truncate no-margin">{{ server?.stat?.processesBlocked }}</dd>
                 </dl>                                  
                 <dl class="row">
-                  <dt class="col-sm-5 small bg-light no-margin">Number of interrupts</dt>
-                  <dd class="col-sm-7 small text-truncate bg-light no-margin">{{ server?.stat?.numInterrupts }}</dd>
+                  <dt class="col-sm-5 small no-margin">Number of interrupts</dt>
+                  <dd class="col-sm-7 small text-truncate no-margin">{{ server?.stat?.numInterrupts }}</dd>
                 </dl>                                
                 <table class="table table-">
                   <dl class="row">
@@ -275,6 +275,18 @@ export default {
 .card {
   height: 100%;
   margin: 2px;
+}
+
+.card-body {
+    background-color: #cfc3c3;
+}
+
+td {
+  background-color: #cfc3c3;
+}
+
+th {
+  background-color: #cfc3c3;
 }
 
 .no-margin {

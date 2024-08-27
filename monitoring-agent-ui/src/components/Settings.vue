@@ -110,7 +110,7 @@ export default {
           </div>
         </div>
       </nav>
-      <table class="table table-striped table-dark">
+      <table class="table table-striped-self table-dark">
         <thead class="thead-dark">
           <tr>
             <th scope="col"></th>
@@ -124,7 +124,7 @@ export default {
             <td class="vertical-align-middle"><label class="form-check-label text-light">{{ url }}</label></td>
             <td>
               <button class="btn btn-danger btn-sm function" @click="removeUrl(url)"><FontAwesomeIcon :icon="faCircleMinus" />&nbsp;Remove</button>
-              <button class="btn btn-info btn-sm function" @click="this.check(url)"><FontAwesomeIcon :icon="faListCheck" />&nbsp;Check all</button>
+              <button class="btn btn-info btn-sm function" @click="this.check(url)"><FontAwesomeIcon :icon="faListCheck" />&nbsp;Check</button>
             </td>
           </tr>
         </tbody>
@@ -142,4 +142,14 @@ export default {
   margin: auto;
   vertical-align: middle;
 }
+
+.table-striped-self>tbody>tr:nth-child(odd)>td, 
+.table-striped-self>tbody>tr:nth-child(odd)>th {
+   background-color: rgb(90, 90, 90); 
+ }
+
+ .table-striped-self>tbody>tr:nth-child(even)>td, 
+.table-striped-self>tbody>tr:nth-child(even)>th {
+   background-color: rgb(65, 65, 65); 
+ }
 </style>

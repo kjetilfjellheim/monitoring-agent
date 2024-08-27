@@ -1,7 +1,9 @@
 <script setup>
     import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
     import { faRefresh, faStar, faChartSimple } from '@fortawesome/free-solid-svg-icons';
+
 </script>
+
 <script>
 import { ref } from 'vue';
 
@@ -19,7 +21,7 @@ export default {
         }
     },
     mounted() {
-        this.refreshProcesses();        
+        this.refreshProcesses();     
     },
     methods: {        
         refreshProcesses() {
@@ -82,7 +84,7 @@ export default {
     }
 };
 </script>
-<template>
+<template>      
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="collapse navbar-collapse">
             <ul class="navbar-nav mr-auto mt-2 mt-lg-0">
@@ -94,7 +96,7 @@ export default {
     </nav>    
     <div class="container-fluid" v-if="processes">
         <div class="row">
-            <table class="table table-striped table-dark table-responsive">
+            <table class="table table-striped-self table-dark table-responsive">
                 <thead class="thead-dark">
                     <tr>
                         <th scope="col">Server</th>
@@ -149,7 +151,7 @@ export default {
                             <td class="vertical-align-middle"><label class="form-check-label text-light" v-bind:class="isMonitored(process)">{{
                                     process.numThreads }}</label></td>
                             <td class="vertical-align-middle">
-                                <button class="btn btn-info small"><FontAwesomeIcon :icon="faChartSimple" /></button>
+                                <a :href="'/processes/' + encodeURIComponent(process.url) + '/' + process.pid" ><FontAwesomeIcon :icon="faChartSimple" /></a>
                             </td>
                         </tr>
                     </template>
@@ -167,6 +169,10 @@ export default {
 .col {
     padding: 5px;
     margin: 5px;
+}
+
+.row {
+    margin: 0px;
 }
 
 .card {
@@ -198,4 +204,14 @@ table {
 .monitored {
     color: #d8ffab !important
 }
+
+.table-striped-self>tbody>tr:nth-child(odd)>td, 
+.table-striped-self>tbody>tr:nth-child(odd)>th {
+   background-color: rgb(90, 90, 90); 
+ }
+
+ .table-striped-self>tbody>tr:nth-child(even)>td, 
+.table-striped-self>tbody>tr:nth-child(even)>th {
+   background-color: rgb(65, 65, 65); 
+ }
 </style>
