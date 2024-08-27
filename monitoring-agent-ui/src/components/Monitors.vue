@@ -45,7 +45,7 @@ export default {
         <div class="collapse navbar-collapse">
             <ul class="navbar-nav mr-auto mt-2 mt-lg-0">
                 <li class="nav-item">
-                    <button class="btn btn-info small toolbar-item" @click="this.refreshMonitors()"><FontAwesomeIcon :icon="faRefresh" />&nbsp;Refresh</button>
+                    <button class="btn btn-info small toolbar-item" @click="refreshMonitors()"><FontAwesomeIcon :icon="faRefresh" />&nbsp;Refresh</button>
                 </li>                                            
                 <li class="nav-item">
                     <input class="form-check-input toolbar-item" type="checkbox" id="showOErrorStatus"
@@ -94,8 +94,8 @@ export default {
                             </div>
                             <div class="card-body">
                                 <dl class="row">
-                                    <dt class="col-sm-5 small bg-light no-margin">Current status</dt>
-                                    <dd class="col-sm-7 small text-truncate bg-light no-margin">{{ monitor.status }}
+                                    <dt class="col-sm-5 small no-margin">Current status</dt>
+                                    <dd class="col-sm-7 small text-truncate no-margin">{{ monitor.status }}
                                     </dd>
                                     <dt class="col-sm-5 small no-margin">Server</dt>
                                     <dd class="col-sm-7 small text-truncate no-margin">{{ monitor.url }}</dd>
@@ -142,6 +142,10 @@ export default {
 .card {
     height: 100%;
     margin: 1px;
+}
+
+.card-body {
+    background-color: #cfc3c3;
 }
 
 .no-margin {
