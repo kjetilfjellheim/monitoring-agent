@@ -368,7 +368,10 @@ impl ProcsProcess {
                 let mut groups: Vec<String> = Vec::new();
                 for str in data.split_whitespace() {
                     let id = u32::from_str(str).map_err(|err| CommonLibError::new(format!("Error parsing name id: {err:?}").as_str()))?;
-                    let name = names.get(&id).ok_or(CommonLibError::new(format!("Error getting name: {id}").as_str()))?;
+                    let name = {
+                        let default_name = "Unknown".to_string();
+                        names.get(&id).unwrap_or(&default_name).to_string()
+                    };
                     groups.push(name.clone());
                 }                            
                 Ok(Some(groups))
