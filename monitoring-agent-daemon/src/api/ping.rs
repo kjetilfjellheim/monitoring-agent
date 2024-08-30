@@ -13,5 +13,5 @@ use crate::api::{common::set_cors_headers, response::PingResponse, StateApi};
 pub async fn get_ping(state: web::Data<StateApi>) -> impl Responder {
     let mut response_builder = HttpResponse::Ok();
     set_cors_headers(&mut response_builder, &state.server_config);
-    response_builder.json(PingResponse::new("Ok","monitoring-agent-daemon"))  
+    response_builder.json(PingResponse::new("Ok","monitoring-agent-daemon", &state.server_config.name))  
 }
