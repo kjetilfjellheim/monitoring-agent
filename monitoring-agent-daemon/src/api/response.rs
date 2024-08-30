@@ -2,7 +2,7 @@ use chrono::{DateTime, TimeZone, Utc };
 use monitoring_agent_lib::proc::{process::ProcessState, ProcStat, ProcsCpuinfo, ProcsLoadavg, ProcsMeminfo, ProcsProcess, ProcsStatm};
 use serde::{Deserialize, Serialize};
 
-use crate::common::{MonitorStatus, Status};
+use crate::common::{LoadavgElement, MonitorStatus, Status};
 
 /**
  * The `MeminfoResponse` struct represents the response of the meminfo endpoint.
@@ -733,6 +733,78 @@ impl StatResponse {
     }
 
 }
+
+/**
+ * The `LoadavgHistoricalResponse` struct represents the response of the loadavg historical endpoint.
+ * The loadavg historical endpoint is used to get the historical load average.
+ * 
+ * The loadavg historical endpoint contains the following columns:
+ * * The 1 minute load average.
+ * * The 5 minute load average.
+ * * The 15 minute load average.
+ */
+#[allow(clippy::similar_names)]
+#[allow(clippy::module_name_repetitions)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LoadavgHistoricalResponse {  
+    /// The 1 minute load average.  
+    pub loadavg1min: Vec<HistoryElement>,
+    /// The 5 minute load average.
+    pub loadavg5min: Vec<HistoryElement>,
+    /// The 15 minute load average.
+    pub loadavg15min: Vec<HistoryElement>,
+}
+
+impl LoadavgHistoricalResponse {
+    /**
+     * Create a new `LoadavgHistoricalResponse`.
+     * 
+     * `loadavg1min`: The 1 minute load average.
+     * `loadavg5min`: The 5 minute load average.
+     * `loadavg15min`: The 15 minute load average.
+     * 
+     * Returns a new `LoadavgHistoricalResponse`.
+     * 
+     */
+    #[allow(clippy::similar_names)]
+    pub fn new(
+        loadavg1min: Vec<HistoryElement>,
+        loadavg5min: Vec<HistoryElement>,
+        loadavg15min: Vec<HistoryElement>,
+    ) -> LoadavgHistoricalResponse {
+        LoadavgHistoricalResponse {
+            loadavg1min,
+            loadavg5min,
+            loadavg15min,
+        }
+    }
+
+    pub fn from_loadavg_historical(loadavg: &[LoadavgElement]) -> LoadavgHistoricalResponse {
+        LoadavgHistoricalResponse::new(
+            loadavg.iter().map(|element| HistoryElement {
+                timestamp: element.timestamp,
+                value: element.loadavg1min,
+            }).collect(),
+            loadavg.iter().map(|element| HistoryElement {
+                timestamp: element.timestamp,
+                value: element.loadavg5min,
+            }).collect(),
+            loadavg.iter().map(|element| HistoryElement {
+                timestamp: element.timestamp,
+                value: element.loadavg15min,
+            }).collect(),
+        )
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HistoryElement {
+    #[serde(rename = "timestamp")]
+    pub timestamp: DateTime<Utc>,
+    #[serde(rename = "value")]
+    pub value: f64,
+}
+
 
 #[cfg(test)]
 mod test {

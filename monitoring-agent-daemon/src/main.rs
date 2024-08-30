@@ -105,8 +105,9 @@ async fn start_application(monitoring_config: &MonitoringConfig, args: &Applicat
     let cloned_args = args.clone();
     let monitor_statuses = monitoring_service.get_status();
     let server_name = monitoring_config.server.name.clone();
+    let cloned_database_service = database_service.clone();
     tokio::spawn(async move {
-        let mut scheduling_service = SchedulingService::new(&server_name, &cloned_monitoring_config, &monitor_statuses, &database_service.clone());
+        let mut scheduling_service = SchedulingService::new(&server_name, &cloned_monitoring_config, &monitor_statuses, &cloned_database_service);
         match scheduling_service.start(cloned_args.test).await {
             Ok(()) => {
                 info!("Scheduling service started!");
@@ -134,10 +135,11 @@ async fn start_application(monitoring_config: &MonitoringConfig, args: &Applicat
     info!("Starting HTTP server on {}:{}", ip, port);
     let http_server = HttpServer::new(move || {
         App::new()
-            .app_data(web::Data::new(StateApi::new(monitoring_service.clone(), cloned_monitoring_config.server.clone(), &monitered_application_names)))
+            .app_data(web::Data::new(StateApi::new(monitoring_service.clone(), database_service.clone(), cloned_monitoring_config.server.clone(), &monitered_application_names)))
             .service(api::get_current_meminfo)   
             .service(api::get_current_cpuinfo)   
-            .service(api::get_current_loadavg)   
+            .service(api::get_current_loadavg)  
+            .service(api::get_historical_loadavg) 
             .service(api::get_processes)
             .service(api::get_process)
             .service(api::get_threads)
