@@ -20,7 +20,7 @@ use crate::common::{ApplicationError, MonitorStatus};
 #[derive(Clone)]
 pub struct MonitoringService {
     /// The status of the monitors.
-    status: Arc<Mutex<HashMap<String, MonitorStatus>>>,
+    status: Arc<Mutex<HashMap<String, MonitorStatus>>>
 }
 
 impl MonitoringService {
@@ -216,6 +216,7 @@ impl MonitoringService {
             }
         }
     }
+
 }
 
 #[cfg(test)]
