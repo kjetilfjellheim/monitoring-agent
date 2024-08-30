@@ -21,14 +21,15 @@ export default {
             const monitors = ref(null);     
             const URL_NAME = 'apiUrls';
             monitors.value = [];
-            let currentUrls = localStorage.getItem(URL_NAME);
-            let urls = JSON.parse(currentUrls);
-            for (let url of urls) {
-                fetch(url + "/monitors/status")
+            let currentServers = localStorage.getItem(URL_NAME);
+            let servers = JSON.parse(currentServers);
+            for (let server of servers) {
+                fetch(server.url + "/monitors/status")
                     .then(response => response.json())
                     .then(json => {
                         json.forEach(element => {
-                            element.url = url;
+                            element.url = server.url;
+                            element.name = server.name;
                         });
                         monitors.value.push(...json)
                     })
@@ -77,7 +78,6 @@ export default {
                                             d="M10.854 5.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7.5 7.793l2.646-2.647a.5.5 0 0 1 .708 0" />
                                     </svg>
                                     {{ monitor.name }}
-
                                 </h5>
                             </div>
                             <div v-else="monitor.status === 'Ok'" class="card-header bg-danger">

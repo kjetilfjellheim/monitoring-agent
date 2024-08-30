@@ -23,24 +23,25 @@ export default {
     refresh() {
       const data = ref(null);
       const URL_NAME = 'apiUrls';
-      let currentUrls = localStorage.getItem(URL_NAME);
-      let urls = JSON.parse(currentUrls);
+      let currentServers = localStorage.getItem(URL_NAME);
+      let servers = JSON.parse(currentServers);
       data.value = [];
       let index = 0;
-      for (let url of urls) {
-        let server = {
-          url: url,
+      for (let server of servers) {
+        let server_data = {
+          url: server.url,
+          name: server.name,
           loadavg: ref(null),
           meminfo: ref(null),
           cpuinfo: ref(null),
           stat: ref(null),
           id: index++
         };
-        this.get_loadavg(server, url);
-        this.get_meminfo(server, url);
-        this.get_cpuinfo(server, url);
-        this.get_stat(server, url);
-        data.value.push(server);
+        this.get_loadavg(server_data, server.url);
+        this.get_meminfo(server_data, server.url);
+        this.get_cpuinfo(server_data, server.url);
+        this.get_stat(server_data, server.url);
+        data.value.push(server_data);
       }
       this.data = data.value;
     },
@@ -99,7 +100,7 @@ export default {
           <h2 class="accordion-header">
             <button class="accordion-button bg-primary" type="button" data-bs-toggle="collapse"
               v-bind:data-bs-target="'#' + server?.id" aria-expanded="true" v-bind:aria-controls="'#' + server?.id">
-              {{ server?.url }}
+              {{ server?.name }}&nbsp;({{ server?.url }})
             </button>
           </h2>
           <div v-bind:id="server?.id" class="accordion-collapse collapse bg-dark" data-bs-parent="#accordion">
