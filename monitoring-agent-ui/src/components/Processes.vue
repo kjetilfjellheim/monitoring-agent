@@ -28,14 +28,15 @@ export default {
             const processes = ref(null);     
             const URL_NAME = 'apiUrls';           
             processes.value = [];
-            let currentUrls = localStorage.getItem(URL_NAME);
-            let urls = JSON.parse(currentUrls);
-            for (let url of urls) {
-                fetch(url + "/processes")
+            let currentServers = localStorage.getItem(URL_NAME);
+            let servers = JSON.parse(currentServers);
+            for (let server of servers) {
+                fetch(server.url + "/processes")
                     .then(response => response.json())
                     .then(json => {
                         json.forEach(element => {
-                            element.url = url;
+                            element.url = server.url;
+                            element.serverName = server.name;
                             if (element.name === undefined) {
                                 element.name = "";
                             }
@@ -48,7 +49,7 @@ export default {
         },
         filter(process) {
             return this.checkAllNull() ||
-                this.check_includes(process.url, this.searchServer) &&
+                this.check_includes(process.serverName, this.searchServer) &&
                 this.check_includes(process.pid.toString(), this.searchPid) &&
                 this.check_includes(process.parentPid.toString(), this.searchParent) &&
                 this.check_includes(process.name, this.searchName) &&
@@ -136,7 +137,7 @@ export default {
                 <tbody>
                     <template v-for="process in processes">
                         <tr v-if="filter(process)">
-                            <td class="vertical-align-middle"><label class="form-check-label text-light" v-bind:class="isMonitored(process)">{{ process.url
+                            <td class="vertical-align-middle"><label class="form-check-label text-light" v-bind:class="isMonitored(process)">{{ process.serverName
                                     }}</label></td>
                             <td class="vertical-align-middle"><label class="form-check-label text-light" v-bind:class="isMonitored(process)">{{ process.pid
                                     }}</label></td>
