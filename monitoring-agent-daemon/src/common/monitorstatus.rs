@@ -4,6 +4,8 @@ use chrono::{DateTime, Utc};
  * `MonitorStatus` struct
  * 
  *  This struct is used to represent the status of a monitor in the service modules. It contains the following fields:
+ * - `name`: The name of the monitor
+ * - `description`: The description of the monitor
  * - `status`: The status of the monitor
  * - `last_successful_time`: The last time the monitor was successful
  * - `last_error`: The last error message
@@ -14,6 +16,8 @@ use chrono::{DateTime, Utc};
 pub struct MonitorStatus {
     /// The name of the monitor.
     pub name: String,
+    /// The description of the monitor.
+    pub description: Option<String>,    
     /// The status of the monitor.
     pub status: Status,
     /// The last time the monitor was successful.
@@ -28,12 +32,15 @@ impl MonitorStatus {
     /**
      * Create a new `MonitorStatus`.
      *
+     * `name`: The name of the monitor.
+     * `description`: The description of the monitor.
      * `status`: The status of the monitor.
      *
      */
-    pub fn new(name: String, status: Status) -> MonitorStatus {
+    pub fn new(name: &str, description: &Option<String>, status: Status) -> MonitorStatus {
         MonitorStatus {
-            name,
+            name: name.to_string(),
+            description: description.clone(),
             status,
             last_successful_time: None,
             last_error: None,
@@ -110,7 +117,7 @@ mod test {
     fn test_monitorstatus_new() {
         let name = "test_monitor";
         let status = Status::Ok;
-        let monitorstatus = MonitorStatus::new(name.to_string(), status.clone());
+        let monitorstatus = MonitorStatus::new(name,  &None, status.clone());
         assert_eq!(monitorstatus.name, name);
         assert_eq!(monitorstatus.status, status);
         assert_eq!(monitorstatus.last_successful_time, None);
@@ -122,7 +129,7 @@ mod test {
     fn test_monitorstatus_set_status() {
         let name = "test_monitor";
         let status = Status::Ok;
-        let mut monitorstatus = MonitorStatus::new(name.to_string(), status.clone());
+        let mut monitorstatus = MonitorStatus::new(name, &None, status.clone());
         monitorstatus.set_status(&status);
         assert_eq!(monitorstatus.status, status);
         assert!(monitorstatus.last_successful_time.is_some());

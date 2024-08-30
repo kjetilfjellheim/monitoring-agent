@@ -6,10 +6,11 @@ use std::fs::File;
 use std::io::Read;
 use std::str::FromStr;
 use std::sync::Arc;
+use std::vec;
 
 use clap::Parser;
 use common::configuration::{DatabaseConfig, MonitoringConfig, ServerConfig};
-use common::ApplicationError;
+use common::{ApplicationError, MonitorType};
 use daemonize::Daemonize;
 use log::{debug, error, info};
 use actix_web::{web, App, HttpServer};
@@ -92,7 +93,7 @@ async fn start_application(monitoring_config: &MonitoringConfig, args: &Applicat
         info!("No database configuration found!");
         Arc::new(None)
     };
-        
+    
     /*
      * Initialize monitoring service.
      */
@@ -104,8 +105,9 @@ async fn start_application(monitoring_config: &MonitoringConfig, args: &Applicat
     let cloned_args = args.clone();
     let monitor_statuses = monitoring_service.get_status();
     let server_name = monitoring_config.server.name.clone();
+    let cloned_database_service = database_service.clone();
     tokio::spawn(async move {
-        let mut scheduling_service = SchedulingService::new(&server_name, &cloned_monitoring_config, &monitor_statuses, &database_service.clone());
+        let mut scheduling_service = SchedulingService::new(&server_name, &cloned_monitoring_config, &monitor_statuses, &cloned_database_service);
         match scheduling_service.start(cloned_args.test).await {
             Ok(()) => {
                 info!("Scheduling service started!");
@@ -128,13 +130,16 @@ async fn start_application(monitoring_config: &MonitoringConfig, args: &Applicat
         return Ok(());
     }
 
+    let monitered_application_names = get_applications(monitoring_config);
+
     info!("Starting HTTP server on {}:{}", ip, port);
     let http_server = HttpServer::new(move || {
         App::new()
-            .app_data(web::Data::new(StateApi::new(monitoring_service.clone(), cloned_monitoring_config.server.clone())))
+            .app_data(web::Data::new(StateApi::new(monitoring_service.clone(), database_service.clone(), cloned_monitoring_config.server.clone(), &monitered_application_names)))
             .service(api::get_current_meminfo)   
             .service(api::get_current_cpuinfo)   
-            .service(api::get_current_loadavg)   
+            .service(api::get_current_loadavg)  
+            .service(api::get_historical_loadavg) 
             .service(api::get_processes)
             .service(api::get_process)
             .service(api::get_threads)
@@ -157,6 +162,33 @@ async fn start_application(monitoring_config: &MonitoringConfig, args: &Applicat
     }; 
     http_server.run()
     .await
+}
+
+/**
+ * Get applications that are being monitored.
+ * 
+ * `monitoring_config`: The monitoring configuration.
+ * 
+ * Returns the applications.
+ * 
+ */
+fn get_applications(monitoring_config: &MonitoringConfig) -> Vec<String> {
+    monitoring_config
+        .monitors
+        .iter()
+        .flat_map(|monitor| match monitor.details.clone() {
+            MonitorType::Process { application_names, max_mem_usage: _, store_values } => {
+                if store_values {
+                    application_names.clone()
+                } else {
+                    vec![]
+                }
+            }
+            _ => {
+                vec![]
+            }
+        })
+        .collect()
 }
 
 /** 

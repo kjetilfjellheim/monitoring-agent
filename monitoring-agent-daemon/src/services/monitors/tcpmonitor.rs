@@ -18,6 +18,7 @@ use super::Monitor;
  * This struct represents a TCP monitor.
  *
  * name: The name of the monitor.
+ * description: The description of the monitor.
  * host: The host to monitor.
  * port: The port to monitor.
  * status: The status of the monitor.
@@ -26,7 +27,7 @@ use super::Monitor;
 #[derive(Debug, Clone)]
 pub struct TcpMonitor {
     /// The name of the monitor.
-    pub name: String,
+    pub name: String,  
     /// The host to monitor.
     pub host: String,
     /// The port of the host monitor.
@@ -53,6 +54,7 @@ impl TcpMonitor {
         host: &str,
         port: u16,
         name: &str,
+        description: &Option<String>,
         status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
         database_service: &Arc<Option<DbService>>,
         database_store_level: &DatabaseStoreLevel,
@@ -61,7 +63,7 @@ impl TcpMonitor {
         let status_lock = status.lock();
         match status_lock {
             Ok(mut lock) => {
-                lock.insert(name.to_string(), MonitorStatus::new(name.to_string(), Status::Unknown));
+                lock.insert(name.to_string(), MonitorStatus::new(name, description, Status::Unknown));
             }
             Err(err) => {
                 error!("Error creating command monitor: {:?}", err);
@@ -207,7 +209,7 @@ mod test {
     #[tokio::test]
     async fn test_check_port_139() {
         let status = Arc::new(Mutex::new(HashMap::new()));
-        let mut monitor = TcpMonitor::new("localhost", 139, "localhost", &status, &Arc::new(None), &DatabaseStoreLevel::None);
+        let mut monitor = TcpMonitor::new("localhost", 139, "localhost", &None, &status, &Arc::new(None), &DatabaseStoreLevel::None);
         monitor.check().await;
         assert_eq!(
             status.lock().unwrap().get("localhost").unwrap().status,
@@ -222,7 +224,7 @@ mod test {
     async fn test_check_port_65000() {
         let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
             Arc::new(Mutex::new(HashMap::new()));
-        let mut monitor = TcpMonitor::new("localhost", 65000, "localhost", &status, &Arc::new(None), &DatabaseStoreLevel::None);
+        let mut monitor = TcpMonitor::new("localhost", 65000, "localhost", &None, &status, &Arc::new(None), &DatabaseStoreLevel::None);
         monitor.check().await;
         assert_eq!(status.lock().unwrap().get("localhost").unwrap().status, Status::Error { message: "Error connecting to localhost:65000 with error: Connection refused (os error 111)".to_string() });
     }
@@ -234,7 +236,7 @@ mod test {
     async fn test_set_status() {
         let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
             Arc::new(Mutex::new(HashMap::new()));
-        let mut monitor = TcpMonitor::new("localhost", 65000, "localhost", &status, &Arc::new(None), &DatabaseStoreLevel::None);
+        let mut monitor = TcpMonitor::new("localhost", 65000, "localhost", &None, &status, &Arc::new(None), &DatabaseStoreLevel::None);
         monitor.set_status(&Status::Ok).await;
         assert_eq!(
             status.lock().unwrap().get("localhost").unwrap().status,
@@ -250,6 +252,7 @@ mod test {
             "localhost",
             65000,
             "localhost",
+            &None,
             &status,
             &Arc::new(None),
             &DatabaseStoreLevel::None,

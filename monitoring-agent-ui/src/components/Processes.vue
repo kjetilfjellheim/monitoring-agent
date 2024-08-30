@@ -1,7 +1,9 @@
 <script setup>
     import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-    import { faRefresh, faBook } from '@fortawesome/free-solid-svg-icons';
+    import { faRefresh, faStar, faChartSimple } from '@fortawesome/free-solid-svg-icons';
+
 </script>
+
 <script>
 import { ref } from 'vue';
 
@@ -19,21 +21,22 @@ export default {
         }
     },
     mounted() {
-        this.refreshProcesses();        
+        this.refreshProcesses();     
     },
     methods: {        
         refreshProcesses() {
             const processes = ref(null);     
             const URL_NAME = 'apiUrls';           
             processes.value = [];
-            let currentUrls = localStorage.getItem(URL_NAME);
-            let urls = JSON.parse(currentUrls);
-            for (let url of urls) {
-                fetch(url + "/processes")
+            let currentServers = localStorage.getItem(URL_NAME);
+            let servers = JSON.parse(currentServers);
+            for (let server of servers) {
+                fetch(server.url + "/processes")
                     .then(response => response.json())
                     .then(json => {
                         json.forEach(element => {
-                            element.url = url;
+                            element.url = server.url;
+                            element.serverName = server.name;
                             if (element.name === undefined) {
                                 element.name = "";
                             }
@@ -46,7 +49,7 @@ export default {
         },
         filter(process) {
             return this.checkAllNull() ||
-                this.check_includes(process.url, this.searchServer) &&
+                this.check_includes(process.serverName, this.searchServer) &&
                 this.check_includes(process.pid.toString(), this.searchPid) &&
                 this.check_includes(process.parentPid.toString(), this.searchParent) &&
                 this.check_includes(process.name, this.searchName) &&
@@ -71,11 +74,18 @@ export default {
                 this.searchUmask === "" &&
                 this.searchState === "" &&
                 this.searchThreads === "";
+        },
+        isMonitored(process) {
+            if (process.monitored) {
+                return "monitored";
+            } else {
+                return "";
+            }
         }
     }
 };
 </script>
-<template>
+<template>      
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="collapse navbar-collapse">
             <ul class="navbar-nav mr-auto mt-2 mt-lg-0">
@@ -87,7 +97,7 @@ export default {
     </nav>    
     <div class="container-fluid" v-if="processes">
         <div class="row">
-            <table class="table table-striped table-dark table-responsive">
+            <table class="table table-striped-self table-dark table-responsive">
                 <thead class="thead-dark">
                     <tr>
                         <th scope="col">Server</th>
@@ -97,8 +107,7 @@ export default {
                         <th scope="col">Umask</th>
                         <th scope="col">State</th>
                         <th scope="col">Threads</th>
-                        <th scope="col">Memory</th>
-                        <th scope="col">Cpu</th>
+                        <th scope="col">Details</th>
                     </tr>
                     <tr>
                         <th scope="col"><input id="idSearchServer" type="text" class="form-control"
@@ -122,29 +131,29 @@ export default {
                         <th scope="col"><input id="isSearchThreads" type="text" class="form-control"
                                 aria-describedby="basic-addon2" v-model="searchThreads" minlength="3" maxLength="3"
                                 size="3" /></th>
-                        <th scope="col"></th>
-                        <th scope="col"></th>
+                        <th scope="col"></th>                                
                     </tr>
                 </thead>
                 <tbody>
                     <template v-for="process in processes">
                         <tr v-if="filter(process)">
-                            <td class="vertical-align-middle"><label class="form-check-label text-light">{{ process.url
+                            <td class="vertical-align-middle"><label class="form-check-label text-light" v-bind:class="isMonitored(process)">{{ process.serverName
                                     }}</label></td>
-                            <td class="vertical-align-middle"><label class="form-check-label text-light">{{ process.pid
+                            <td class="vertical-align-middle"><label class="form-check-label text-light" v-bind:class="isMonitored(process)">{{ process.pid
                                     }}</label></td>
-                            <td class="vertical-align-middle"><label class="form-check-label text-light">{{
+                            <td class="vertical-align-middle"><label class="form-check-label text-light" v-bind:class="isMonitored(process)">{{
                                     process.parentPid }}</label></td>
-                            <td class="vertical-align-middle"><label class="form-check-label text-light">{{ process.name
+                            <td class="vertical-align-middle"><label class="form-check-label text-light" v-bind:class="isMonitored(process)">{{ process.name
                                     }}</label></td>
-                            <td class="vertical-align-middle"><label class="form-check-label text-light">{{
+                            <td class="vertical-align-middle"><label class="form-check-label text-light" v-bind:class="isMonitored(process)">{{
                                     process.umask }}</label></td>
-                            <td class="vertical-align-middle"><label class="form-check-label text-light">{{
+                            <td class="vertical-align-middle"><label class="form-check-label text-light" v-bind:class="isMonitored(process)">{{
                                     process.processState }}</label></td>
-                            <td class="vertical-align-middle"><label class="form-check-label text-light">{{
+                            <td class="vertical-align-middle"><label class="form-check-label text-light" v-bind:class="isMonitored(process)">{{
                                     process.numThreads }}</label></td>
-                            <td class="vertical-align-middle"><button class="btn btn-info small"><FontAwesomeIcon :icon="faBook" />&nbsp;Get</button></td>
-                            <td class="vertical-align-middle"><button class="btn btn-info small"><FontAwesomeIcon :icon="faBook" />&nbsp;Get</button></td>
+                            <td class="vertical-align-middle">
+                                <a :href="'/processes/' + encodeURIComponent(process.url) + '/' + process.pid" ><FontAwesomeIcon :icon="faChartSimple" /></a>
+                            </td>
                         </tr>
                     </template>
                 </tbody>
@@ -161,6 +170,10 @@ export default {
 .col {
     padding: 5px;
     margin: 5px;
+}
+
+.row {
+    margin: 0px;
 }
 
 .card {
@@ -189,4 +202,17 @@ table {
     width: 100%;
     margin: 5px;
 }
+.monitored {
+    color: #d8ffab !important
+}
+
+.table-striped-self>tbody>tr:nth-child(odd)>td, 
+.table-striped-self>tbody>tr:nth-child(odd)>th {
+   background-color: rgb(90, 90, 90); 
+ }
+
+ .table-striped-self>tbody>tr:nth-child(even)>td, 
+.table-striped-self>tbody>tr:nth-child(even)>th {
+   background-color: rgb(65, 65, 65); 
+ }
 </style>

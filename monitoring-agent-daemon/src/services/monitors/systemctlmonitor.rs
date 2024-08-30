@@ -9,11 +9,23 @@ use super::Monitor;
 
 const SYSTEMD_ACTIVE_STATUS: &str = "active";
 
-
+/**
+ * Systemctl monitor.
+ * 
+ * This struct represents a systemctl monitor.
+ * 
+ * `name`: The name of the monitor.
+ * `description`: The description of the monitor.
+ * `status`: The status of the monitor.
+ * `database_service`: The database service.
+ * `database_store_level`: The database store level.
+ * `active`: The services to monitor.
+ * 
+ */
 #[derive(Debug, Clone)]
 pub struct SystemctlMonitor {
     /// The name of the monitor.
-    pub name: String,
+    pub name: String,   
     /// The status of the monitor.
     pub status: Arc<Mutex<HashMap<String, MonitorStatus>>>,
     /// The database service.
@@ -37,6 +49,7 @@ impl SystemctlMonitor {
      */
     pub fn new(
         name: &str,
+        description: &Option<String>,
         status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
         database_service: &Arc<Option<DbService>>,
         database_store_level: &DatabaseStoreLevel,
@@ -46,7 +59,7 @@ impl SystemctlMonitor {
         let status_lock = status.lock();
         match status_lock {
             Ok(mut lock) => {
-                lock.insert(name.to_string(), MonitorStatus::new(name.to_string(), Status::Unknown));
+                lock.insert(name.to_string(), MonitorStatus::new(name, description, Status::Unknown));
             }
             Err(err) => {
                 error!("Error creating systemctl monitor: {err:?}");
@@ -188,6 +201,7 @@ mod test {
         let active = vec![  ];
         let systemctl_monitor = SystemctlMonitor::new(
             "test",
+            &None,
             &status,
             &database_service,
             &database_store_level,
@@ -211,6 +225,7 @@ mod test {
         let active = vec![ "ssh".to_string() ];
         let systemctl_monitor = SystemctlMonitor::new(
             "test",
+            &None,
             &status,
             &database_service,
             &database_store_level,
@@ -232,6 +247,7 @@ mod test {
         let active = vec![ "uuidd".to_string() ];
         let systemctl_monitor = SystemctlMonitor::new(
             "test",
+            &None,
             &status,
             &database_service,
             &database_store_level,
@@ -248,6 +264,7 @@ mod test {
             Arc::new(Mutex::new(HashMap::new()));
         let mut monitor = SystemctlMonitor::new(
             "test",
+            &None,
             &status,
             &Arc::new(None),
             &DatabaseStoreLevel::None,

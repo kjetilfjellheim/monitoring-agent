@@ -1,4 +1,6 @@
-use crate::{common::configuration::ServerConfig, services::MonitoringService};
+use std::sync::Arc;
+
+use crate::{common::configuration::ServerConfig, services::{DbService, MonitoringService}};
 
 /**
  * State object for the API modules.
@@ -7,8 +9,12 @@ use crate::{common::configuration::ServerConfig, services::MonitoringService};
 pub struct StateApi {
     /// Monitoring service object.
     pub monitoring_service: MonitoringService,
+    /// Database service object.
+    pub database_service: Arc<Option<DbService>>,    
     /// Server configuration object.
     pub server_config: ServerConfig,
+    /// Monitored application names.
+    pub monitered_application_names: Vec<String>,
 }
 
 impl StateApi {
@@ -16,14 +22,19 @@ impl StateApi {
      * Constructor for `MeminfoApi`
      * 
      * @param `monitoring_service` `MonitoringService` The monitoring service object.
+     * @param `database_service` `Arc<DbService>` The database service object.
+     * @param `server_config` `ServerConfig` The server configuration object.
+     * @param `monitered_application_names` `&Vec<String>` The monitored application names.
      * 
      * @return `StateApi`
      * 
      */
-    pub fn new(monitoring_service: MonitoringService, server_config: ServerConfig) -> StateApi {
+    pub fn new(monitoring_service: MonitoringService, database_service: Arc<Option<DbService>>, server_config: ServerConfig, monitered_application_names: &[String]) -> StateApi {
         StateApi {
             monitoring_service,
+            database_service,
             server_config,
+            monitered_application_names: monitered_application_names.iter().map(|f| f.chars().take(15).collect()).collect(),
         }
     }
 }

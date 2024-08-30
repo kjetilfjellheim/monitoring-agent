@@ -15,7 +15,7 @@ jobs:
         id: get_release
         uses: bruceadams/get-release@v1.3.2
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+           GITHUB_TOKEN: ${{ github.token }}
       - name: Build binary
         run: cargo build --release 
       - name: Strip binary
@@ -39,3 +39,18 @@ jobs:
           asset_path: target/debian/monitoring-agent-daemon_amd64.deb
           asset_name: monitoring-agent-daemon_${{ github.ref_name }}_amd64.deb
           asset_content_type: application/x-deb   
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+      - run: npm ci --prefix ./monitoring-agent-ui/
+      - run: NODE_ENV=production npm run build --prefix ./monitoring-agent-ui/
+      - run: tar --create -f monitoring-agent-ui.tar.gz ./monitoring-agent-ui/dist/*
+      - uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.get_release.outputs.upload_url }}
+          asset_path: ./monitoring-agent-ui.tar.gz
+          asset_name: monitoring-agent-ui.tar.gz
+          asset_content_type: application/gzip

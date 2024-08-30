@@ -2,7 +2,7 @@ use chrono::{DateTime, TimeZone, Utc };
 use monitoring_agent_lib::proc::{process::ProcessState, ProcStat, ProcsCpuinfo, ProcsLoadavg, ProcsMeminfo, ProcsProcess, ProcsStatm};
 use serde::{Deserialize, Serialize};
 
-use crate::common::{MonitorStatus, Status};
+use crate::common::{LoadavgElement, MonitorStatus, Status};
 
 /**
  * The `MeminfoResponse` struct represents the response of the meminfo endpoint.
@@ -234,6 +234,15 @@ pub struct ProcessResponse {
     /// The groups the process belongs to.
     #[serde(skip_serializing_if = "Option::is_none", rename = "groups")]          
     pub groups: Option<Vec<String>>,
+    /// The uids of the process changed to usernames.
+    #[serde(skip_serializing_if = "Option::is_none", rename = "uid")]          
+    pub uids: Option<Vec<String>>,
+    /// The gids of the process changed to group names.
+    #[serde(skip_serializing_if = "Option::is_none", rename = "gid")]          
+    pub gids: Option<Vec<String>>,
+    /// Whether the process is monitored.
+    #[serde(rename = "monitored")]          
+    pub monitored: bool
 }
 
 impl ProcessResponse {
@@ -252,6 +261,7 @@ impl ProcessResponse {
      * Returns a new `ProcessResponse`.
      * 
      */
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         pid: Option<u32>,
         parent_pid: Option<u32>,
@@ -260,15 +270,21 @@ impl ProcessResponse {
         state: Option<ProcessStateResponse>,
         threads: Option<u32>,
         groups: Option<Vec<String>>,
+        monitored: bool,
+        gids: Option<Vec<String>>,
+        uids: Option<Vec<String>>,
     ) -> ProcessResponse {
         ProcessResponse {
-            pid,
-            parent_pid,
-            name,
-            umask,
-            state,
-            threads,
-            groups,
+            pid, 
+            parent_pid, 
+            name, 
+            umask, 
+            state, 
+            threads, 
+            groups, 
+            uids, 
+            gids, 
+            monitored
         }
     }
 
@@ -280,7 +296,7 @@ impl ProcessResponse {
      * Returns a new `ProcessResponse`.
      * 
      */
-    pub fn from_process(proc: &ProcsProcess) -> ProcessResponse {
+    pub fn from_process(proc: &ProcsProcess, monitered_application_names: &[String]) -> ProcessResponse {
         ProcessResponse::new(
             proc.pid,
             proc.parent_pid,
@@ -288,8 +304,29 @@ impl ProcessResponse {
             proc.umask.clone(),
             ProcessStateResponse::from_state(&proc.state),
             proc.threads,
-            proc.groups.clone()
+            proc.groups.clone(),
+            Self::is_monitored(&proc.name, monitered_application_names),
+            proc.gid.clone(),
+            proc.uid.clone(),
         )
+    }
+
+    /**
+     * Check if the process is monitored.
+     * 
+     * `name`: The name of the process.
+     * `monitered_application_names`: The names of the monitored applications.
+     * 
+     * Returns true if the process is monitored, false otherwise.
+     * 
+     */
+    fn is_monitored(name: &Option<String>, monitered_application_names: &[String]) -> bool {  
+        match name {
+            Some(name) => { 
+                monitered_application_names.contains(name)
+            },
+            None => false
+        }
     }
 
    /** 
@@ -300,8 +337,8 @@ impl ProcessResponse {
     * Returns a new `ProcessResponse`.
     * 
     */
-    pub fn from_processes(proc: &[ProcsProcess]) -> Vec<ProcessResponse> {
-            proc.iter().map(ProcessResponse::from_process).collect()
+    pub fn from_processes(proc: &[ProcsProcess], monitered_application_names: &[String]) -> Vec<ProcessResponse> {
+        proc.iter().map(|process| ProcessResponse::from_process(process, monitered_application_names)).collect()
     }
 }
 
@@ -363,6 +400,9 @@ pub struct MonitorResponse {
     /// Name of the monitor.
     #[serde(rename = "name")]
     name: String,
+    /// Description of the monitor.
+    #[serde(skip_serializing_if = "Option::is_none", rename = "description")]
+    description: Option<String>,
     /// The status of the monitor.
     #[serde(rename = "status")]
     status: MonitorStatusResponse,
@@ -390,6 +430,7 @@ impl MonitorResponse {
      */
     pub fn new(
         name: String,
+        description: Option<String>,
         status: MonitorStatusResponse,
         last_successful_time: Option<DateTime<Utc>>,
         last_error: Option<String>,
@@ -397,6 +438,7 @@ impl MonitorResponse {
     ) -> MonitorResponse {
         MonitorResponse {
             name,
+            description,
             status,
             last_successful_time,
             last_error,
@@ -415,6 +457,7 @@ impl MonitorResponse {
     pub fn from_monitor_status_message(monitor_status: &MonitorStatus) -> MonitorResponse {
         MonitorResponse::new(
             monitor_status.name.clone(),
+            monitor_status.description.clone(),
             MonitorStatusResponse::from_status(&monitor_status.status),
             monitor_status.last_successful_time,
             monitor_status.last_error.clone(),
@@ -538,19 +581,22 @@ impl StatmResponse {
  * 
  * `status`: The status of the monitoring agent daemon. Should always be Ok.
  * `system`: The system the monitoring agent daemon is running on. Should always be monitoring-agent-daemon.
+ * `name`: The name of the monitoring agent daemon. From configuration file.
  */
 #[allow(clippy::module_name_repetitions)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PingResponse {
     status: String,
-    system: String
+    system: String,
+    name: String,
 }
 
 impl PingResponse {
-    pub fn new(status: &str, system: &str) -> PingResponse {
+    pub fn new(status: &str, system: &str, name: &str) -> PingResponse {
         PingResponse {
             status: status.to_string(),
-            system: system.to_string()
+            system: system.to_string(),
+            name: name.to_string(),
         }
     }
 }
@@ -691,8 +737,82 @@ impl StatResponse {
 
 }
 
+/**
+ * The `LoadavgHistoricalResponse` struct represents the response of the loadavg historical endpoint.
+ * The loadavg historical endpoint is used to get the historical load average.
+ * 
+ * The loadavg historical endpoint contains the following columns:
+ * * The 1 minute load average.
+ * * The 5 minute load average.
+ * * The 15 minute load average.
+ */
+#[allow(clippy::similar_names)]
+#[allow(clippy::module_name_repetitions)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LoadavgHistoricalResponse {  
+    /// The 1 minute load average.  
+    pub loadavg1min: Vec<HistoryElement>,
+    /// The 5 minute load average.
+    pub loadavg5min: Vec<HistoryElement>,
+    /// The 15 minute load average.
+    pub loadavg15min: Vec<HistoryElement>,
+}
+
+impl LoadavgHistoricalResponse {
+    /**
+     * Create a new `LoadavgHistoricalResponse`.
+     * 
+     * `loadavg1min`: The 1 minute load average.
+     * `loadavg5min`: The 5 minute load average.
+     * `loadavg15min`: The 15 minute load average.
+     * 
+     * Returns a new `LoadavgHistoricalResponse`.
+     * 
+     */
+    #[allow(clippy::similar_names)]
+    pub fn new(
+        loadavg1min: Vec<HistoryElement>,
+        loadavg5min: Vec<HistoryElement>,
+        loadavg15min: Vec<HistoryElement>,
+    ) -> LoadavgHistoricalResponse {
+        LoadavgHistoricalResponse {
+            loadavg1min,
+            loadavg5min,
+            loadavg15min,
+        }
+    }
+
+    pub fn from_loadavg_historical(loadavg: &[LoadavgElement]) -> LoadavgHistoricalResponse {
+        LoadavgHistoricalResponse::new(
+            loadavg.iter().map(|element| HistoryElement {
+                timestamp: element.timestamp,
+                value: element.loadavg1min,
+            }).collect(),
+            loadavg.iter().map(|element| HistoryElement {
+                timestamp: element.timestamp,
+                value: element.loadavg5min,
+            }).collect(),
+            loadavg.iter().map(|element| HistoryElement {
+                timestamp: element.timestamp,
+                value: element.loadavg15min,
+            }).collect(),
+        )
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HistoryElement {
+    #[serde(rename = "timestamp")]
+    pub timestamp: DateTime<Utc>,
+    #[serde(rename = "value")]
+    pub value: f64,
+}
+
+
 #[cfg(test)]
 mod test {
+    use std::vec;
+
     use monitoring_agent_lib::proc::ProcCpuStat;
 
     use super::*;
@@ -786,7 +906,7 @@ mod test {
 
     #[test]
     fn test_process_response_new() {
-        let process_response = ProcessResponse::new(Some(1), Some(2), Some("name".to_string()), Some("umask".to_string()), Some(ProcessStateResponse::Running), Some(3), Some(vec!["group1".to_string(), "group2".to_string()]));
+        let process_response = ProcessResponse::new(Some(1), Some(2), Some("name".to_string()), Some("umask".to_string()), Some(ProcessStateResponse::Running), Some(3), Some(vec!["group1".to_string(), "group2".to_string()]), true, Some(Vec::new()), Some(Vec::new()));
         assert_eq!(process_response.pid, Some(1));
         assert_eq!(process_response.parent_pid, Some(2));
         assert_eq!(process_response.name, Some("name".to_string()));
@@ -806,8 +926,10 @@ mod test {
             state: Some(ProcessState::Running),
             threads: Some(3),
             groups: Some(vec!["group1".to_string(), "group2".to_string()]),
+            uid: Some(Vec::new()),
+            gid: Some(Vec::new()),
         };
-        let process_response = ProcessResponse::from_process(&procs_process);
+        let process_response = ProcessResponse::from_process(&procs_process, &Vec::new());
         assert_eq!(process_response.pid, Some(1));
         assert_eq!(process_response.parent_pid, Some(2));
         assert_eq!(process_response.name, Some("name".to_string()));
@@ -842,8 +964,11 @@ mod test {
             state: Some(ProcessState::Running),
             threads: Some(3),
             groups: Some(vec!["group1".to_string(), "group2".to_string()]),
+            uid: Some(Vec::new()),
+            gid: Some(Vec::new()),
+            
         }];
-        let process_response = ProcessResponse::from_processes(&procs_process);
+        let process_response = ProcessResponse::from_processes(&procs_process, &Vec::new());
         assert_eq!(process_response[0].pid, Some(1));
         assert_eq!(process_response[0].parent_pid, Some(2));
         assert_eq!(process_response[0].name, Some("name".to_string()));
@@ -857,6 +982,7 @@ mod test {
     fn test_from_monitor_status_message() {
         let monitor_status = MonitorStatus {
             name: "name".to_string(),
+            description: None,
             status: Status::Ok,
             last_successful_time: Some(Utc::now()),
             last_error: Some("error".to_string()),
@@ -872,7 +998,7 @@ mod test {
 
     #[test]
     fn test_new_moniorresponse() {
-        let monitor_response = MonitorResponse::new("name".to_string(), MonitorStatusResponse::Ok, Some(Utc::now()), Some("error".to_string()), Some(Utc::now()));
+        let monitor_response = MonitorResponse::new("name".to_string(), None, MonitorStatusResponse::Ok, Some(Utc::now()), Some("error".to_string()), Some(Utc::now()));
         assert_eq!(monitor_response.name, "name".to_string());
         assert_eq!(monitor_response.status, MonitorStatusResponse::Ok);
         assert_eq!(monitor_response.last_successful_time.is_some(), true);
@@ -884,6 +1010,7 @@ mod test {
     fn test_from_monitor_status_messages() {
         let monitor_status = vec![MonitorStatus {
             name: "name".to_string(),
+            description: None,
             status: Status::Ok,
             last_successful_time: Some(Utc::now()),
             last_error: Some("error".to_string()),

@@ -21,14 +21,15 @@ export default {
             const monitors = ref(null);     
             const URL_NAME = 'apiUrls';
             monitors.value = [];
-            let currentUrls = localStorage.getItem(URL_NAME);
-            let urls = JSON.parse(currentUrls);
-            for (let url of urls) {
-                fetch(url + "/monitors/status")
+            let currentServers = localStorage.getItem(URL_NAME);
+            let servers = JSON.parse(currentServers);
+            for (let server of servers) {
+                fetch(server.url + "/monitors/status")
                     .then(response => response.json())
                     .then(json => {
                         json.forEach(element => {
-                            element.url = url;
+                            element.url = server.url;
+                            element.name = server.name;
                         });
                         monitors.value.push(...json)
                     })
@@ -45,7 +46,7 @@ export default {
         <div class="collapse navbar-collapse">
             <ul class="navbar-nav mr-auto mt-2 mt-lg-0">
                 <li class="nav-item">
-                    <button class="btn btn-info small toolbar-item" @click="this.refreshMonitors()"><FontAwesomeIcon :icon="faRefresh" />&nbsp;Refresh</button>
+                    <button class="btn btn-info small toolbar-item" @click="refreshMonitors()"><FontAwesomeIcon :icon="faRefresh" />&nbsp;Refresh</button>
                 </li>                                            
                 <li class="nav-item">
                     <input class="form-check-input toolbar-item" type="checkbox" id="showOErrorStatus"
@@ -77,7 +78,6 @@ export default {
                                             d="M10.854 5.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7.5 7.793l2.646-2.647a.5.5 0 0 1 .708 0" />
                                     </svg>
                                     {{ monitor.name }}
-
                                 </h5>
                             </div>
                             <div v-else="monitor.status === 'Ok'" class="card-header bg-danger">
@@ -94,8 +94,8 @@ export default {
                             </div>
                             <div class="card-body">
                                 <dl class="row">
-                                    <dt class="col-sm-5 small bg-light no-margin">Current status</dt>
-                                    <dd class="col-sm-7 small text-truncate bg-light no-margin">{{ monitor.status }}
+                                    <dt class="col-sm-5 small no-margin">Current status</dt>
+                                    <dd class="col-sm-7 small text-truncate no-margin">{{ monitor.status }}
                                     </dd>
                                     <dt class="col-sm-5 small no-margin">Server</dt>
                                     <dd class="col-sm-7 small text-truncate no-margin">{{ monitor.url }}</dd>
@@ -115,6 +115,12 @@ export default {
                                         v-if="monitor.lastError != null" :key="monitor._id" data-bs-toggle="tooltip"
                                         data-bs-placement="top" v-bind:title="monitor.lastError">{{ monitor.lastError }}
                                     </dd>
+                                    <dt class="col-sm-12 small no-margin" v-if="monitor.description">Description
+                                    </dt>                                    
+                                    <dd class="col-sm-12 small no-margin xtext-truncate"
+                                        v-if="monitor.description != null" :key="monitor._id" data-bs-toggle="tooltip"
+                                        data-bs-placement="top" v-bind:title="monitor.description">{{ monitor.description }}
+                                    </dd>                                    
                                 </dl>
                             </div>
                         </div>
@@ -136,6 +142,10 @@ export default {
 .card {
     height: 100%;
     margin: 1px;
+}
+
+.card-body {
+    background-color: #cfc3c3;
 }
 
 .no-margin {

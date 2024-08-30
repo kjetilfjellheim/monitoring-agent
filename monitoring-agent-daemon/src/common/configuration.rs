@@ -122,6 +122,9 @@ pub struct Monitor {
     /// The name of the monitor.
     #[serde(rename = "name")]
     pub name: String,
+    /// The description of the monitor.
+    #[serde(rename = "description", skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
     /// The schedule of the monitor.
     #[serde(rename = "schedule")]
     pub schedule: String,

@@ -24,6 +24,7 @@ use crate::services::DbService;
  * This struct represents an HTTP monitor.
  *
  * name: The name of the monitor.
+ * description: The description of the monitor.
  * url: The URL to monitor.
  * method: The HTTP method to use.
  * body: The body of the request.
@@ -33,7 +34,7 @@ use crate::services::DbService;
 #[derive(Debug, Clone)]
 pub struct HttpMonitor {
     /// The name of the monitor.
-    pub name: String,
+    pub name: String,   
     /// The URL to monitor.
     pub url: String,
     /// The HTTP method to use.
@@ -80,6 +81,7 @@ impl HttpMonitor {
         body: &Option<String>,
         headers: &Option<HashMap<String, String>>,
         name: &str,
+        description: &Option<String>,
         use_builtin_root_certs: bool,
         accept_invalid_certs: bool,
         tls_info: bool,
@@ -140,7 +142,7 @@ impl HttpMonitor {
         let monitor_lock = status.lock();
         match monitor_lock {
             Ok(mut lock) => {
-                lock.insert(name.to_string(), MonitorStatus::new(name.to_string(), Status::Unknown));
+                lock.insert(name.to_string(), MonitorStatus::new(name, description, Status::Unknown));
             }
             Err(err) => {
                 error!("Error creating HTTP monitor: {:?}", err);
@@ -495,6 +497,7 @@ mod test {
             &None,
             &None,
             "localhost",
+            &None,
             true,
             true,
             false,
@@ -539,6 +542,7 @@ mod test {
             &None,
             &None,
             "Google",
+            &None,
             true,
             true,
             false,
@@ -567,6 +571,7 @@ mod test {
             &None,
             &None,
             "Google",
+            &None,
             true,
             true,
             false,

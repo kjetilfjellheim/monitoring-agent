@@ -1,3 +1,4 @@
+use chrono::NaiveDateTime;
 use monitoring_agent_lib::proc::ProcsStatm;
 use monitoring_agent_lib::proc::{ProcsLoadavg, ProcsMeminfo};
 use r2d2::Pool;
@@ -12,9 +13,10 @@ use bb8_postgres::tokio_postgres::Config;
 use bb8_postgres::PostgresConnectionManager;
 use rust_decimal::Decimal;
 
+use crate::api::HistoricalParams;
 use crate::common::configuration::DatabaseConfig;
 use crate::common::configuration::DatabaseType;
-use crate::common::Status;
+use crate::common::{LoadavgElement, Status};
 use crate::common::ApplicationError;
 
 /**
@@ -177,6 +179,21 @@ impl DbService {
         match self {
             DbService::MariaDb(service) => service.store_statm_values(app_name, pid, statm),
             DbService::PostgresDb(service) => service.store_statm_values(app_name, pid, statm).await,
+        }
+    }
+
+    /**
+     * Get the historical load average.
+     * 
+     * Returns: The historical load average.
+     * 
+     * Errors:
+     * - If there is an error getting the historical load average.
+     */
+    pub fn get_historical_loadavg(&self, historical_params: HistoricalParams) -> Result<Vec<LoadavgElement>, ApplicationError> {
+        match self {
+            DbService::MariaDb(service) => service.get_historical_loadavg(historical_params),
+            DbService::PostgresDb(_) => Err(ApplicationError::new("Not implemented")),
         }
     }
 }
@@ -342,6 +359,18 @@ impl MariaDbService {
         Ok(result)
     }
 
+    /**
+     * Store the statm values in the database.
+     * 
+     * `app_name`: The application name.
+     * `pid`: The process id.
+     * `statm`: The statm values.
+     * 
+     * Returns: Ok if the statm values were stored successfully.
+     * 
+     * Errors:
+     * - If there is an error storing the statm values.
+     */
     #[tracing::instrument(level = "debug")]
     fn store_statm_values(&self, app_name: &str, pid: &u32, statm: &ProcsStatm) -> Result<(), ApplicationError> {
         let mut conn = self.pool.get().map_err(|err| ApplicationError::new(&err.to_string()))?;
@@ -364,9 +393,60 @@ impl MariaDbService {
         Ok(())
     }
 
+    /**
+     * Get the historical load average.
+     * 
+     * Returns: The historical load average.
+     * 
+     * Errors:
+     * - If there is an error getting the historical load average.
+     */
+    #[tracing::instrument(level = "debug")]
+     pub fn get_historical_loadavg(&self, historical_params: HistoricalParams) -> Result<Vec<LoadavgElement>, ApplicationError> {
+        let mut conn = self.pool.get().map_err(|err| ApplicationError::new(&err.to_string()))?;
+        let mut tx = conn.start_transaction(TxOpts::default()).map_err(|err| ApplicationError::new(&err.to_string()))?;
+        /*
+         * Init parameters 
+         */
+        let params = params! {
+            "server_name" => historical_params.server,
+            "from_datetime" => historical_params.from_datetime.format("%Y-%m-%d %H:%M:%S").to_string(),
+            "to_datetime" => historical_params.to_datetime.format("%Y-%m-%d %H:%M:%S").to_string(), 
+            "split" => historical_params.split * 60,           
+        };
+        /*
+         * Execute query
+         */
+        let query_result: Vec<(String, f64, f64, f64)> = tx
+            .exec_map("SELECT to_char(log_time,'YYYY-MM-DD HH24:MI:SS'), avg(loadavg1min), avg(loadavg5min), avg(loadavg15min) FROM loadavg WHERE server_name = :server_name and log_time>=:from_datetime and log_time<=:to_datetime GROUP BY UNIX_TIMESTAMP(log_time) DIV :split", params, |(log_time, loadavg1min, loadavg5min, loadavg15min) : (String, f64, f64, f64)| {
+                (log_time, loadavg1min, loadavg5min, loadavg15min)
+            }).map_err(|err| ApplicationError::new(&err.to_string()))?;                   
+        /*
+         * Map result
+         */
+        let mut loadavg_elements: Vec<LoadavgElement> = Vec::new();
+        for (log_time, loadavg1min, loadavg5min, loadavg15min) in query_result {
+            let log_time = NaiveDateTime::parse_from_str(&log_time, "%Y-%m-%d %H:%M:%S");
+            let timestamp = match log_time {
+                Ok(log_time) => log_time.and_utc(),
+                Err(err) => Err(ApplicationError::new(err.to_string().as_str()))?,
+            };
+            loadavg_elements.push(LoadavgElement::new(timestamp, loadavg1min, loadavg5min, loadavg15min));
+        }
+        tx.commit().map_err(|err| ApplicationError::new(&err.to_string()))?;       
+        Ok(loadavg_elements)         
+    }
+
 }
 
-
+/**
+ * `Postgres` Service.
+ * 
+ * This struct represents a `Postgres` service. It is used to interact with the `Postgres` database.
+ * 
+ * `pool`: The database connection pool.
+ * `server_name`: The server name.
+ */
 #[derive(Debug)]
 pub struct PostgresDbService {
     /// The database connection pool.

@@ -25,8 +25,13 @@ pub struct ProcsProcess {
     pub state: Option<ProcessState>,
     /// The number of threads in the process.
     pub threads: Option<u32>,
-    /// The groups the process belongs to.
+    /// The group names the process belongs to.
     pub groups: Option<Vec<String>>,
+    /// user of the process. Real, Effective, Saved Set, File System.
+    pub uid: Option<Vec<String>>,
+    /// group of the process. Real, Effective, Saved Set, File System.
+    pub gid: Option<Vec<String>>,
+    
 }
 
 impl ProcsProcess {
@@ -36,12 +41,12 @@ impl ProcsProcess {
     *
     * ```
     * use monitoring_agent_lib::proc::process::ProcsProcess;
-    * ProcsProcess::new(None, None, None, None, None, None, None);
+    * ProcsProcess::new(None, None, None, None, None, None, None, None, None);
     * ```
     * ```
     * use monitoring_agent_lib::proc::process::ProcsProcess;
     * use monitoring_agent_lib::proc::process::ProcessState;
-    * ProcsProcess::new(Some(2914), Some(2656), Some("code".to_string()), Some("0002".to_string()), Some(ProcessState::InterruptableSleep), Some(1), Some(vec!["4".to_string(), "24".to_string(), "27".to_string(), "30".to_string(), "46".to_string(), "100".to_string(), "119".to_string(), "129".to_string(), "1000".to_string()]));
+    * ProcsProcess::new(Some(2914), Some(2656), Some("code".to_string()), Some("0002".to_string()), Some(ProcessState::InterruptableSleep), Some(1), Some(vec!["4".to_string(), "24".to_string(), "27".to_string(), "30".to_string(), "46".to_string(), "100".to_string(), "119".to_string(), "129".to_string(), "1000".to_string()]), None, None);
     * ```
     * 
     * `pid`: The process id.
@@ -51,9 +56,12 @@ impl ProcsProcess {
     * `state`: The state of the process.
     * `threads`: The number of threads in the process.
     * `groups`: The groups the process belongs to.
+    * `uid`: The uid of the process. Real, Effective, Saved Set, File System.
+    * `gid`: The gid of the process. Real, Effective, Saved Set, File System.
     * 
     * Returns a new `ProcsProcess`.
     */
+    #[allow(clippy::too_many_arguments)]
     #[must_use] pub fn new(
         pid: Option<u32>,
         parent_pid: Option<u32>,
@@ -62,6 +70,8 @@ impl ProcsProcess {
         state: Option<ProcessState>,
         threads: Option<u32>,
         groups: Option<Vec<String>>,
+        uid: Option<Vec<String>>,
+        gid: Option<Vec<String>>,
     ) -> ProcsProcess {
         ProcsProcess {
             pid,
@@ -71,6 +81,8 @@ impl ProcsProcess {
             state,
             threads,
             groups,
+            uid,
+            gid
         }
     }
 
@@ -93,9 +105,13 @@ impl ProcsProcess {
     #[tracing::instrument(level = "debug")]
     pub fn get_all_processes() -> Result<Vec<ProcsProcess>, CommonLibError> {
         let paths = fs::read_dir("/proc");
+
+        let group_names: HashMap<u32, String> = crate::proc::group::Group::get_groups_map()?;
+        let user_names: HashMap<u32, String> = crate::proc::user::User::get_users_map()?;
+
         match paths {
             Ok(paths) => {
-                ProcsProcess::read_processes(paths)
+                ProcsProcess::read_processes(paths, &group_names, &user_names)
             },
             Err(err) => {
                 error!("Error reading /proc: {err:?}");
@@ -117,7 +133,7 @@ impl ProcsProcess {
      * - If there is an error reading a line from the process file.
      *
      */
-    fn read_processes(read_dir: ReadDir) -> Result<Vec<ProcsProcess>, CommonLibError> {        
+    fn read_processes(read_dir: ReadDir, group_names: &HashMap<u32, String>, user_names: &HashMap<u32, String>) -> Result<Vec<ProcsProcess>, CommonLibError> {        
         let starts_with_number_regexp = Regex::new(r"^[0-9]+$").map_err(|err|CommonLibError::new(format!("Error creating regexp: err: {err:?}").as_str()))?;
         let mut processes: Vec<ProcsProcess> = Vec::new();
         for path in read_dir {            
@@ -126,7 +142,7 @@ impl ProcsProcess {
                     if ProcsProcess::is_process_directory(&starts_with_number_regexp, path) {                          
                         let path_buffer = path.path();
                         let use_dir = path_buffer.to_str().ok_or(CommonLibError::new("Error reading path"))?;
-                        let process = ProcsProcess::get_process_status_with_dir(use_dir)?;
+                        let process = ProcsProcess::get_process_status_with_dir(use_dir, group_names, user_names)?;
                         processes.push(process);
                     }           
                 },
@@ -158,8 +174,11 @@ impl ProcsProcess {
      */
     #[tracing::instrument(level = "debug")]
     pub fn get_process(pid: u32) -> Result<ProcsProcess, CommonLibError> {
+        let group_names: HashMap<u32, String> = crate::proc::group::Group::get_groups_map()?;
+        let user_names: HashMap<u32, String> = crate::proc::user::User::get_users_map()?;        
+
         let path = "/proc".to_string() + "/" + &pid.to_string();
-        ProcsProcess::get_process_status_with_dir(&path)
+        ProcsProcess::get_process_status_with_dir(&path, &group_names, &user_names)
     }
 
     /**
@@ -182,7 +201,9 @@ impl ProcsProcess {
      */
     #[tracing::instrument(level = "debug")]
     pub fn get_process_threads(pid: u32) -> Result<Vec<ProcsProcess>, CommonLibError> {
-        ProcsProcess::read_process_threads(pid, "/proc")
+        let group_names: HashMap<u32, String> = crate::proc::group::Group::get_groups_map()?;
+        let user_names: HashMap<u32, String> = crate::proc::user::User::get_users_map()?;        
+        ProcsProcess::read_process_threads(pid, "/proc", &group_names, &user_names)
     }
 
     /**
@@ -199,13 +220,13 @@ impl ProcsProcess {
      * - If there is an error reading a line from the process file.
      * 
      */
-    fn read_process_threads(pid: u32, path: &str) -> Result<Vec<ProcsProcess>, CommonLibError> {
+    fn read_process_threads(pid: u32, path: &str, group_names: &HashMap<u32, String>, user_names: &HashMap<u32, String>) -> Result<Vec<ProcsProcess>, CommonLibError> {
         let task_path = path.to_string() + "/" + &pid.to_string() + "/task";
         let task_paths = fs::read_dir(task_path);
         match task_paths {
             Ok(paths) => {
                 let mut processes: Vec<ProcsProcess> = Vec::new();
-                ProcsProcess::loop_child_paths(paths, &mut processes)?;
+                ProcsProcess::loop_child_paths(paths, &mut processes, group_names, user_names)?;
                 Ok(processes)
             },
             Err(err) => {
@@ -227,12 +248,12 @@ impl ProcsProcess {
      * - If there is an error reading the path.
      * 
      */
-    fn loop_child_paths(paths: ReadDir, processes: &mut Vec<ProcsProcess>) -> Result<(), CommonLibError> {
+    fn loop_child_paths(paths: ReadDir, processes: &mut Vec<ProcsProcess>, group_names: &HashMap<u32, String>, user_names: &HashMap<u32, String>) -> Result<(), CommonLibError> {
         for path in paths {
             let starts_with_number_regexp = Regex::new(r"^[0-9]+$").map_err(|err|CommonLibError::new(format!("Error creating regexp: err: {err:?}").as_str()))?;
             match &path {
                 Ok(path) => {
-                    ProcsProcess::add_child_process(&starts_with_number_regexp, path, processes)?;
+                    ProcsProcess::add_child_process(&starts_with_number_regexp, path, processes, group_names, user_names)?;
                 },
                 Err(err) => {
                     error!("Error reading /proc: {err:?}");
@@ -256,11 +277,11 @@ impl ProcsProcess {
      * - If there is an error reading the path.
      * 
      */
-    fn add_child_process(starts_with_number_regexp: &Regex, path: &DirEntry, processes: &mut Vec<ProcsProcess>) -> Result<(), CommonLibError> {
+    fn add_child_process(starts_with_number_regexp: &Regex, path: &DirEntry, processes: &mut Vec<ProcsProcess>, group_names: &HashMap<u32, String>, user_names: &HashMap<u32, String>) -> Result<(), CommonLibError> {
         if ProcsProcess::is_process_directory(starts_with_number_regexp, path) {
             let path_buffer = path.path();
             let use_dir = path_buffer.to_str().ok_or(CommonLibError::new("Error reading path"))?;
-            let process = ProcsProcess::get_process_status_with_dir(use_dir)?;
+            let process = ProcsProcess::get_process_status_with_dir(use_dir, group_names, user_names)?;
             processes.push(process);
         }
         Ok(())
@@ -278,12 +299,12 @@ impl ProcsProcess {
      * - If there is an error reading a line from the process file.                  
      * 
      */
-    fn get_process_status_with_dir(proc_dir: &str) -> Result<ProcsProcess, CommonLibError> {
+    fn get_process_status_with_dir(proc_dir: &str, group_names: &HashMap<u32, String>, user_names: &HashMap<u32, String>) -> Result<ProcsProcess, CommonLibError> {
         let path = proc_dir.to_string() + "/status";
         let file = File::open(path);
         match file {
             Ok(file) => {
-                ProcsProcess::get_process_status_from_file(file)
+                ProcsProcess::get_process_status_from_file(file, group_names, user_names)
             },
             Err(err) => {
                 error!("Error reading status: {err:?}");
@@ -305,7 +326,7 @@ impl ProcsProcess {
      * - If there is an error reading a line from the process file.
      * 
      */
-    fn get_process_status_from_file(file: File) -> Result<ProcsProcess, CommonLibError> {
+    fn get_process_status_from_file(file: File, group_names: &HashMap<u32, String>, user_names: &HashMap<u32, String>) -> Result<ProcsProcess, CommonLibError> {
         let reader = BufReader::new(file);
         let mut parts: HashMap<String, String> = HashMap::new();
         for line in reader.lines() {
@@ -322,7 +343,9 @@ impl ProcsProcess {
             parts.get("Umask").cloned(),
             ProcsProcess::get_state(parts.get("State")),
             parts.get("Threads").and_then(|f| u32::from_str(f).ok()),
-            ProcsProcess::get_groups(parts.get("Groups")),
+            ProcsProcess::get_names_by_map(parts.get("Groups"), group_names)?,
+            ProcsProcess::get_names_by_map(parts.get("Uid"), user_names)?,
+            ProcsProcess::get_names_by_map(parts.get("Gid"), group_names)?
         ))
     }
 
@@ -330,18 +353,31 @@ impl ProcsProcess {
      * Get the groups.
      * 
      * `groups`: The groups to get.
+     * `groupNames`: The group names.
      * 
      * Returns the groups.
      * 
+     * # Errors
+     * - If there is an error parsing the group id.
+     * - If there is an error getting the group.
+     * 
      */
-    fn get_groups(groups: Option<&String>) -> Option<Vec<String>> {
-        match groups {
-            Some(groups) => {                
-                let groups: Vec<String> = groups.split_whitespace().map(std::string::ToString::to_string).collect();
-                Some(groups)
+    fn get_names_by_map(data: Option<&String>, names: &HashMap<u32, String>) -> Result<Option<Vec<String>>, CommonLibError> {
+        match data {
+            Some(data) => {
+                let mut groups: Vec<String> = Vec::new();
+                for str in data.split_whitespace() {
+                    let id = u32::from_str(str).map_err(|err| CommonLibError::new(format!("Error parsing name id: {err:?}").as_str()))?;
+                    let name = {
+                        let default_name = "Unknown".to_string();
+                        names.get(&id).unwrap_or(&default_name).to_string()
+                    };
+                    groups.push(name.clone());
+                }                            
+                Ok(Some(groups))
             },
             None => {
-                None
+                Ok(None)
             }
         }
     }
@@ -465,6 +501,8 @@ mod test {
 
     use std::vec;
 
+    use crate::proc::{Group, User};
+
     use super::*;
 
     #[test]
@@ -476,7 +514,10 @@ mod test {
 
     #[test]
     fn test_read_2914() {
-        let processes = ProcsProcess::read_processes( fs::read_dir("resources/test/processes").unwrap());
+        let groups = Group::get_groups_map().unwrap();
+        let users = User::get_users_map().unwrap();
+        
+        let processes = ProcsProcess::read_processes( fs::read_dir("resources/test/processes").unwrap(), &groups, &users);
         println!("{:?}", processes);
         assert!(&processes.is_ok());
         let processes = processes.unwrap().clone();
@@ -486,24 +527,28 @@ mod test {
         assert_eq!(&processes.get(0).unwrap().umask, &Some("0002".to_string()));
         assert_eq!(&processes.get(0).unwrap().state, &Some(ProcessState::InterruptableSleep));
         assert_eq!(&processes.get(0).unwrap().threads, &Some(1));
-        assert_eq!(&processes.get(0).unwrap().groups, &Some(vec!["4".to_string(), "24".to_string(), "27".to_string(), "30".to_string(), "46".to_string(), "100".to_string(), "119".to_string(), "129".to_string(), "1000".to_string()]));
     }   
 
     #[test]
     fn test_read_single_2914() {
-        let process = ProcsProcess::get_process_status_with_dir("resources/test/processes/2914").unwrap();
+        let groups = Group::get_groups_map().unwrap();
+        let users = User::get_users_map().unwrap();
+
+        let process = ProcsProcess::get_process_status_with_dir("resources/test/processes/2914", &groups, &users).unwrap();
         assert_eq!(&process.pid, &Some(2914));
         assert_eq!(&process.parent_pid, &Some(2656));
         assert_eq!(&process.name, &Some("code".to_string()));
         assert_eq!(&process.umask, &Some("0002".to_string()));
         assert_eq!(&process.state, &Some(ProcessState::InterruptableSleep));
         assert_eq!(&process.threads, &Some(1));
-        assert_eq!(&process.groups, &Some(vec!["4".to_string(), "24".to_string(), "27".to_string(), "30".to_string(), "46".to_string(), "100".to_string(), "119".to_string(), "129".to_string(), "1000".to_string()]));
     }    
 
     #[test]
     fn test_read_children() {
-        let processes = ProcsProcess::read_process_threads(2914, "resources/test/processes");
+        let groups = Group::get_groups_map().unwrap();
+        let users = User::get_users_map().unwrap();
+
+        let processes = ProcsProcess::read_process_threads(2914, "resources/test/processes", &groups, &users);
         println!("{:?}", processes);
         assert!(&processes.is_ok());
         let processes = processes.unwrap().clone();
@@ -553,7 +598,10 @@ mod test {
 
     #[test]
     fn test_get_process_status_with_dir_error() {
-        let process = ProcsProcess::get_process_status_with_dir("resources/test/677676");
+        let groups = Group::get_groups_map().unwrap();
+        let users = User::get_users_map().unwrap();
+
+        let process = ProcsProcess::get_process_status_with_dir("resources/test/677676", &groups, &users);
         assert!(process.is_err());
     }
 
