@@ -581,19 +581,22 @@ impl StatmResponse {
  * 
  * `status`: The status of the monitoring agent daemon. Should always be Ok.
  * `system`: The system the monitoring agent daemon is running on. Should always be monitoring-agent-daemon.
+ * `name`: The name of the monitoring agent daemon. From configuration file.
  */
 #[allow(clippy::module_name_repetitions)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PingResponse {
     status: String,
-    system: String
+    system: String,
+    name: String,
 }
 
 impl PingResponse {
-    pub fn new(status: &str, system: &str) -> PingResponse {
+    pub fn new(status: &str, system: &str, name: &str) -> PingResponse {
         PingResponse {
             status: status.to_string(),
-            system: system.to_string()
+            system: system.to_string(),
+            name: name.to_string(),
         }
     }
 }
