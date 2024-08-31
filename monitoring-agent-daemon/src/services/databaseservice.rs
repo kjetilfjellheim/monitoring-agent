@@ -409,7 +409,7 @@ impl MariaDbService {
          * Init parameters 
          */
         let params = params! {
-            "server_name" => historical_params.server,
+            "server_name" => self.server_name.to_string(),
             "from_datetime" => historical_params.from_datetime.format("%Y-%m-%d %H:%M:%S").to_string(),
             "to_datetime" => historical_params.to_datetime.format("%Y-%m-%d %H:%M:%S").to_string(), 
             "split" => historical_params.split * 60,           
