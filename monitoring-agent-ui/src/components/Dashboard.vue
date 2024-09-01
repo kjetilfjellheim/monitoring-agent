@@ -42,7 +42,10 @@ export default {
           point: {
             radius: 0
           }
-        }
+        },
+        tooltip: {
+          usePointStyle: true,
+        }        
       },
       freeMemHistOptions: {
         responsive: true,
@@ -120,7 +123,7 @@ export default {
             datasets: [{
               backgroundColor: 'rgba(255,0,0,1)',
               borderColor: 'rgba(255,0,0,1)',
-              label: 'Load Average last 24 hours',
+              label: 'Load Average',
               data: values,
               fill: false
             }]
@@ -143,7 +146,7 @@ export default {
             datasets: [{
               backgroundColor: 'rgba(255,0,0,1)',
               borderColor: 'rgba(255,0,0,1)',
-              label: 'Free memory last 24 hours',
+              label: 'Free memory',
               data: values,
               fill: false
             }]
@@ -211,97 +214,76 @@ export default {
           </h2>
           <div v-bind:id="server?.id" class="accordion-collapse collapse bg-dark" data-bs-parent="#accordion">
             <div class="accordion-body">
-              <div class="jumbotron">
-                <h5 class="text-info title" v-if="server?.cpuinfo?.length > 0">{{ server?.cpuinfo[0]?.modelName }}</h5>
+              <div class="jumbotron">              
                 <div class="row">
-                  <div class="col col-sm-5 col-md-4 col-lg-3">
+                  <div class="col col-sm-12 col-md-12 col-lg-12">
                     <div class="card">
-                      <div class="card-header bg-success">
-                        <h5 class="card-title" data-bs-toggle="tooltip" data-bs-placement="bottom"
-                          v-bind:title="tooltip_load_average">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                            class="bi bi-info-circle" viewBox="0 0 16 16">
-                            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16" />
-                            <path
-                              d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0" />
-                          </svg>
-                          Load Average
-                        </h5>
-                      </div>
                       <div class="card-body">
-                        <dl class="row">
-                          <dt class="col-sm-6 small no-margin">1 min</dt>
-                          <dd class="col-sm-6 small text-truncate no-margin">{{ server?.loadavg?.loadAvg1Min }}</dd>
-                        </dl>
-                        <dl class="row">
-                          <dt class="col-sm-6 small no-margin">5 min</dt>
-                          <dd class="col-sm-6 small text-truncate no-margin">{{ server?.loadavg?.loadAvg5Min }}</dd>
-                        </dl>
-                        <dl class="row">
-                          <dt class="col-sm-6 small no-margin">15 min</dt>
-                          <dd class="col-sm-6 small text-truncate no-margin">{{ server?.loadavg?.loadAvg15Min }}</dd>
-                        </dl>
+                        <div class="container-fluid">
+                          <table>
+                            <thead>
+                              <th scope="col" colspan="2" data-bs-toggle="tooltip" data-bs-placement="bottom" v-bind:title="tooltip_load_average">
+                                Load Average
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-info-circle" viewBox="0 0 16 16">
+                                  <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16" />
+                                  <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0" />
+                                </svg>                                
+                              </th>
+                              <th scope="col" colspan="2" data-bs-toggle="tooltip" data-bs-placement="bottom" v-bind:title="tooltip_meminfo">
+                                Memory
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-info-circle" viewBox="0 0 16 16">
+                                  <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16" />
+                                  <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0" />
+                                </svg>                                
+                              </th>
+                              <th scope="col" colspan="2" data-bs-toggle="tooltip" data-bs-placement="bottom" v-bind:title="tooltip_swap">
+                                Swap
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-info-circle" viewBox="0 0 16 16">
+                                  <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16" />
+                                  <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0" />
+                                </svg>                                                                
+                              </th>   
+                              <th scope="col" colspan="2">
+                                Cpu                                                             
+                              </th>                                                           
+                            </thead>
+                            <tbody>
+                              <tr>
+                                <td>1 min</td>
+                                <td>{{ server?.loadavg?.loadAvg1Min }}</td>
+                                <td>Total</td>
+                                <td>{{ server?.meminfo?.totalMem }} bytes</td> 
+                                <td>Total</td>   
+                                <td>{{ server?.meminfo?.swapTotal }} bytes</td>
+                                <td>Model name</td>
+                                <td v-if="server?.cpuinfo?.length > 0">{{ server?.cpuinfo[0]?.modelName }}</td>
+                              </tr>
+                              <tr>
+                                <td>5 min</td>
+                                <td>{{ server?.loadavg?.loadAvg5Min }}</td>
+                                <td>Free</td>
+                                <td>{{ server?.meminfo?.freeMem }} bytes</td>    
+                                <td>Free</td>
+                                <td>{{ server?.meminfo?.swapFree }} bytes</td> 
+                                <td>Vendor id</td>
+                                <td v-if="server?.cpuinfo?.length > 0">{{ server?.cpuinfo[0]?.vendorId }}</td>                                                            
+                              </tr>
+                              <tr>
+                                <td>15 min</td>
+                                <td>{{ server?.loadavg?.loadAvg15Min }}</td>
+                                <td>Available</td>
+                                <td>{{ server?.meminfo?.availableMem }} bytes</td>                                
+                                <td></td>
+                                <td></td>
+                                <td>Cores</td>
+                                <td v-if="server?.cpuinfo[0]?.cpuCores">{{ server?.cpuinfo[0]?.cpuCores }}</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>                        
                       </div>
                     </div>
-                  </div>
-                  <div class="col col-sm-5 col-md-4 col-lg-3">
-                    <div class="card">
-                      <div class="card-header bg-success" data-bs-toggle="tooltip" data-bs-placement="bottom"
-                        v-bind:title="tooltip_meminfo">
-                        <h5 class="card-title">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                            class="bi bi-info-circle" viewBox="0 0 16 16">
-                            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16" />
-                            <path
-                              d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0" />
-                          </svg>
-                          Memory use
-                        </h5>
-                      </div>
-                      <div class="card-body">
-                        <dl class="row">
-                          <dt class="col-sm-6 small no-margin">Total</dt>
-                          <dd class="col-sm-6 small text-truncate no-margin">{{ server?.meminfo?.totalMem }} bytes</dd>
-                        </dl>
-                        <dl class="row">
-                          <dt class="col-sm-6 small no-margin">Free</dt>
-                          <dd class="col-sm-6 small text-truncate no-margin">{{ server?.meminfo?.freeMem }} bytes</dd>
-                        </dl>
-                        <dl class="row">
-                          <dt class="col-sm-6 small no-margin">Available</dt>
-                          <dd class="col-sm-6 small text-truncate no-margin">{{ server?.meminfo?.availableMem }} bytes
-                          </dd>
-                        </dl>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="col col-sm-5 col-md-4 col-lg-3">
-                    <div class="card">
-                      <div class="card-header bg-success" data-bs-toggle="tooltip" data-bs-placement="bottom"
-                        v-bind:title="tooltip_swap">
-                        <h5 class="card-title">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                            class="bi bi-info-circle" viewBox="0 0 16 16">
-                            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16" />
-                            <path
-                              d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0" />
-                          </svg>
-                          Swap use
-                        </h5>
-                      </div>
-                      <div class="card-body">
-                        <dl class="row">
-                          <dt class="col-sm-6 small no-margin">Total</dt>
-                          <dd class="col-sm-6 small text-truncate no-margin">{{ server?.meminfo?.swapTotal }} bytes
-                          </dd>
-                        </dl>
-                        <dl class="row">
-                          <dt class="col-sm-6 small no-margin">Free</dt>
-                          <dd class="col-sm-6 small text-truncate no-margin">{{ server?.meminfo?.swapFree }} bytes</dd>
-                        </dl>
-                      </div>
-                    </div>
-                  </div>
+                  </div>                  
                   <div class="col col-sm-12 col-md-12 col-lg-12">
                     <div class="card-body chart" v-if="server?.loadAvgHistData">
                       <Line :data="server?.loadAvgHistData" :options="loadAvgHistOptions" />
@@ -313,20 +295,16 @@ export default {
                     </div>
                   </div>
                   <div class="col col-12">
-                    <div class="card">
-                      <div class="card-header bg-success" data-bs-toggle="tooltip" data-bs-placement="bottom"
-                        v-bind:title="tooltip_statistics">
-                        <h5 class="card-title">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                            class="bi bi-info-circle" viewBox="0 0 16 16">
-                            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16" />
-                            <path
-                              d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0" />
-                          </svg>
-                          Statistics
-                        </h5>
-                      </div>
+                    <div class="card">                      
                       <div class="card-body">
+                        <dl class="row">                      
+                          <dt class="col-sm-2 small no-margin" data-bs-toggle="tooltip" data-bs-placement="bottom" v-bind:title="tooltip_statistics">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-info-circle" viewBox="0 0 16 16">
+                              <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16" />
+                              <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0" />
+                            </svg>                            
+                          </dt>
+                        </dl>
                         <dl class="row">
                           <dt class="col-sm-2 small no-margin">Number of processes</dt>
                           <dd class="col-sm-2 small text-truncate no-margin">{{ server?.stat?.numProcesses }}</dd>
@@ -403,10 +381,14 @@ export default {
 
 td {
   background-color: #cfc3c3;
+  padding-left: 30px;
+  padding-right: 5px;
 }
 
 th {
   background-color: #cfc3c3;
+  padding-left: 30px;
+  padding-right: 5px;
 }
 
 .no-margin {
