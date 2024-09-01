@@ -160,6 +160,12 @@ pub enum DatabaseStoreLevel {
  */
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 pub struct MonitoringConfig {
+    /// Number of tokio threads.
+    #[serde(rename = "tokioThreads", default = "default_tokio_threads")]
+    pub tokio_threads: usize,
+    /// The tokio stack size in kb.
+    #[serde(rename = "tokioStackSize", default = "default_tokio_stack_size")]
+    pub tokio_stack_size: usize,
     /// The server configuration. Example ip and port where web services are made available.
     #[serde(rename = "server", default = "default_server")]
     pub server: ServerConfig,
@@ -246,6 +252,8 @@ pub struct ServerConfig {
     pub access_control_max_age: Option<u32>,
     #[serde(rename = "tlsConfig", skip_serializing_if = "Option::is_none", default = "default_none")]
     pub tls_config: Option<TlsConfig>,
+    #[serde(rename = "workers", default = "default_server_workers")]
+    pub workers: usize
 }
 
 /**
@@ -300,6 +308,9 @@ pub struct DatabaseConfig {
     /// The maximum connections in pool.
     #[serde(rename = "maxConnections")]
     pub max_connections: u32,    
+    /// The maximum lifetime in seconds.
+    #[serde(rename = "maxLifetime", default = "default_max_lifetime")]
+    pub max_lifetime: u32,        
 }
 
 /**
@@ -319,7 +330,18 @@ fn default_server() -> ServerConfig {
         access_control_allow_credentials: default_none(),
         access_control_max_age: default_none(),
         tls_config: default_none(),
+        workers: default_server_workers()
     }
+}
+
+/**
+ * Default server workers.
+ * 
+ * result: The default server workers.
+ */
+fn default_server_workers() -> usize {
+    debug!("Using default server workers");
+    4
 }
 
 /**
@@ -372,6 +394,23 @@ fn default_server_ip() -> String {
 fn default_database_store_level() -> DatabaseStoreLevel {
     debug!("Using default database store level");
     DatabaseStoreLevel::Errors
+}
+/**
+ * Default max lifetime for database connections.
+ */
+fn default_max_lifetime() -> u32 {
+    debug!("Using default max lifetime");
+    300
+}
+
+fn default_tokio_stack_size() -> usize {
+    debug!("Using default tokio stack size");
+    2 * 1024
+}
+
+fn default_tokio_threads() -> usize {
+    debug!("Using default tokio threads");
+    4
 }
 
 #[cfg(test)]
@@ -474,6 +513,7 @@ mod tests {
                     port: 3306,
                     min_connections: 1,
                     max_connections: 10,
+                    max_lifetime: 300,
                 }),
                 max_query_time: Some(100),
             }
@@ -503,6 +543,7 @@ mod tests {
                     port: 5432,
                     min_connections: 1,
                     max_connections: 10,
+                    max_lifetime: 300,
                 }),
                 max_query_time: Some(100),
             }

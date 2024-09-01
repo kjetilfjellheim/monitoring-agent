@@ -253,6 +253,7 @@ impl MariaDbService {
             ]));
         let pool = r2d2::Pool::builder()
             .max_size(database_config.max_connections)
+            .max_lifetime(Some(std::time::Duration::from_secs(u64::from(database_config.max_lifetime))))
             .min_idle(Some(database_config.min_connections))
             .build(manager)
             .map_err(|err| ApplicationError::new(&err.to_string()))?;
@@ -539,6 +540,7 @@ impl PostgresDbService {
 
         let pool = bb8::Pool::builder()
             .max_size(database_config.max_connections)
+            .max_lifetime(Some(std::time::Duration::from_secs(u64::from(database_config.max_lifetime))))
             .min_idle(Some(database_config.min_connections))
             .build(manager)
             .await
