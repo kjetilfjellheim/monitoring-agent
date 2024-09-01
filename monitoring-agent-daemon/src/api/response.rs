@@ -2,7 +2,7 @@ use chrono::{DateTime, TimeZone, Utc };
 use monitoring_agent_lib::proc::{process::ProcessState, ProcStat, ProcsCpuinfo, ProcsLoadavg, ProcsMeminfo, ProcsProcess, ProcsStatm};
 use serde::{Deserialize, Serialize};
 
-use crate::common::{LoadavgElement, MonitorStatus, Status};
+use crate::common::{historical::MeminfoElement, LoadavgElement, MonitorStatus, Status};
 
 /**
  * The `MeminfoResponse` struct represents the response of the meminfo endpoint.
@@ -751,11 +751,11 @@ impl StatResponse {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LoadavgHistoricalResponse {  
     /// The 1 minute load average.  
-    pub loadavg1min: Vec<HistoryElement>,
+    pub loadavg1min: Vec<HistoryElement<f64>>,
     /// The 5 minute load average.
-    pub loadavg5min: Vec<HistoryElement>,
+    pub loadavg5min: Vec<HistoryElement<f64>>,
     /// The 15 minute load average.
-    pub loadavg15min: Vec<HistoryElement>,
+    pub loadavg15min: Vec<HistoryElement<f64>>,
 }
 
 impl LoadavgHistoricalResponse {
@@ -771,9 +771,9 @@ impl LoadavgHistoricalResponse {
      */
     #[allow(clippy::similar_names)]
     pub fn new(
-        loadavg1min: Vec<HistoryElement>,
-        loadavg5min: Vec<HistoryElement>,
-        loadavg15min: Vec<HistoryElement>,
+        loadavg1min: Vec<HistoryElement<f64>>,
+        loadavg5min: Vec<HistoryElement<f64>>,
+        loadavg15min: Vec<HistoryElement<f64>>,
     ) -> LoadavgHistoricalResponse {
         LoadavgHistoricalResponse {
             loadavg1min,
@@ -800,12 +800,57 @@ impl LoadavgHistoricalResponse {
     }
 }
 
+/**
+ * The `LoadavgHistoricalResponse` struct represents the response of the loadavg historical endpoint.
+ * The loadavg historical endpoint is used to get the historical load average.
+ * 
+ * The loadavg historical endpoint contains the following columns:
+ * * The 1 minute load average.
+ * * The 5 minute load average.
+ * * The 15 minute load average.
+ */
+#[allow(clippy::similar_names)]
+#[allow(clippy::module_name_repetitions)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HistoryElement {
+pub struct MeminfoHistoricalResponse {  
+    /// The free memory.
+    pub freemem: Vec<HistoryElement<u64>>,
+}
+
+impl MeminfoHistoricalResponse {
+    /**
+     * Create a new `MeminfoHistoricalResponse`.
+     * 
+     * `freemem`: The free memory.
+     * 
+     * Returns a new `MeminfoHistoricalResponse`.
+     * 
+     */
+    #[allow(clippy::similar_names)]
+    pub fn new(
+        freemem: Vec<HistoryElement<u64>>,
+    ) -> MeminfoHistoricalResponse {
+        MeminfoHistoricalResponse {
+            freemem,
+        }
+    }
+
+    pub fn from_meminfo_historical(meminfo: &[MeminfoElement]) -> MeminfoHistoricalResponse {
+        MeminfoHistoricalResponse::new(
+            meminfo.iter().map(|element| HistoryElement {
+                timestamp: element.timestamp,
+                value: element.freemem,
+            }).collect(),            
+        )
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HistoryElement<T> {
     #[serde(rename = "timestamp")]
     pub timestamp: DateTime<Utc>,
     #[serde(rename = "value")]
-    pub value: f64,
+    pub value: T,
 }
 
 
