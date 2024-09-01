@@ -201,6 +201,7 @@ async fn init_http_server(monitoring_config: &MonitoringConfig, monitoring_servi
             .service(api::get_current_loadavg)  
             .service(api::get_historical_loadavg) 
             .service(api::get_processes)
+            .service(api::get_historical_statm)
             .service(api::get_process)
             .service(api::get_threads)
             .service(api::get_monitor_status)

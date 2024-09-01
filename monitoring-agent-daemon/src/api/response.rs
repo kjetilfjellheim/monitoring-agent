@@ -2,7 +2,7 @@ use chrono::{DateTime, TimeZone, Utc };
 use monitoring_agent_lib::proc::{process::ProcessState, ProcStat, ProcsCpuinfo, ProcsLoadavg, ProcsMeminfo, ProcsProcess, ProcsStatm};
 use serde::{Deserialize, Serialize};
 
-use crate::common::{historical::MeminfoElement, LoadavgElement, MonitorStatus, Status};
+use crate::common::{historical::MeminfoElement, LoadavgElement, MonitorStatus, ProcessMemoryElement, Status};
 
 /**
  * The `MeminfoResponse` struct represents the response of the meminfo endpoint.
@@ -801,13 +801,11 @@ impl LoadavgHistoricalResponse {
 }
 
 /**
- * The `LoadavgHistoricalResponse` struct represents the response of the loadavg historical endpoint.
- * The loadavg historical endpoint is used to get the historical load average.
+ * The `MeminfoHistoricalResponse` struct represents the response of the meminfo historical endpoint.
+ * The meminfo historical endpoint is used to get the historical memory information.
  * 
- * The loadavg historical endpoint contains the following columns:
- * * The 1 minute load average.
- * * The 5 minute load average.
- * * The 15 minute load average.
+ * The meminfo historical endpoint contains the following columns:
+ * * The free memory.
  */
 #[allow(clippy::similar_names)]
 #[allow(clippy::module_name_repetitions)]
@@ -842,6 +840,141 @@ impl MeminfoHistoricalResponse {
                 value: element.freemem,
             }).collect(),            
         )
+    }
+}
+
+/**
+ * The `ProcessMeminfoHistoricalResponse` struct represents the response of the process meminfo historical endpoint.
+ * The process meminfo historical endpoint is used to get the historical memory information of a process.
+ * 
+ * The process meminfo historical endpoint contains the following columns:
+ * `used_memory` - The size of memory portions (pages).
+ */
+#[allow(clippy::similar_names)]
+#[allow(clippy::module_name_repetitions)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProcessMeminfoHistoricalResponse {  
+    /// Size of memory portions (pages).
+    #[serde(rename = "usedMemory")]    
+    pub used_memory: Vec<ProcessMemoryHistoryElement>,
+}
+
+impl ProcessMeminfoHistoricalResponse {
+
+    /**
+     * Create a new `ProcessMeminfoHistoricalResponse`.
+     * 
+     * `used_memory` Used memory of the process.
+     * 
+     * Returns a new `ProcessMeminfoHistoricalResponse`.
+     * 
+     */
+    #[allow(clippy::similar_names)]
+    pub fn new(
+        used_memory: Vec<ProcessMemoryHistoryElement>,
+    ) -> ProcessMeminfoHistoricalResponse {
+        ProcessMeminfoHistoricalResponse {
+            used_memory
+        }
+    }
+    /**
+     * Create a new `ProcessMeminfoHistoricalResponse` from a `ProcessMemoryElement`.
+     * 
+     * `process_meminfo_elements`: The `ProcessMemoryElement` object.
+     * 
+     * Returns a new `ProcessMeminfoHistoricalResponse`.
+     * 
+     */
+    pub fn from_process_meminfo_historical(process_meminfo_elements: &[ProcessMemoryElement]) -> ProcessMeminfoHistoricalResponse {
+        let mut elements = Vec::new();
+        
+        for element in process_meminfo_elements {
+            elements.push(ProcessMemoryHistoryElement::new(
+                element.timestamp,
+                element.resident,
+                element.share,
+                element.trs,
+                element.drs,
+                element.lrs,
+                element.dt,
+            ));
+        }
+        ProcessMeminfoHistoricalResponse::new(elements)
+    }
+
+}
+
+/**
+ * The `ProcessStatmHistoricalResponse` struct represents the response of the process statm historical endpoint.
+ * The process statm historical endpoint is used to get the historical memory information of a process.
+ * 
+ * The process statm historical endpoint contains the following columns:
+ * * Total program size (pages)
+ * * Size of memory portions (pages)
+ * * Number of pages that are shared
+ * * Number of pages that are ‘code’
+ * * Number of pages of data/stack
+ * * Number of pages of library
+ * * Number of dirty pages
+ */
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProcessMemoryHistoryElement {
+    /// Timestamp of the memory information.
+    #[serde(rename = "timestamp")]
+    pub timestamp: DateTime<Utc>,  
+    /// Size of memory portions (pages)
+    #[serde(skip_serializing_if = "Option::is_none", rename = "residentSize")]         
+    pub resident: Option<u64>,
+    /// Number of pages that are shared
+    #[serde(skip_serializing_if = "Option::is_none", rename = "sharedSize")]              
+    pub share: Option<u64>,
+    /// Number of pages that are ‘code’
+    #[serde(skip_serializing_if = "Option::is_none", rename = "trsSize")]             
+    pub trs: Option<u64>,
+    /// Number of pages of data/stack
+    #[serde(skip_serializing_if = "Option::is_none", rename = "drsSize")]             
+    pub drs: Option<u64>,
+    /// Number of pages of library
+    #[serde(skip_serializing_if = "Option::is_none", rename = "lrsSize")]             
+    pub lrs: Option<u64>,
+    /// Number of dirty pages
+    #[serde(skip_serializing_if = "Option::is_none", rename = "dtSize")]             
+    pub dt: Option<u64>,     
+}
+
+impl ProcessMemoryHistoryElement {
+    /**
+     * Create a new `ProcessMemoryHistoryElement`.
+     * 
+     * `timestamp`: The timestamp of the memory information.
+     * `resident`: The size of memory portions (pages).
+     * `share`: The number of pages that are shared.
+     * `trs`: The number of pages that are ‘code’.
+     * `drs`: The number of pages of data/stack.
+     * `lrs`: The number of pages of library.
+     * `dt`: The number of dirty pages.
+     * 
+     * Returns a new `ProcessMemoryHistoryElement`.
+     * 
+     */
+    pub fn new(
+        timestamp: DateTime<Utc>,
+        resident: Option<u64>,
+        share: Option<u64>,
+        trs: Option<u64>,
+        drs: Option<u64>,
+        lrs: Option<u64>,
+        dt: Option<u64>,
+    ) -> ProcessMemoryHistoryElement {
+        ProcessMemoryHistoryElement {
+            timestamp,
+            resident,
+            share,
+            trs,
+            drs,
+            lrs,
+            dt,
+        }
     }
 }
 
