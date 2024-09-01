@@ -1,10 +1,14 @@
 <script setup>
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { faRefresh } from '@fortawesome/free-solid-svg-icons';
+import { Line } from 'vue-chartjs'
 </script>
 <script>
 import { ref } from 'vue';
-
+import {
+  Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend
+} from 'chart.js';
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 export default {
   data() {
     return {
@@ -13,7 +17,33 @@ export default {
       tooltip_load_average: "Load average figures giving the number of jobs in the run queue (state R) or waiting for disk I/O (state D) aver‐ aged over 1, 5, and 15 minutes. They are the same as the load average numbers given by uptime(1) and other programs.",
       tooltip_meminfo: "Memory information\nTotal: total usable RAM\nUsed: The total amount of RAM used by the system\nAvailable: An estimate of how much memory is available for starting new applications, without swapping.",
       tooltip_swap: "Swap information\nTotal: total swap space in bytes\nFree: free swap space in bytes",
-      tooltip_processes: "Process information\nTotal processes: total number of processes\nRunning processes: number of running processes"
+      tooltip_processes: "Process information\nTotal processes: total number of processes\nRunning processes: number of running processes",
+      loadAvgHistOptions: {
+        responsive: true,
+        maintainAspectRatio: false,
+        borderWidth: 1,
+        scales: {
+          y: {
+            beginAtZero: true
+          },
+          x: {
+            ticks: {
+              display: true,
+              callback: function(val, index) {
+                return index % 2 === 0 ? this.getLabelForValue(val) : '';
+              },                            
+              font: {
+                size: 6
+              }
+            }
+          },
+        },
+        elements: {
+          point: {
+            radius: 0
+          }
+        }
+      }
     }
   },
   mounted() {
@@ -35,15 +65,40 @@ export default {
           meminfo: ref(null),
           cpuinfo: ref(null),
           stat: ref(null),
+          loadAvgHistData: ref(null),
           id: index++
         };
         this.get_loadavg(server_data, server.url);
         this.get_meminfo(server_data, server.url);
         this.get_cpuinfo(server_data, server.url);
         this.get_stat(server_data, server.url);
+        this.get_load_avg_hist(server_data, server.url);
         data.value.push(server_data);
       }
       this.data = data.value;
+    },
+    get_load_avg_hist(server, url) {
+      fetch(url + "/loadavg/historical")
+        .then(response => response.json())
+        .then(json => {
+          let labels = [];
+          let values = [];
+          json.loadavg1min.forEach(element => {
+            labels.push(element.timestamp);
+            values.push(element.value);
+          });
+          server.loadAvgHistData.value = {
+            labels: labels,
+            datasets: [{
+              backgroundColor: 'rgba(255,0,0,1)',
+              borderColor: 'rgba(255,0,0,1)',
+              label: 'Load Average last 24 hours',
+              data: values,
+              fill: false
+            }]
+          };
+        })
+        .catch(error => console.error('Error:', error));
     },
     get_loadavg(server, url) {
       fetch(url + "/loadavg/current")
@@ -194,6 +249,15 @@ export default {
                           <dd class="col-sm-6 small text-truncate no-margin">{{ server?.meminfo?.swapFree }} bytes</dd>
                         </dl>
                       </div>
+                    </div>
+                  </div>
+                  <div class="col col-6">
+                    <div class="card-body" v-if="server?.loadAvgHistData">
+                      <Line :data="server?.loadAvgHistData" :options="loadAvgHistOptions" />
+                    </div>
+                  </div>
+                  <div class="col col-6">
+                    <div class="card-body">
                     </div>
                   </div>
                   <div class="col col-12">
