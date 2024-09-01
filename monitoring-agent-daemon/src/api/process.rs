@@ -1,6 +1,6 @@
-use actix_web::{get, web, HttpResponse, Responder};
+use actix_web::{get, web, HttpRequest, HttpResponse, Responder};
 
-use crate::api::{common::set_cors_headers, response::StatmResponse, StateApi};
+use crate::api::{common::set_cors_headers, response::{ProcessMeminfoHistoricalResponse, StatmResponse}, HistoricalParams, StateApi};
 
 use super::response::ProcessResponse;
 
@@ -84,6 +84,49 @@ pub async fn get_current_statm(state: web::Data<StateApi>, path: web::Path<u32>)
             set_cors_headers(&mut response_builder, &state.server_config);
             response_builder.json(StatmResponse::from_current_statm(&procs_statm))
         },
+        Err(err) => HttpResponse::InternalServerError().body(format!("Error occured: {err:?}")),
+    }
+}
+
+/**
+ * Get current historical statm for a process.
+ * 
+ * `state`: The state object.
+ * `path`: The path object.
+ * 
+ * Returns the current statm.
+ */
+#[get("/processes/{pid}/statm/historical")]
+pub async fn get_historical_statm(state: web::Data<StateApi>, path: web::Path<u32>, req: HttpRequest) -> impl Responder {
+    let pid: u32 = path.into_inner();
+    /*
+     * If the database service is not found, return a 404. 
+     */
+    let Some(db_service) = state.database_service.as_ref() else {
+        return HttpResponse::NotFound().body("Database service not found");
+    };
+    /*
+     * Parse the query string.
+     */
+    let params = match web::Query::<HistoricalParams>::from_query(req.query_string()) {
+        Ok(params) => params,
+        Err(err) => {
+            return HttpResponse::BadRequest().body(format!("Error parsing query string: {err:?}"))
+        }
+    };
+    /*
+     * Get the historical meminfo.
+     */
+    let meminfo = db_service.get_process_memory_use(pid, params.0);
+    /*
+     * Return the response.
+     */
+    match meminfo {
+        Ok(meminfo) => {
+            let mut response_builder = HttpResponse::Ok();
+            set_cors_headers(&mut response_builder, &state.server_config);
+            response_builder.json(ProcessMeminfoHistoricalResponse::from_process_meminfo_historical(&meminfo))
+        }
         Err(err) => HttpResponse::InternalServerError().body(format!("Error occured: {err:?}")),
     }
 }
