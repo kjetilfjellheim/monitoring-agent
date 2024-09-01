@@ -80,211 +80,215 @@ export default {
             </ul>
         </div>
     </nav>
-    <div class="container-fluid" v-if="processStatus">
-        <div class="row">
-            <div class="col col-sm-12 col-md-6 col-lg-6 col-xl-4">
-                <dl class="row">
-                    <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-6 text-light">Process id</dt>
-                    <dd class="col col-sm-12 col-md-12 col-lg-12 col-xl-6 text-light">{{ processStatus?.pid }}</dd>
-                    <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-6 text-light">Parent id</dt>
-                    <dd class="col col-sm-12 col-md-12 col-lg-12 col-xl-6 text-light">{{ processStatus?.parentPid }}</dd>
-                    <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-6 text-light">Name</dt>
-                    <dd class="col col-sm-12 col-md-12 col-lg-12 col-xl-6 text-light">{{ processStatus?.name }}</dd>
-                    <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-6 text-light">Umask</dt>
-                    <dd class="col col-sm-12 col-md-12 col-lg-12 col-xl-6 text-light">{{ processStatus?.umask }}</dd>
-                    <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-6 text-light">State</dt>
-                    <dd class="col col-sm-12 col-md-12 col-lg-12 col-xl-6 text-light">{{ processStatus?.processState }}</dd>
-                    <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-6 text-light">Number of threads</dt>
-                    <dd class="col col-sm-12 col-md-12 col-lg-12 col-xl-6 text-light">{{ processStatus?.numThreads }}</dd>
-                </dl>
-            </div>
-            <div class="col col-sm-12 col-md-6 col-lg-6 col-xl-4">
-                <dl class="row">
-                    <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-6 text-light">Total</dt>
-                    <dd class="col col-sm-12 col-md-12 col-lg-12 col-xl-6 text-light">{{ processStatm?.totalSize }} Kb</dd>
-                    <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-6 text-light">Resident</dt>
-                    <dd class="col col-sm-12 col-md-12 col-lg-12 col-xl-6 text-light">{{ processStatm?.residentSize }} Kb</dd>
-                    <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-6 text-light">Shared size</dt>
-                    <dd class="col col-sm-12 col-md-12 col-lg-12 col-xl-6 text-light">{{ processStatm?.sharedSize }} Kb</dd>
-                    <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-6 text-light">Trs size</dt>
-                    <dd class="col col-sm-12 col-md-12 col-lg-12 col-xl-6 text-light">{{ processStatm?.trsSize }} Kb</dd>
-                    <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-6 text-light">Drs size</dt>
-                    <dd class="col col-sm-12 col-md-12 col-lg-12 col-xl-6 text-light">{{ processStatm?.drsSize }} Kb</dd>
-                    <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-6 text-light">Lrs size</dt>
-                    <dd class="col col-sm-12 col-md-12 col-lg-12 col-xl-6 text-light">{{ processStatm?.lrsSize }} Kb</dd>
-                    <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-6 text-light">Dt size</dt>
-                    <dd class="col col-sm-12 col-md-12 col-lg-12 col-xl-6 text-light">{{ processStatm?.dtSize }} Kb</dd>
-                </dl>
-            </div>
-            <div class="col col-sm-12 col-md-6 col-lg-6 col-xl-4">
-                <dl class="row">                   
-                    <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-4 text-light">Groups</dt>
-                    <dd class="col col-sm-12 col-md-12 col-lg-12 col-xl-8 text-light">
-                        <span v-for="group in processStatus?.groups" class="badge rounded-pill bg-primary group">{{ group }}</span>
-                    </dd>                    
-                    <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-12 text-light">&nbsp</dt>
-                    <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-4 text-light"></dt>
-                    <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-2 text-light">Real</dt>
-                    <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-2 text-light">Eff</dt>
-                    <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-2 text-light">Saved</dt>
-                    <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-2 text-light">File</dt>
-                    <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-4 text-light" v-if="processStatus?.uid">Uid</dt>
-                    <dd class="col col-sm-12 col-md-12 col-lg-12 col-xl-2 text-light" v-for="uid in processStatus?.uid">{{ uid }}</dd>
-                    <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-4 text-light" v-if="processStatus?.gid">Gid</dt>
-                    <dd class="col col-sm-12 col-md-12 col-lg-12 col-xl-2 text-light" v-for="gid in processStatus?.gid">{{ gid }}</dd>                    
-                </dl>
-            </div>
-            <div class="col col-sm-12 col-md-6 col-lg-6 col-xl-6">
-                <table class="table table-striped-self table-dark table-responsive">
-                    <thead class="thead-dark">
-                        <tr>
-                            <th scope="col">Thread id</th>
-                            <th scope="col">Name</th>
-                            <th scope="col">State</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="thread in threads">
-                            <td>{{ thread.pid }}</td>
-                            <td>{{ thread.name }}</td>
-                            <td>{{ thread.processState }}</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+    <div class="card">
+        <div class="card-body">        
+        <div class="container-fluid" v-if="processStatus">
+            <div class="row">
+                <div class="col col-sm-12 col-md-6 col-lg-6 col-xl-4">
+                    <dl class="row">
+                        <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-6">Process id</dt>
+                        <dd class="col col-sm-12 col-md-12 col-lg-12 col-xl-6">{{ processStatus?.pid }}</dd>
+                        <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-6">Parent id</dt>
+                        <dd class="col col-sm-12 col-md-12 col-lg-12 col-xl-6">{{ processStatus?.parentPid }}</dd>
+                        <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-6">Name</dt>
+                        <dd class="col col-sm-12 col-md-12 col-lg-12 col-xl-6">{{ processStatus?.name }}</dd>
+                        <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-6">Umask</dt>
+                        <dd class="col col-sm-12 col-md-12 col-lg-12 col-xl-6">{{ processStatus?.umask }}</dd>
+                        <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-6">State</dt>
+                        <dd class="col col-sm-12 col-md-12 col-lg-12 col-xl-6">{{ processStatus?.processState }}</dd>
+                        <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-6">Number of threads</dt>
+                        <dd class="col col-sm-12 col-md-12 col-lg-12 col-xl-6">{{ processStatus?.numThreads }}</dd>
+                    </dl>
+                </div>
+                <div class="col col-sm-12 col-md-6 col-lg-6 col-xl-4">
+                    <dl class="row">
+                        <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-6">Total</dt>
+                        <dd class="col col-sm-12 col-md-12 col-lg-12 col-xl-6">{{ processStatm?.totalSize }} Kb</dd>
+                        <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-6">Resident</dt>
+                        <dd class="col col-sm-12 col-md-12 col-lg-12 col-xl-6">{{ processStatm?.residentSize }} Kb</dd>
+                        <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-6">Shared size</dt>
+                        <dd class="col col-sm-12 col-md-12 col-lg-12 col-xl-6">{{ processStatm?.sharedSize }} Kb</dd>
+                        <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-6">Trs size</dt>
+                        <dd class="col col-sm-12 col-md-12 col-lg-12 col-xl-6">{{ processStatm?.trsSize }} Kb</dd>
+                        <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-6">Drs size</dt>
+                        <dd class="col col-sm-12 col-md-12 col-lg-12 col-xl-6">{{ processStatm?.drsSize }} Kb</dd>
+                        <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-6">Lrs size</dt>
+                        <dd class="col col-sm-12 col-md-12 col-lg-12 col-xl-6">{{ processStatm?.lrsSize }} Kb</dd>
+                        <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-6">Dt size</dt>
+                        <dd class="col col-sm-12 col-md-12 col-lg-12 col-xl-6">{{ processStatm?.dtSize }} Kb</dd>
+                    </dl>
+                </div>
+                <div class="col col-sm-12 col-md-6 col-lg-6 col-xl-4">
+                    <dl class="row">                   
+                        <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-4">Groups</dt>
+                        <dd class="col col-sm-12 col-md-12 col-lg-12 col-xl-8">
+                            <span v-for="group in processStatus?.groups" class="badge rounded-pill bg-primary group">{{ group }}</span>
+                        </dd>                    
+                        <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-12">&nbsp</dt>
+                        <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-4"></dt>
+                        <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-2">Real</dt>
+                        <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-2">Eff</dt>
+                        <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-2">Saved</dt>
+                        <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-2">File</dt>
+                        <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-4" v-if="processStatus?.uid">Uid</dt>
+                        <dd class="col col-sm-12 col-md-12 col-lg-12 col-xl-2" v-for="uid in processStatus?.uid">{{ uid }}</dd>
+                        <dt class="col col-sm-12 col-md-12 col-lg-12 col-xl-4" v-if="processStatus?.gid">Gid</dt>
+                        <dd class="col col-sm-12 col-md-12 col-lg-12 col-xl-2" v-for="gid in processStatus?.gid">{{ gid }}</dd>                    
+                    </dl>
+                </div>
+                <div class="col col-sm-12 col-md-6 col-lg-6 col-xl-6">
+                    <table class="table table-responsive">
+                        <thead class="">
+                            <tr>
+                                <th scope="col">Thread id</th>
+                                <th scope="col">Name</th>
+                                <th scope="col">State</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="thread in threads">
+                                <td>{{ thread.pid }}</td>
+                                <td>{{ thread.name }}</td>
+                                <td>{{ thread.processState }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
 
-            <!--
-            <div class="col col-sm-12 col-md-12 col-lg-6 col-xl-6 text-light">
-                Resident memory over time
-                <Chart :data="data" :margin="margin" :direction="direction">
-                    <template #layers>
-                        <Grid strokeDasharray="2,2" />
-                        <Line :dataKeys="['name', 'pl']" />
-                    </template>
-                </Chart>
+                <!--
+                <div class="col col-sm-12 col-md-12 col-lg-6 col-xl-6 text-light">
+                    Resident memory over time
+                    <Chart :data="data" :margin="margin" :direction="direction">
+                        <template #layers>
+                            <Grid strokeDasharray="2,2" />
+                            <Line :dataKeys="['name', 'pl']" />
+                        </template>
+                    </Chart>
+                </div>
+                <div class="col col-sm-12 col-md-12 col-lg-6 col-xl-6 text-light">
+                    Max memory usage in the specified period
+                    <Chart :data="data" :margin="margin" :direction="direction">
+                        <template #layers>
+                            <Grid strokeDasharray="2,2" />
+                            <Line :dataKeys="['name', 'pl']" />
+                        </template>
+                    </Chart>
+                </div>
+                <div class="col col-sm-12 col-md-12 col-lg-12 col-xl-12">
+                    <table class="table table-striped-self table-dark table-responsive">
+                        <thead class="thead-dark">
+                            <tr><th colspan="4">Process limitations</th></tr>
+                            <tr>
+                                <th scope="col">Resource</th>
+                                <th scope="col">Soft Limit</th>
+                                <th scope="col">Hard Limit</th>
+                                <th scope="col">Units</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Max cpu time</td>
+                                <td>unlimited</td>
+                                <td>unlimited</td>
+                                <td>seconds</td>
+                            </tr>
+                            <tr>
+                                <td>Max file size</td>
+                                <td>unlimited</td>
+                                <td>unlimited</td>
+                                <td>bytes</td>
+                            </tr>
+                            <tr>
+                                <td>Max data size</td>
+                                <td>unlimited</td>
+                                <td>unlimited</td>
+                                <td>bytes</td>
+                            </tr>
+                            <tr>
+                                <td>Max stack size</td>
+                                <td>8388608</td>
+                                <td>unlimited</td>
+                                <td>bytes</td>
+                            </tr>
+                            <tr>
+                                <td>Max core file size</td>
+                                <td>0</td>
+                                <td>unlimited</td>
+                                <td>bytes</td>
+                            </tr>
+                            <tr>
+                                <td>Max resident set</td>
+                                <td>unlimited</td>
+                                <td>unlimited</td>
+                                <td>bytes</td>
+                            </tr>
+                            <tr>
+                                <td>Max processes</td>
+                                <td>124811</td>
+                                <td>124811</td>
+                                <td>processes</td>
+                            </tr>
+                            <tr>
+                                <td>Max open files</td>
+                                <td>1048576</td>
+                                <td>1048576</td>
+                                <td>files</td>
+                            </tr>
+                            <tr>
+                                <td>Max locked memory</td>
+                                <td>4099702784</td>
+                                <td>4099702784</td>
+                                <td>bytes</td>
+                            </tr>
+                            <tr>
+                                <td>Max address space</td>
+                                <td>unlimited</td>
+                                <td>unlimited</td>
+                                <td>bytes</td>
+                            </tr>
+                            <tr>
+                                <td>Max file locks</td>
+                                <td>unlimited</td>
+                                <td>unlimited</td>
+                                <td>locks</td>
+                            </tr>
+                            <tr>
+                                <td>Max pending signals</td>
+                                <td>124811</td>
+                                <td>124811</td>
+                                <td>signals</td>
+                            </tr>
+                            <tr>
+                                <td>Max msgqueue size</td>
+                                <td>819200</td>
+                                <td>819200</td>
+                                <td>bytes</td>
+                            </tr>
+                            <tr>
+                                <td>Max nice priority</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td>Max realtime priority</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td>Max realtime timeout</td>
+                                <td>unlimited</td>
+                                <td>unlimited</td>
+                                <td>us</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>-->
             </div>
-            <div class="col col-sm-12 col-md-12 col-lg-6 col-xl-6 text-light">
-                Max memory usage in the specified period
-                <Chart :data="data" :margin="margin" :direction="direction">
-                    <template #layers>
-                        <Grid strokeDasharray="2,2" />
-                        <Line :dataKeys="['name', 'pl']" />
-                    </template>
-                </Chart>
             </div>
-            <div class="col col-sm-12 col-md-12 col-lg-12 col-xl-12">
-                <table class="table table-striped-self table-dark table-responsive">
-                    <thead class="thead-dark">
-                        <tr><th colspan="4">Process limitations</th></tr>
-                        <tr>
-                            <th scope="col">Resource</th>
-                            <th scope="col">Soft Limit</th>
-                            <th scope="col">Hard Limit</th>
-                            <th scope="col">Units</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>Max cpu time</td>
-                            <td>unlimited</td>
-                            <td>unlimited</td>
-                            <td>seconds</td>
-                        </tr>
-                        <tr>
-                            <td>Max file size</td>
-                            <td>unlimited</td>
-                            <td>unlimited</td>
-                            <td>bytes</td>
-                        </tr>
-                        <tr>
-                            <td>Max data size</td>
-                            <td>unlimited</td>
-                            <td>unlimited</td>
-                            <td>bytes</td>
-                        </tr>
-                        <tr>
-                            <td>Max stack size</td>
-                            <td>8388608</td>
-                            <td>unlimited</td>
-                            <td>bytes</td>
-                        </tr>
-                        <tr>
-                            <td>Max core file size</td>
-                            <td>0</td>
-                            <td>unlimited</td>
-                            <td>bytes</td>
-                        </tr>
-                        <tr>
-                            <td>Max resident set</td>
-                            <td>unlimited</td>
-                            <td>unlimited</td>
-                            <td>bytes</td>
-                        </tr>
-                        <tr>
-                            <td>Max processes</td>
-                            <td>124811</td>
-                            <td>124811</td>
-                            <td>processes</td>
-                        </tr>
-                        <tr>
-                            <td>Max open files</td>
-                            <td>1048576</td>
-                            <td>1048576</td>
-                            <td>files</td>
-                        </tr>
-                        <tr>
-                            <td>Max locked memory</td>
-                            <td>4099702784</td>
-                            <td>4099702784</td>
-                            <td>bytes</td>
-                        </tr>
-                        <tr>
-                            <td>Max address space</td>
-                            <td>unlimited</td>
-                            <td>unlimited</td>
-                            <td>bytes</td>
-                        </tr>
-                        <tr>
-                            <td>Max file locks</td>
-                            <td>unlimited</td>
-                            <td>unlimited</td>
-                            <td>locks</td>
-                        </tr>
-                        <tr>
-                            <td>Max pending signals</td>
-                            <td>124811</td>
-                            <td>124811</td>
-                            <td>signals</td>
-                        </tr>
-                        <tr>
-                            <td>Max msgqueue size</td>
-                            <td>819200</td>
-                            <td>819200</td>
-                            <td>bytes</td>
-                        </tr>
-                        <tr>
-                            <td>Max nice priority</td>
-                            <td>0</td>
-                            <td>0</td>
-                            <td></td>
-                        </tr>
-                        <tr>
-                            <td>Max realtime priority</td>
-                            <td>0</td>
-                            <td>0</td>
-                            <td></td>
-                        </tr>
-                        <tr>
-                            <td>Max realtime timeout</td>
-                            <td>unlimited</td>
-                            <td>unlimited</td>
-                            <td>us</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>-->
         </div>
-    </div>
+        </div>
     </div>
 </template>
 <style scoped>
@@ -307,16 +311,31 @@ export default {
 }
 
 .table { 
-    margin-top: 50px;
+    margin-top: 5px;
 }
 
-.table-striped-self>tbody>tr:nth-child(odd)>td, 
-.table-striped-self>tbody>tr:nth-child(odd)>th {
-   background-color: rgba(var(--bs-dark-rgb),var(--bs-bg-opacity))!important;
- }
+.card {
+  height: 100%;
+  margin: 2px;
+}
 
- .table-striped-self>tbody>tr:nth-child(even)>td, 
-.table-striped-self>tbody>tr:nth-child(even)>th {
-   background-color: rgb(65, 65, 65); 
- }
+.card-body {
+  background-color: #cfc3c3;
+}
+
+.table thead th {
+    background-color: #cfc3c3 !important;
+}
+
+.table tbody td {
+    background-color: #cfc3c3 !important;
+}
+
+tr {
+   border-style: none; 
+}
+
+thead {
+    border-bottom: 1px solid black;
+}   
 </style>
