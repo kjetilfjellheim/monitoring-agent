@@ -42,3 +42,39 @@ impl LoadavgElement {
         }
     }
 }
+
+
+/**
+ * The meminfo element. Used to represent a memory use element.
+ * 
+ * `timestamp`: The timestamp.
+ * `total`: The total memory.
+ * `freemem`: The free memory.
+ */
+#[allow(clippy::similar_names)]
+#[derive(Debug, Clone)]
+pub struct MeminfoElement {
+    /// The timestamp.    
+    pub timestamp: DateTime<Utc>,
+    /// The free memory.
+    pub freemem: u64,
+}
+
+impl MeminfoElement {
+    /**
+     * Create a new meminfo element.
+     * 
+     * `timestamp`: The timestamp.
+     * `total`: The total memory.
+     * `freemem`: The free memory.
+     * 
+     * Returns the meminfo element.
+     */
+    #[allow(clippy::similar_names)]
+    pub fn new(timestamp: DateTime<Utc>, freemem: u64) -> MeminfoElement {
+        MeminfoElement {
+            timestamp,
+            freemem,
+        }
+    }
+}

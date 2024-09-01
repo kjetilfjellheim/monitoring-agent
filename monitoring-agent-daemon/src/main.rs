@@ -137,6 +137,7 @@ async fn start_application(monitoring_config: &MonitoringConfig, args: &Applicat
         App::new()
             .app_data(web::Data::new(StateApi::new(monitoring_service.clone(), database_service.clone(), cloned_monitoring_config.server.clone(), &monitered_application_names)))
             .service(api::get_current_meminfo)   
+            .service(api::get_historical_meminfo)
             .service(api::get_current_cpuinfo)   
             .service(api::get_current_loadavg)  
             .service(api::get_historical_loadavg) 
