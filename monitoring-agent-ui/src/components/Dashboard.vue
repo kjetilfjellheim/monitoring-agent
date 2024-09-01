@@ -43,7 +43,33 @@ export default {
             radius: 0
           }
         }
-      }
+      },
+      freeMemHistOptions: {
+        responsive: true,
+        maintainAspectRatio: false,
+        borderWidth: 1,
+        scales: {
+          y: {
+            beginAtZero: true
+          },
+          x: {
+            ticks: {
+              display: true,
+              callback: function(val, index) {
+                return index % 2 === 0 ? this.getLabelForValue(val) : '';
+              },                            
+              font: {
+                size: 6
+              }
+            }
+          },
+        },
+        elements: {
+          point: {
+            radius: 0
+          }
+        }
+      }      
     }
   },
   mounted() {
@@ -66,6 +92,7 @@ export default {
           cpuinfo: ref(null),
           stat: ref(null),
           loadAvgHistData: ref(null),
+          freeMemHistData: ref(null),
           id: index++
         };
         this.get_loadavg(server_data, server.url);
@@ -73,6 +100,7 @@ export default {
         this.get_cpuinfo(server_data, server.url);
         this.get_stat(server_data, server.url);
         this.get_load_avg_hist(server_data, server.url);
+        this.get_free_mem_hist(server_data, server.url);
         data.value.push(server_data);
       }
       this.data = data.value;
@@ -100,6 +128,29 @@ export default {
         })
         .catch(error => console.error('Error:', error));
     },
+    get_free_mem_hist(server, url) {
+      fetch(url + "/meminfo/historical")
+        .then(response => response.json())
+        .then(json => {
+          let labels = [];
+          let values = [];
+          json.freemem.forEach(element => {
+            labels.push(element.timestamp);
+            values.push(element.value);
+          });
+          server.freeMemHistData.value = {
+            labels: labels,
+            datasets: [{
+              backgroundColor: 'rgba(255,0,0,1)',
+              borderColor: 'rgba(255,0,0,1)',
+              label: 'Free memory last 24 hours',
+              data: values,
+              fill: false
+            }]
+          };
+        })
+        .catch(error => console.error('Error:', error));
+    },    
     get_loadavg(server, url) {
       fetch(url + "/loadavg/current")
         .then(response => response.json())
@@ -251,13 +302,14 @@ export default {
                       </div>
                     </div>
                   </div>
-                  <div class="col col-6">
-                    <div class="card-body" v-if="server?.loadAvgHistData">
+                  <div class="col col-sm-12 col-md-12 col-lg-12">
+                    <div class="card-body chart" v-if="server?.loadAvgHistData">
                       <Line :data="server?.loadAvgHistData" :options="loadAvgHistOptions" />
                     </div>
                   </div>
-                  <div class="col col-6">
-                    <div class="card-body">
+                  <div class="col col-sm-12 col-md-12 col-lg-12">
+                    <div class="card-body chart" v-if="server?.loadAvgHistData">
+                      <Line :data="server?.freeMemHistData" :options="freeMemHistOptions" />
                     </div>
                   </div>
                   <div class="col col-12">
@@ -368,5 +420,9 @@ th {
 
 .title {
   padding-left: 6px;
+}
+
+.chart {
+  height: 300px;
 }
 </style>
