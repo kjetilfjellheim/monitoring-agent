@@ -18,10 +18,7 @@ pub struct HistoricalParams {
     pub to_datetime: DateTime<Utc>,
     /// The split. One is every minute 2 is every two minutes.
     #[serde(rename = "split", default = "default_split")]
-    pub split: u16,
-    /// The server.
-    #[serde(rename = "server", default = "default_server")]
-    pub server: String,    
+    pub split: u16, 
 }
 
 /**
@@ -36,11 +33,4 @@ fn default_from_datetime() -> DateTime<Utc> {
  */
 fn default_split() -> u16 {
     1
-}
-
-/**
- * The default server.
- */
-fn default_server() -> String {
-    "localhost".to_string()
 }

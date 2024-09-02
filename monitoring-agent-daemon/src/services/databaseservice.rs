@@ -16,7 +16,7 @@ use rust_decimal::Decimal;
 use crate::api::HistoricalParams;
 use crate::common::configuration::DatabaseConfig;
 use crate::common::configuration::DatabaseType;
-use crate::common::{LoadavgElement, Status};
+use crate::common::{LoadavgElement, MeminfoElement, ProcessMemoryElement, Status};
 use crate::common::ApplicationError;
 
 /**
@@ -196,6 +196,35 @@ impl DbService {
             DbService::PostgresDb(_) => Err(ApplicationError::new("Not implemented")),
         }
     }
+
+    /**
+     * Get the historical memory use.
+     * 
+     * Returns: The historical memory use.
+     * 
+     * Errors:
+     * - If there is an error getting the historical memory use.
+     */
+    pub fn get_historical_meminfo(&self, historical_params: HistoricalParams) -> Result<Vec<MeminfoElement>, ApplicationError> {
+        match self {
+            DbService::MariaDb(service) => service.get_historical_meminfo(historical_params),
+            DbService::PostgresDb(_) => Err(ApplicationError::new("Not implemented")),
+        }
+    }
+
+    /**
+     * Get the process memory use.
+     * 
+     * `pid`: The process id.
+     * `historical_params`: The historical parameters.
+     * 
+     */
+    pub fn get_process_memory_use(&self, pid: u32, historical_params: HistoricalParams) -> Result<Vec<ProcessMemoryElement>, ApplicationError> {
+        match self {
+            DbService::MariaDb(service) => service.get_process_memory_use(&pid, historical_params),
+            DbService::PostgresDb(_) => Err(ApplicationError::new("Not implemented")),
+        }
+    }   
 }
 
 /**
@@ -237,6 +266,7 @@ impl MariaDbService {
             ]));
         let pool = r2d2::Pool::builder()
             .max_size(database_config.max_connections)
+            .max_lifetime(Some(std::time::Duration::from_secs(u64::from(database_config.max_lifetime))))
             .min_idle(Some(database_config.min_connections))
             .build(manager)
             .map_err(|err| ApplicationError::new(&err.to_string()))?;
@@ -409,7 +439,7 @@ impl MariaDbService {
          * Init parameters 
          */
         let params = params! {
-            "server_name" => historical_params.server,
+            "server_name" => self.server_name.to_string(),
             "from_datetime" => historical_params.from_datetime.format("%Y-%m-%d %H:%M:%S").to_string(),
             "to_datetime" => historical_params.to_datetime.format("%Y-%m-%d %H:%M:%S").to_string(), 
             "split" => historical_params.split * 60,           
@@ -435,6 +465,102 @@ impl MariaDbService {
         }
         tx.commit().map_err(|err| ApplicationError::new(&err.to_string()))?;       
         Ok(loadavg_elements)         
+    }
+
+    /**
+     * Get the historical memory use.
+     * 
+     * Returns: The historical memory use.
+     * 
+     * Errors:
+     * - If there is an error getting the historical memory use.
+     */
+    #[tracing::instrument(level = "debug")]
+    pub fn get_historical_meminfo(&self, historical_params: HistoricalParams) -> Result<Vec<MeminfoElement>, ApplicationError> {
+        let mut conn = self.pool.get().map_err(|err| ApplicationError::new(&err.to_string()))?;
+        let mut tx = conn.start_transaction(TxOpts::default()).map_err(|err| ApplicationError::new(&err.to_string()))?;
+        /*
+         * Init parameters 
+         */
+        let params = params! {
+            "server_name" => self.server_name.to_string(),
+            "from_datetime" => historical_params.from_datetime.format("%Y-%m-%d %H:%M:%S").to_string(),
+            "to_datetime" => historical_params.to_datetime.format("%Y-%m-%d %H:%M:%S").to_string(), 
+            "split" => historical_params.split * 60,           
+        };
+        /*
+         * Execute query
+         */
+        let query_result: Vec<(String, u64)> = tx
+            .exec_map("SELECT to_char(log_time,'YYYY-MM-DD HH24:MI:SS'), round(avg(freemem)) FROM meminfo WHERE server_name = :server_name and log_time>=:from_datetime and log_time<=:to_datetime GROUP BY UNIX_TIMESTAMP(log_time) DIV :split", params, |(log_time, freemem) : (String, u64)| {
+                (log_time, freemem)
+            }).map_err(|err| ApplicationError::new(&err.to_string()))?;                   
+        /*
+         * Map result
+         */
+        let mut freemem_elements: Vec<MeminfoElement> = Vec::new();
+        for (log_time, freemem) in query_result {
+            let log_time = NaiveDateTime::parse_from_str(&log_time, "%Y-%m-%d %H:%M:%S");
+            let timestamp = match log_time {
+                Ok(log_time) => log_time.and_utc(),
+                Err(err) => Err(ApplicationError::new(err.to_string().as_str()))?,
+            };
+            freemem_elements.push(MeminfoElement::new(timestamp, freemem));
+        }
+        tx.commit().map_err(|err| ApplicationError::new(&err.to_string()))?;       
+        Ok(freemem_elements)   
+    }
+
+    /**
+     * Get the process memory use.
+     * 
+     * `pid`: The process id.
+     * `historical_params`: The historical parameters.
+     * 
+     */
+    #[allow(clippy::type_complexity)]
+    #[tracing::instrument(level = "debug")]    
+    pub fn get_process_memory_use(&self, pid: &u32, historical_params: HistoricalParams) -> Result<Vec<ProcessMemoryElement>, ApplicationError> {
+        let mut conn = self.pool.get().map_err(|err| ApplicationError::new(&err.to_string()))?;
+        let mut tx = conn.start_transaction(TxOpts::default()).map_err(|err| ApplicationError::new(&err.to_string()))?;
+        /*
+         * Init parameters 
+         */
+        let params = params! {
+            "pid" => pid,
+            "server_name" => self.server_name.to_string(),
+            "from_datetime" => historical_params.from_datetime.format("%Y-%m-%d %H:%M:%S").to_string(),
+            "to_datetime" => historical_params.to_datetime.format("%Y-%m-%d %H:%M:%S").to_string(), 
+            "split" => historical_params.split * 60,           
+        };
+        /*
+         * Execute query
+         */
+        let query_result: Vec<(String, Option<u64>, Option<u64>, Option<u64>, Option<u64>, Option<u64>, Option<u64>, Option<u64>)> = tx
+            .exec_map("SELECT to_char(log_time,'YYYY-MM-DD HH24:MI:SS'), round(avg(resident)), round(avg(share)), round(avg(trs)), round(avg(drs)), round(avg(lrs)), round(avg(dt)), round(avg(pagesize)) FROM statm WHERE server_name = :server_name and pid=:pid and log_time>=:from_datetime and log_time<=:to_datetime GROUP BY UNIX_TIMESTAMP(log_time) DIV :split", params, |(log_time, resident, share, trs, drs, lrs, dt, pagesize) : (String, Option<u64>, Option<u64>, Option<u64>, Option<u64>, Option<u64>, Option<u64>, Option<u64>)| {
+                (log_time, resident, share, trs, drs, lrs, dt, pagesize)
+            }).map_err(|err| ApplicationError::new(&err.to_string()))?;                   
+        /*
+         * Map result
+         */
+        let mut elements: Vec<ProcessMemoryElement> = Vec::new();
+        for (log_time, resident, share, trs, drs, lrs, dt, pagesize) in query_result {
+            let log_time = NaiveDateTime::parse_from_str(&log_time, "%Y-%m-%d %H:%M:%S");
+            let timestamp = match log_time {
+                Ok(log_time) => log_time.and_utc(),
+                Err(err) => Err(ApplicationError::new(err.to_string().as_str()))?,
+            };
+            let pagesize = pagesize.unwrap_or(4096);
+            elements.push(ProcessMemoryElement::new(timestamp, 
+                resident.map(|f| f * pagesize), 
+                share.map(|f| f * pagesize), 
+                trs.map(|f| f * pagesize), 
+                drs.map(|f| f * pagesize), 
+                lrs.map(|f| f * pagesize), 
+                dt.map(|f| f * pagesize)));
+        }
+        tx.commit().map_err(|err| ApplicationError::new(&err.to_string()))?;       
+        Ok(elements)   
     }
 
 }
@@ -479,6 +605,7 @@ impl PostgresDbService {
 
         let pool = bb8::Pool::builder()
             .max_size(database_config.max_connections)
+            .max_lifetime(Some(std::time::Duration::from_secs(u64::from(database_config.max_lifetime))))
             .min_idle(Some(database_config.min_connections))
             .build(manager)
             .await

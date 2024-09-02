@@ -17,6 +17,7 @@ use actix_web::{web, App, HttpServer};
 use openssl::pkey::{PKey, Private};
 use openssl::ssl::{SslAcceptor, SslMethod};
 use services::SchedulingService;
+use tokio::runtime::Builder;
 use tracing_subscriber::{filter, prelude::*};
 
 use crate::common::ApplicationArguments;
@@ -34,8 +35,7 @@ type FileFilter = filter::Filtered<tracing_subscriber::fmt::Layer<tracing_subscr
  * Returns the result of the application.
  * 
  */
-#[tokio::main]
-async fn main() -> Result<(), std::io::Error> {
+fn main() -> Result<(), std::io::Error> {
     /*
      * Parse command line arguments.
      */
@@ -47,7 +47,6 @@ async fn main() -> Result<(), std::io::Error> {
         error!("Error setting up logging: {:?}", err);
         std::io::Error::new(std::io::ErrorKind::Other, format!("Error setting up logging: {err:?}"))
     })?;
-
     /*
      * Load configuration.
      */
@@ -61,6 +60,26 @@ async fn main() -> Result<(), std::io::Error> {
             Err(std::io::Error::new(std::io::ErrorKind::Other, "Error loading configuration"))
         }
     }?;
+
+    let runtime = Builder::new_multi_thread()
+        .worker_threads(monitoring_config.tokio_threads)
+        .enable_all()
+        .thread_stack_size(1024 * monitoring_config.tokio_stack_size)
+        .build();
+    match runtime {
+        Ok(runtime) => {
+            runtime.block_on(initialize(args, monitoring_config))
+        }
+        Err(err) => {
+            error!("Error creating runtime: {:?}", err);
+            Err(std::io::Error::new(std::io::ErrorKind::Other, "Error creating runtime"))
+        }        
+    }
+ }
+/**
+ * Initialize the application.
+ */
+async fn initialize(args: ApplicationArguments, monitoring_config: MonitoringConfig) -> Result<(), std::io::Error> {    
     /*
      * Start the application.
      */
@@ -71,7 +90,7 @@ async fn main() -> Result<(), std::io::Error> {
         start_application(&monitoring_config, &args).await?;
         Ok(())
     }
-} 
+    } 
 
 /**
  * Start the application.
@@ -86,14 +105,7 @@ async fn start_application(monitoring_config: &MonitoringConfig, args: &Applicat
     /*
      * Initialize database service.
      */
-    let database_config = monitoring_config.database.clone();
-    let database_service: Arc<Option<DbService>> = if let Some(database_config) = database_config {
-        Arc::new(initialize_database(&database_config, &monitoring_config.server).await)
-    } else {
-        info!("No database configuration found!");
-        Arc::new(None)
-    };
-    
+    let database_service = init_database(monitoring_config).await;    
     /*
      * Initialize monitoring service.
      */
@@ -101,6 +113,49 @@ async fn start_application(monitoring_config: &MonitoringConfig, args: &Applicat
     /*
      * Start the scheduling service.
      */
+    init_scheduling(monitoring_config, args, &monitoring_service, &database_service);
+    /*
+     * If this is a test, return.
+     */
+    if args.test {
+        return Ok(());
+    }
+    let monitered_application_names = get_applications(monitoring_config);
+    /*
+     * Initialize the HTTP server.
+     */
+    init_http_server(monitoring_config, monitoring_service, database_service, monitered_application_names).await
+}
+
+/**
+ * Initialize the database service.
+ * 
+ * `monitoring_config`: The monitoring configuration.
+ * 
+ * Returns the database service.
+ * 
+ */
+async fn init_database(monitoring_config: &MonitoringConfig) -> Arc<Option<DbService>> {
+    let database_config = monitoring_config.database.clone();
+    let database_service: Arc<Option<DbService>> = if let Some(database_config) = database_config {
+        Arc::new(initialize_database(&database_config, &monitoring_config.server).await)
+    } else {
+        info!("No database configuration found!");
+        Arc::new(None)
+    };
+    database_service
+}
+
+/**
+ * Initialize the scheduling service.
+ * 
+ * `monitoring_config`: The monitoring configuration.
+ * `args`: The application arguments.
+ * `monitoring_service`: The monitoring service.
+ * `database_service`: The database service.
+ * 
+ */
+fn init_scheduling(monitoring_config: &MonitoringConfig, args: &ApplicationArguments, monitoring_service: &MonitoringService, database_service: &Arc<Option<DbService>>) {
     let cloned_monitoring_config = monitoring_config.clone();
     let cloned_args = args.clone();
     let monitor_statuses = monitoring_service.get_status();
@@ -117,30 +172,36 @@ async fn start_application(monitoring_config: &MonitoringConfig, args: &Applicat
             }
         };
     });
+}
+
+/**
+ * Initialize the HTTP server.
+ * 
+ * `monitoring_config`: The monitoring configuration.
+ * `monitoring_service`: The monitoring service.
+ * `database_service`: The database service.
+ * `monitered_application_names`: The monitored application names.
+ * 
+ * Returns the result of initializing the HTTP server.
+ */
+async fn init_http_server(monitoring_config: &MonitoringConfig, monitoring_service: MonitoringService, database_service: Arc<Option<DbService>>, monitered_application_names: Vec<String>) -> Result<(), std::io::Error> {
     /*
      * Start the HTTP server.
      */
     let ip = monitoring_config.server.ip.clone();
     let port = monitoring_config.server.port;
     let cloned_monitoring_config = monitoring_config.clone();
-    /*
-     * If this is a test, return.
-     */
-    if args.test {
-        return Ok(());
-    }
-
-    let monitered_application_names = get_applications(monitoring_config);
-
     info!("Starting HTTP server on {}:{}", ip, port);
     let http_server = HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(StateApi::new(monitoring_service.clone(), database_service.clone(), cloned_monitoring_config.server.clone(), &monitered_application_names)))
             .service(api::get_current_meminfo)   
+            .service(api::get_historical_meminfo)
             .service(api::get_current_cpuinfo)   
             .service(api::get_current_loadavg)  
             .service(api::get_historical_loadavg) 
             .service(api::get_processes)
+            .service(api::get_historical_statm)
             .service(api::get_process)
             .service(api::get_threads)
             .service(api::get_monitor_status)
@@ -148,6 +209,7 @@ async fn start_application(monitoring_config: &MonitoringConfig, args: &Applicat
             .service(api::get_stat)
             .service(api::get_ping)
     });
+    let http_server = http_server.workers(monitoring_config.server.workers);
     let http_server = match monitoring_config.server.tls_config.clone() {
         Some(tls_config) => {
             let mut builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, format!("Error creating SSL acceptor: {err:?}")))?;
@@ -159,7 +221,7 @@ async fn start_application(monitoring_config: &MonitoringConfig, args: &Applicat
         None => {
             http_server.bind((ip, port))?
         }
-    }; 
+    };
     http_server.run()
     .await
 }

@@ -25,10 +25,10 @@ mod stat;
 mod ping;
 mod request;
 
-pub use crate::api::meminfo::get_current_meminfo;
+pub use crate::api::meminfo::{get_current_meminfo, get_historical_meminfo};
 pub use crate::api::cpuinfo::get_current_cpuinfo;
 pub use crate::api::loadavg::{get_current_loadavg, get_historical_loadavg};
-pub use crate::api::process::{get_processes, get_process, get_threads, get_current_statm};
+pub use crate::api::process::{get_processes, get_process, get_threads, get_current_statm, get_historical_statm};
 pub use crate::api::monitor::get_monitor_status;
 pub use crate::api::stat::get_stat;
 pub use crate::api::ping::get_ping;
