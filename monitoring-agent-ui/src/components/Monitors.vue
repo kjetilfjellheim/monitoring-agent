@@ -29,7 +29,7 @@ export default {
                     .then(json => {
                         json.forEach(element => {
                             element.url = server.url;
-                            element.name = server.name;
+                            element.serverName = server.name;
                         });
                         monitors.value.push(...json)
                     })
@@ -68,8 +68,8 @@ export default {
                     <div class="col col-12 col-sm-12 col-md-12 col-lg-6 col-xl-6"
                         v-if="(monitor.status === 'Ok' && showOkStatus) || (monitor.status === 'Error' && showErrorStatus)">
                         <div class="card">
-                            <div v-if="monitor.status === 'Ok'" class="card-header bg-success">
-                                <h5>
+                            <div v-if="monitor.status === 'Ok'" class="card-header bg-success text-truncate">
+                                <h6 class="text-truncate title">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                         class="bi bi-shield-check" viewBox="0 0 16 16">
                                         <path
@@ -77,11 +77,11 @@ export default {
                                         <path
                                             d="M10.854 5.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7.5 7.793l2.646-2.647a.5.5 0 0 1 .708 0" />
                                     </svg>
-                                    {{ monitor.name }}
-                                </h5>
+                                    {{ monitor.serverName }} - {{ monitor.name }}
+                                </h6>
                             </div>
-                            <div v-else="monitor.status === 'Ok'" class="card-header bg-danger">
-                                <h5>
+                            <div v-else="monitor.status === 'Ok'" class="card-header bg-danger text-truncate">
+                                <h6 class="text-truncate title">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                         class="bi bi-shield-x" viewBox="0 0 16 16">
                                         <path
@@ -89,14 +89,13 @@ export default {
                                         <path
                                             d="M6.146 5.146a.5.5 0 0 1 .708 0L8 6.293l1.146-1.147a.5.5 0 1 1 .708.708L8.707 7l1.147 1.146a.5.5 0 0 1-.708.708L8 7.707 6.854 8.854a.5.5 0 1 1-.708-.708L7.293 7 6.146 5.854a.5.5 0 0 1 0-.708" />
                                     </svg>
-                                    {{ monitor.name }}
-                                </h5>
+                                    {{ monitor.serverName }} - {{ monitor.name }}
+                                </h6>
                             </div>
                             <div class="card-body">
                                 <dl class="row">
                                     <dt class="col-sm-5 small no-margin">Current status</dt>
-                                    <dd class="col-sm-7 small text-truncate no-margin">{{ monitor.status }}
-                                    </dd>
+                                    <dd class="col-sm-7 small text-truncate no-margin">{{ monitor.status }}</dd>
                                     <dt class="col-sm-5 small no-margin">Server</dt>
                                     <dd class="col-sm-7 small text-truncate no-margin">{{ monitor.url }}</dd>
                                     <dt class="col-sm-5 small no-margin" v-if="monitor.lastSuccessfulTime != null">Last
@@ -155,5 +154,10 @@ export default {
 .toolbar-item {
     margin-left: 10px;
     margin-right: 5px;
+}
+
+.title {
+    margin-top: auto;
+    margin-bottom: auto;
 }
 </style>
