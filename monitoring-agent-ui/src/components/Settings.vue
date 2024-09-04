@@ -101,25 +101,19 @@ export default {
 <template>
   <div class="container-fluid">
     <div class="row">
-      <nav class="navbar navbar-expand-lg navbar-dark bg-dark ">
+      <nav class="navbar navbar-dark bg-dark">
         <div class="container-fluid">
-          <div class="collapse navbar-collapse" id="navbarSupportedContent">
+          <button class="btn btn-info small" @click="this.checkAll()">
+            <FontAwesomeIcon :icon="faListCheck" />&nbsp;Check all
+          </button>
+          <form class="d-flex">
             <div class="input-group mb-3">
-              <button class="btn btn-info small" @click="this.checkAll()">
-                <FontAwesomeIcon :icon="faListCheck" />&nbsp;Check all
-              </button>
-            </div>
-            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-            </ul>
-            <form class="d-flex">
-              <div class="input-group mb-3">
-                <input type="text" class="form-control" aria-describedby="basic-addon2" v-model="new_url" size="50" />
-                <div class="input-group-append">
-                  <button class="btn btn-primary" @click="addUrl(new_url)">Add</button>
-                </div>
+              <input type="text" class="form-control" aria-describedby="basic-addon2" v-model="new_url" size="50" />
+              <div class="input-group-append">
+                <button class="btn btn-primary" @click="addUrl(new_url)">Add</button>
               </div>
-            </form>
-          </div>
+            </div>
+          </form>
         </div>
       </nav>
       <table class="table table-striped-self table-dark">
