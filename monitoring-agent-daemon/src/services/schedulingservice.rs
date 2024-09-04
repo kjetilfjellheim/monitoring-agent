@@ -219,9 +219,9 @@ impl SchedulingService {
                 let job = database_monitor.get_database_monitor_job(monitor.schedule.as_str())?;
                 self.add_job(scheduler, job).await
             },
-            crate::common::MonitorType::Process { application_names, max_mem_usage, store_values 
+            crate::common::MonitorType::Process { application_names, pids, regexp, max_mem_usage, store_values 
             } => {
-                let mut process_monitor = ProcessMonitor::new(&monitor.name, &monitor.description, &application_names, max_mem_usage, &self.status, &self.database_service.clone(), &monitor.store, store_values);
+                let mut process_monitor = ProcessMonitor::new(&monitor.name, &monitor.description, application_names, pids, regexp, max_mem_usage, &self.status, &self.database_service.clone(), &monitor.store, store_values);
                 let job = process_monitor.get_process_monitor_job(monitor.schedule.as_str())?;
                 self.add_job(scheduler, job).await
             },

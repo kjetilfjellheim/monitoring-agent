@@ -6,11 +6,10 @@ use std::fs::File;
 use std::io::Read;
 use std::str::FromStr;
 use std::sync::Arc;
-use std::vec;
 
 use clap::Parser;
 use common::configuration::{DatabaseConfig, MonitoringConfig, ServerConfig};
-use common::{ApplicationError, MonitorType};
+use common::ApplicationError;
 use daemonize::Daemonize;
 use log::{debug, error, info};
 use actix_web::{web, App, HttpServer};
@@ -120,11 +119,11 @@ async fn start_application(monitoring_config: &MonitoringConfig, args: &Applicat
     if args.test {
         return Ok(());
     }
-    let monitered_application_names = get_applications(monitoring_config);
     /*
      * Initialize the HTTP server.
      */
-    init_http_server(monitoring_config, monitoring_service, database_service, monitered_application_names).await
+    //Fix monitored application names
+    init_http_server(monitoring_config, monitoring_service, database_service, Vec::new()).await
 }
 
 /**
@@ -224,33 +223,6 @@ async fn init_http_server(monitoring_config: &MonitoringConfig, monitoring_servi
     };
     http_server.run()
     .await
-}
-
-/**
- * Get applications that are being monitored.
- * 
- * `monitoring_config`: The monitoring configuration.
- * 
- * Returns the applications.
- * 
- */
-fn get_applications(monitoring_config: &MonitoringConfig) -> Vec<String> {
-    monitoring_config
-        .monitors
-        .iter()
-        .flat_map(|monitor| match monitor.details.clone() {
-            MonitorType::Process { application_names, max_mem_usage: _, store_values } => {
-                if store_values {
-                    application_names.clone()
-                } else {
-                    vec![]
-                }
-            }
-            _ => {
-                vec![]
-            }
-        })
-        .collect()
 }
 
 /** 
