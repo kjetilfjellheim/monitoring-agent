@@ -34,7 +34,8 @@ rust_decimal = { version = "1.35.0", features = ["db-postgres"] }               
 tracing = "0.1.40"                                                                      # For logging.
 tracing-subscriber = "0.3.18"                                                           # For logging.
 tracing-log = "0.2.0"                                                                   # For logging.
-openssl = "0.10.35"                                                                     # For handling openssl.
+openssl = "0.10.66"                                                                     # For handling openssl.
+regex = "1.10.6"                                                                        # For regular expressions.
 
 [package.metadata.deb]
 maintainer = "Kjetil Fjellheim <kjetil@forgottendonkey.net>"
