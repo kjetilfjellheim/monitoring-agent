@@ -83,6 +83,10 @@ impl Group {
             let parts = group_line
                 .split(':')
                 .collect::<Vec<&str>>();
+            // Synology NAS have a not group info in first line.
+            if parts.len() < 4 {
+                continue;
+            }
             let name = parts[0].to_string();
             let gid = parts[2].parse::<u32>().map_err(|err| CommonLibError::new(&format!("Error parsing group id {err:?}")))?;
             groups.push(Group::new(name, gid));
