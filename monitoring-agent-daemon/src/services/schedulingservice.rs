@@ -4,7 +4,7 @@ use log::info;
 use tokio_cron_scheduler::{Job, JobScheduler};
 
 use crate::common::{configuration::MonitoringConfig, ApplicationError, MonitorStatus};
-use crate::services::DbService;
+use crate::services::{DbService, jobs::DbCleanupJob};
 use super::monitors::{CommandMonitor, HttpMonitor, LoadAvgMonitor, MeminfoMonitor, SystemctlMonitor, TcpMonitor, DatabaseMonitor, ProcessMonitor};
 
 /**
@@ -98,7 +98,20 @@ impl SchedulingService {
          */
         for monitor in self.monitoring_config.monitors.clone() {
             self.create_and_add_job(&monitor, &scheduler).await?;
-        }                 
+        }
+
+        /*
+         * Create a cleanup jobs.
+         */
+        let cleanup_config = self.monitoring_config.cleanup_config.clone();
+        if let Some(cleanup_config) = cleanup_config {
+            let max_time_stored_db = cleanup_config.max_time_stored_db;
+            if let Some(max_time_stored_db) = max_time_stored_db {
+                let mut cleanup_job = DbCleanupJob::new(&self.database_service, max_time_stored_db);
+                let job = cleanup_job.get_db_cleanup_job()?;
+                self.add_job(&scheduler, job).await?;
+            }
+        }
         /*
          * Start the scheduler.
          */

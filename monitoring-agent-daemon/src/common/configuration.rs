@@ -181,7 +181,9 @@ pub struct MonitoringConfig {
     /// The list of monitors.
     #[serde(rename = "monitors")]
     pub monitors: Vec<Monitor>,
-
+    /// Cleanup configuration.
+    #[serde(rename = "cleanupConfig")]
+    pub cleanup_config: Option<CleanupConfig>,
 
 }
 
@@ -229,6 +231,16 @@ impl MonitoringConfig {
             )),
         }
     }
+}
+
+/**
+ * Cleanup configuration.
+ */
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+pub struct CleanupConfig {
+    /// Hours to keep information in the database.
+    #[serde(rename = "removeFromDbAfter", default = "default_none")]
+    pub max_time_stored_db: Option<u32>,
 }
 
 /**
@@ -409,11 +421,17 @@ fn default_max_lifetime() -> u32 {
     300
 }
 
+/** 
+ * Default tokio stack size.
+ */
 fn default_tokio_stack_size() -> usize {
     debug!("Using default tokio stack size");
     2 * 1024
 }
 
+/** 
+ * Default tokio threads.
+ */
 fn default_tokio_threads() -> usize {
     debug!("Using default tokio threads");
     4
