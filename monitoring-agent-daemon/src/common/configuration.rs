@@ -83,7 +83,13 @@ pub enum MonitorType {
     Process {
         /// Aplication names to monitor.
         #[serde(rename = "applicationNames")]
-        application_names: Vec<String>,
+        application_names: Option<Vec<String>>,
+        /// Pids to monitor.
+        #[serde(rename = "pids")] 
+        pids: Option<Vec<u32>>,
+        /// Regexp on name.
+        #[serde(rename = "regexp")] 
+        regexp: Option<String>,        
         /// The maximum memory usage.
         #[serde(skip_serializing_if = "Option::is_none", rename = "maxMemUsage")]
         max_mem_usage: Option<u32>,        
@@ -628,7 +634,9 @@ mod tests {
         assert_eq!(
             monitor,
             MonitorType::Process { 
-                application_names: vec!["app1".to_string(), "app2".to_string()],
+                application_names: Some(vec!["app1".to_string(), "app2".to_string()]),
+                pids: None,
+                regexp: None,
                 max_mem_usage: Some(100),
                 store_values: true,
                 

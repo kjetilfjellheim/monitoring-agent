@@ -126,6 +126,9 @@ async fn start_application(monitoring_config: Arc<MonitoringConfig>, args: Arc<A
     /*
      * Initialize the HTTP server.
      */
+    /*
+     * Initialize the HTTP server.
+     */
     init_http_server(monitoring_config, monitoring_service, database_service).await
 }
 
@@ -223,7 +226,6 @@ async fn init_http_server(monitoring_config: Arc<MonitoringConfig>, monitoring_s
     http_server.run()
     .await
 }
-
 /** 
  * Load the encrypted private key.
  * 
