@@ -18,7 +18,7 @@ pub async fn get_processes(state: web::Data<StateApi>) -> impl Responder {
         Ok(procs) => { 
             let mut response_builder = HttpResponse::Ok();
             set_cors_headers(&mut response_builder, &state.server_config);
-            response_builder.json(ProcessResponse::from_processes(&procs, &state.monitered_application_names))
+            response_builder.json(ProcessResponse::from_processes(&procs))
         },
         Err(err) => HttpResponse::InternalServerError().body(format!("Error occured: {err:?}")),
     }
@@ -39,7 +39,7 @@ pub async fn get_process(state: web::Data<StateApi>, path: web::Path<u32>) -> im
         Ok(procs) => { 
             let mut response_builder = HttpResponse::Ok();
             set_cors_headers(&mut response_builder, &state.server_config);            
-            response_builder.json(ProcessResponse::from_process(&procs, &state.monitered_application_names)) 
+            response_builder.json(ProcessResponse::from_process(&procs)) 
         },
         Err(err) => HttpResponse::InternalServerError().body(format!("Error occured: {err:?}")),
     }
@@ -60,7 +60,7 @@ pub async fn get_threads(state: web::Data<StateApi>, path: web::Path<u32>) -> im
         Ok(procs) => {
             let mut response_builder = HttpResponse::Ok();
             set_cors_headers(&mut response_builder, &state.server_config);
-            response_builder.json(ProcessResponse::from_processes(&procs, &state.monitered_application_names))
+            response_builder.json(ProcessResponse::from_processes(&procs))
         },
         Err(err) => HttpResponse::InternalServerError().body(format!("Error occured: {err:?}")),
     }

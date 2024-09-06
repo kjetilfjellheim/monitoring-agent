@@ -225,6 +225,23 @@ impl DbService {
             DbService::PostgresDb(_) => Err(ApplicationError::new("Not implemented")),
         }
     }   
+
+    /**
+     * Delete old data.
+     * 
+     * `max_time_stored_db`: The maximum time to store data in the database.
+     * 
+     * Returns: Ok if the data was deleted successfully.
+     * 
+     * Errors:
+     * - If there is an error deleting the data.
+     */
+    pub fn delete_old_data(&self, max_time_stored_db: u32) -> Result<(), ApplicationError> {
+        match self {
+            DbService::MariaDb(service) => service.delete_old_data(max_time_stored_db),
+            DbService::PostgresDb(_) => Err(ApplicationError::new("Not implemented")),
+        }
+    }
 }
 
 /**
@@ -561,6 +578,31 @@ impl MariaDbService {
         }
         tx.commit().map_err(|err| ApplicationError::new(&err.to_string()))?;       
         Ok(elements)   
+    }
+
+    /**
+     * Delete old data.
+     * 
+     * `max_time_stored_db`: The maximum time to store data in the database in hours.
+     * 
+     * Returns: Ok if the data was deleted successfully.
+     * 
+     * Errors:
+     * - If there is an error deleting the data.
+     */
+    fn delete_old_data(&self, max_time_stored_db: u32) -> Result<(), ApplicationError> {
+        let mut conn = self.pool.get().map_err(|err| ApplicationError::new(&err.to_string()))?;
+        let mut tx = conn.start_transaction(TxOpts::default()).map_err(|err| ApplicationError::new(&err.to_string()))?;
+        let params = params! {
+            "max_time_stored_db" => max_time_stored_db,
+            "server_name" => self.server_name.to_string(),
+        };
+        tx.exec_drop("DELETE FROM monitor_status WHERE log_time < now() - INTERVAL :max_time_stored_db HOUR AND server_name = :server_name", &params).map_err(|err| ApplicationError::new(&err.to_string()))?;
+        tx.exec_drop("DELETE FROM loadavg WHERE log_time < now() - INTERVAL :max_time_stored_db HOUR AND server_name = :server_name", &params).map_err(|err| ApplicationError::new(&err.to_string()))?;
+        tx.exec_drop("DELETE FROM meminfo WHERE log_time < now() - INTERVAL :max_time_stored_db HOUR AND server_name = :server_name", &params).map_err(|err| ApplicationError::new(&err.to_string()))?;
+        tx.exec_drop("DELETE FROM statm WHERE log_time < now() - INTERVAL :max_time_stored_db HOUR AND server_name = :server_name", &params).map_err(|err| ApplicationError::new(&err.to_string()))?;
+        tx.commit().map_err(|err| ApplicationError::new(&err.to_string()))?;
+        Ok(())
     }
 
 }

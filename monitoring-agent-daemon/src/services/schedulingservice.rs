@@ -4,7 +4,7 @@ use log::info;
 use tokio_cron_scheduler::{Job, JobScheduler};
 
 use crate::common::{configuration::MonitoringConfig, ApplicationError, MonitorStatus};
-use crate::services::DbService;
+use crate::services::{DbService, jobs::DbCleanupJob};
 use super::monitors::{CommandMonitor, HttpMonitor, LoadAvgMonitor, MeminfoMonitor, SystemctlMonitor, TcpMonitor, DatabaseMonitor, ProcessMonitor};
 
 /**
@@ -23,7 +23,7 @@ pub struct SchedulingService {
     /// The job scheduler. Handles starting the jobs.
     scheduler: Option<JobScheduler>,
     /// The monitoring configuration.
-    monitoring_config: MonitoringConfig,
+    monitoring_config: Arc<MonitoringConfig>,
     /// The status of the monitors.
     status: Arc<Mutex<HashMap<String, MonitorStatus>>>,
     /// The database service.
@@ -39,7 +39,7 @@ impl SchedulingService {
      *
      * result: The result of creating the scheduling service.
      */
-    pub fn new(server_name: &str, monitoring_config: &MonitoringConfig, status: &Arc<Mutex<HashMap<String, MonitorStatus>>>, database_service: &Arc<Option<DbService>>) -> SchedulingService {
+    pub fn new(server_name: &str, monitoring_config: &Arc<MonitoringConfig>, status: &Arc<Mutex<HashMap<String, MonitorStatus>>>, database_service: &Arc<Option<DbService>>) -> SchedulingService {
         SchedulingService {
             scheduler: None,
             monitoring_config: monitoring_config.clone(),
@@ -96,10 +96,22 @@ impl SchedulingService {
         /*
          * Create and add jobs to the scheduler.
          */
-        let monitors = self.monitoring_config.clone().monitors;
-        for monitor in monitors {
+        for monitor in self.monitoring_config.monitors.clone() {
             self.create_and_add_job(&monitor, &scheduler).await?;
-        }                 
+        }
+
+        /*
+         * Create a cleanup jobs.
+         */
+        let cleanup_config = self.monitoring_config.cleanup_config.clone();
+        if let Some(cleanup_config) = cleanup_config {
+            let max_time_stored_db = cleanup_config.max_time_stored_db;
+            if let Some(max_time_stored_db) = max_time_stored_db {
+                let mut cleanup_job = DbCleanupJob::new(&self.database_service, max_time_stored_db);
+                let job = cleanup_job.get_db_cleanup_job()?;
+                self.add_job(&scheduler, job).await?;
+            }
+        }
         /*
          * Start the scheduler.
          */
@@ -219,9 +231,9 @@ impl SchedulingService {
                 let job = database_monitor.get_database_monitor_job(monitor.schedule.as_str())?;
                 self.add_job(scheduler, job).await
             },
-            crate::common::MonitorType::Process { application_names, max_mem_usage, store_values 
+            crate::common::MonitorType::Process { application_names, pids, regexp, max_mem_usage, store_values 
             } => {
-                let mut process_monitor = ProcessMonitor::new(&monitor.name, &monitor.description, &application_names, max_mem_usage, &self.status, &self.database_service.clone(), &monitor.store, store_values);
+                let mut process_monitor = ProcessMonitor::new(&monitor.name, &monitor.description, application_names, pids, regexp, max_mem_usage, &self.status, &self.database_service.clone(), &monitor.store, store_values);
                 let job = process_monitor.get_process_monitor_job(monitor.schedule.as_str())?;
                 self.add_job(scheduler, job).await
             },
@@ -286,7 +298,7 @@ mod test {
     #[tokio::test]
     async fn test_monitoring_service() {
         let status = Arc::new(Mutex::new(HashMap::new()));
-        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("./resources/test/test_full_configuration.json").unwrap(), &status, &Arc::new(None));
+        let mut scheduling_service = SchedulingService::new("", &Arc::new(MonitoringConfig::new("./resources/test/test_full_configuration.json").unwrap()), &status, &Arc::new(None));
         let res = scheduling_service.start(true).await;
         assert!(res.is_ok());
     }
@@ -297,7 +309,7 @@ mod test {
     #[tokio::test]
     async fn test_monitoring_service_tcp() {
         let status = Arc::new(Mutex::new(HashMap::new()));
-        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("./resources/test/configuration_import_test/test_simple_tcp.json").unwrap(), &status, &Arc::new(None));
+        let mut scheduling_service = SchedulingService::new("", &Arc::new(MonitoringConfig::new("./resources/test/configuration_import_test/test_simple_tcp.json").unwrap()), &status, &Arc::new(None));
         let res = scheduling_service.start(true).await;
         assert!(res.is_ok());
     }
@@ -308,7 +320,7 @@ mod test {
     #[tokio::test]
     async fn test_monitoring_service_http() {
         let status = Arc::new(Mutex::new(HashMap::new()));
-        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("./resources/test/configuration_import_test/test_simple_http.json").unwrap(), &status, &Arc::new(None));
+        let mut scheduling_service = SchedulingService::new("", &Arc::new(MonitoringConfig::new("./resources/test/configuration_import_test/test_simple_http.json").unwrap()), &status, &Arc::new(None));
         let res = scheduling_service.start(true).await;
         assert!(res.is_ok());
     }
@@ -319,7 +331,7 @@ mod test {
     #[tokio::test]
     async fn test_monitoring_service_command() {
         let status = Arc::new(Mutex::new(HashMap::new()));
-        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("./resources/test/configuration_import_test/test_simple_command.json").unwrap(), &status, &Arc::new(None));
+        let mut scheduling_service = SchedulingService::new("", &Arc::new(MonitoringConfig::new("./resources/test/configuration_import_test/test_simple_command.json").unwrap()), &status, &Arc::new(None));
         let res = scheduling_service.start(true).await;
         assert!(res.is_ok());
     }
@@ -330,7 +342,7 @@ mod test {
     #[tokio::test]
     async fn test_monitoring_service_loadavg() {
         let status = Arc::new(Mutex::new(HashMap::new()));
-        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("./resources/test/configuration_import_test/test_simple_loadavg.json").unwrap(), &status, &Arc::new(None));
+        let mut scheduling_service = SchedulingService::new("", &Arc::new(MonitoringConfig::new("./resources/test/configuration_import_test/test_simple_loadavg.json").unwrap()), &status, &Arc::new(None));
         let res = scheduling_service.start(true).await;
         assert!(res.is_ok());
     }
@@ -341,7 +353,7 @@ mod test {
     #[tokio::test]
     async fn test_monitoring_service_meminfo() {
         let status = Arc::new(Mutex::new(HashMap::new()));
-        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("./resources/test/configuration_import_test/test_simple_meminfo.json").unwrap(), &status, &Arc::new(None));
+        let mut scheduling_service = SchedulingService::new("", &Arc::new(MonitoringConfig::new("./resources/test/configuration_import_test/test_simple_meminfo.json").unwrap()), &status, &Arc::new(None));
         let res = scheduling_service.start(true).await;
         assert!(res.is_ok());
     }
@@ -352,7 +364,7 @@ mod test {
     #[tokio::test]
     async fn test_monitoring_service_systemctl() {
         let status = Arc::new(Mutex::new(HashMap::new()));
-        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("./resources/test/configuration_import_test/test_simple_systemctl.json").unwrap(), &status, &Arc::new(None));
+        let mut scheduling_service = SchedulingService::new("", &Arc::new(MonitoringConfig::new("./resources/test/configuration_import_test/test_simple_systemctl.json").unwrap()), &status, &Arc::new(None));
         let res = scheduling_service.start(true).await;
         assert!(res.is_ok());
     }
@@ -363,7 +375,7 @@ mod test {
     #[tokio::test]
     async fn test_monitoring_service_db_mariadb() {
         let status = Arc::new(Mutex::new(HashMap::new()));
-        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("./resources/test/configuration_import_test/test_simple_db_mariadb.json").unwrap(), &status, &Arc::new(None));
+        let mut scheduling_service = SchedulingService::new("", &Arc::new(MonitoringConfig::new("./resources/test/configuration_import_test/test_simple_db_mariadb.json").unwrap()), &status, &Arc::new(None));
         let res = scheduling_service.start(true).await;
         assert!(res.is_ok());
     }
@@ -374,7 +386,7 @@ mod test {
     #[tokio::test]
     async fn test_monitoring_service_db_postgres() {
         let status = Arc::new(Mutex::new(HashMap::new()));
-        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("./resources/test/configuration_import_test/test_simple_db_postgres.json").unwrap(), &status, &Arc::new(None));
+        let mut scheduling_service = SchedulingService::new("", &Arc::new(MonitoringConfig::new("./resources/test/configuration_import_test/test_simple_db_postgres.json").unwrap()), &status, &Arc::new(None));
         let res = scheduling_service.start(true).await;
         assert!(res.is_ok());
     }    
@@ -382,7 +394,7 @@ mod test {
     #[tokio::test]
     async fn test_add_jobs() {
         let status = Arc::new(Mutex::new(HashMap::new()));
-        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("resources/test/configuration_import_test/test_simple_tcp.json").unwrap(), &status, &Arc::new(None));
+        let mut scheduling_service = SchedulingService::new("", &Arc::new(MonitoringConfig::new("resources/test/configuration_import_test/test_simple_tcp.json").unwrap()), &status, &Arc::new(None));
         let res = scheduling_service.add_jobs().await;
         print!("{:?}", res);
     }
@@ -390,7 +402,7 @@ mod test {
     #[tokio::test]
     async fn test_create_and_add_job_tcp_job() {
         let status = Arc::new(Mutex::new(HashMap::new()));
-        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("resources/test/configuration_import_test/test_simple_tcp.json").unwrap(), &status, &Arc::new(None));
+        let mut scheduling_service = SchedulingService::new("", &Arc::new(MonitoringConfig::new("resources/test/configuration_import_test/test_simple_tcp.json").unwrap()), &status, &Arc::new(None));
         let res = scheduling_service.create_and_add_job(&crate::common::Monitor {
             name: "test".to_string(),
             description: None,
@@ -407,7 +419,7 @@ mod test {
     #[tokio::test]
     async fn test_create_and_add_job_http_job() {
         let status = Arc::new(Mutex::new(HashMap::new()));
-        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("resources/test/configuration_import_test/test_simple_http.json").unwrap(), &status, &Arc::new(None));
+        let mut scheduling_service = SchedulingService::new("", &Arc::new(MonitoringConfig::new("resources/test/configuration_import_test/test_simple_http.json").unwrap()), &status, &Arc::new(None));
         let res = scheduling_service.create_and_add_job(&crate::common::Monitor {
             name: "test".to_string(),
             description: None,
@@ -433,7 +445,7 @@ mod test {
     #[tokio::test]
     async fn test_create_and_add_job_systemctl_job() {
         let status = Arc::new(Mutex::new(HashMap::new()));
-        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("resources/test/configuration_import_test/test_simple_systemctl.json").unwrap(), &status, &Arc::new(None));
+        let mut scheduling_service = SchedulingService::new("", &Arc::new(MonitoringConfig::new("resources/test/configuration_import_test/test_simple_systemctl.json").unwrap()), &status, &Arc::new(None));
         let res = scheduling_service.create_and_add_job(&crate::common::Monitor {
             name: "test".to_string(),
             description: None,
@@ -449,7 +461,7 @@ mod test {
     #[tokio::test]
     async fn test_create_and_add_job_command_job() {
         let status = Arc::new(Mutex::new(HashMap::new()));
-        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("resources/test/configuration_import_test/test_simple_command.json").unwrap(), &status, &Arc::new(None));
+        let mut scheduling_service = SchedulingService::new("", &Arc::new(MonitoringConfig::new("resources/test/configuration_import_test/test_simple_command.json").unwrap()), &status, &Arc::new(None));
         let res = scheduling_service.create_and_add_job(&crate::common::Monitor {
             name: "test".to_string(),
             description: None,
@@ -467,7 +479,7 @@ mod test {
     #[tokio::test]
     async fn test_create_and_add_job_loadavg_job() {
         let status = Arc::new(Mutex::new(HashMap::new()));
-        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("resources/test/configuration_import_test/test_simple_loadavg.json").unwrap(), &status, &Arc::new(None));
+        let mut scheduling_service = SchedulingService::new("", &Arc::new(MonitoringConfig::new("resources/test/configuration_import_test/test_simple_loadavg.json").unwrap()), &status, &Arc::new(None));
         let res = scheduling_service.create_and_add_job(&crate::common::Monitor {
             name: "test".to_string(),
             description: None,
@@ -486,7 +498,7 @@ mod test {
     #[tokio::test]
     async fn test_create_and_add_job_meminfo_job() {
         let status = Arc::new(Mutex::new(HashMap::new()));
-        let mut scheduling_service = SchedulingService::new("", &MonitoringConfig::new("resources/test/configuration_import_test/test_simple_meminfo.json").unwrap(), &status, &Arc::new(None));
+        let mut scheduling_service = SchedulingService::new("", &Arc::new(MonitoringConfig::new("resources/test/configuration_import_test/test_simple_meminfo.json").unwrap()), &status, &Arc::new(None));
         let res = scheduling_service.create_and_add_job(&crate::common::Monitor {
             name: "test".to_string(),
             description: None,

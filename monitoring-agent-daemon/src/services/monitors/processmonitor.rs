@@ -1,11 +1,11 @@
 use std::{collections::HashMap, sync::{Arc, Mutex}};
 
 use log::{debug, error, info};
-use monitoring_agent_lib::proc::{ProcsCmdLine, ProcsStatm};
+use monitoring_agent_lib::proc::{ProcsProcess, ProcsStatm};
 use tokio_cron_scheduler::Job;
+use regex::Regex;
 
 use crate::{common::{configuration::DatabaseStoreLevel, ApplicationError, MonitorStatus, Status}, services::DbService};
-
 use super::Monitor;
 
 /**
@@ -14,6 +14,8 @@ use super::Monitor;
  * `name`: The monitor name.
  * `description`: The description of the monitor.
  * `application_names`: The application names to monitor.
+ * `pids`: The process ids to monitor.
+ * `regexp`: The regular expression.
  * `max_mem_usage`: The max memory usage.
  * `status`: The status of the monitor.
  * `database_service`: The database service.
@@ -26,7 +28,11 @@ pub struct ProcessMonitor {
     /// The monitor name.
     name: String,
     /// Application names to monitor.
-    application_names: Vec<String>,
+    application_names: Option<Vec<String>>,
+    /// Pids to monitor.
+    pids: Option<Vec<u32>>,
+    /// regexp.
+    regexp: Option<String>,    
     /// The max memory usage.
     max_mem_usage: Option<u32>,
     /// The status of the monitor.
@@ -45,6 +51,8 @@ impl ProcessMonitor {
      * 
      * `name`: The monitor name.
      * `application_names`: The application names to monitor.
+     * `pids`: The process ids to monitor.
+     * `regexp`: The regular expression. 
      * `max_mem_usage`: The max memory usage.
      * `status`: The status of the monitor.
      * `database_service`: The database service.
@@ -57,7 +65,9 @@ impl ProcessMonitor {
     pub fn new(
         name: &str,
         description: &Option<String>,
-        application_names: &[String],
+        application_names: Option<Vec<String>>,
+        pids: Option<Vec<u32>>,
+        regexp: Option<String>,
         max_mem_usage: Option<u32>,
         status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
         database_service: &Arc<Option<DbService>>,
@@ -76,7 +86,9 @@ impl ProcessMonitor {
         }            
         ProcessMonitor {
             name: name.to_string(),
-            application_names: application_names.to_vec(),
+            application_names,
+            pids,
+            regexp,
             max_mem_usage,
             status: status.clone(),
             database_service: database_service.clone(),
@@ -121,76 +133,110 @@ impl ProcessMonitor {
      */
     pub async fn check(&mut self) -> Result<(), ApplicationError> {
         let mut statuses: Vec<Status> = Vec::new();
-        for app_name in &self.application_names {
-            let new_statuses = self.check_application(app_name).await?;
-            statuses.extend(new_statuses);
-        }
+        let processes = ProcsProcess::get_all_processes();
+        let regexp: Option<Regex> = match self.regexp {
+            Some(ref regexp) => {
+                match Regex::new(regexp) {
+                    Ok(regexp) => Some(regexp),
+                    Err(err) => {
+                        error!("Error creating regular expression: {err:?}");
+                        None
+                    }
+                }
+            }
+            None => None
+        };
+        if let Ok(processes) = processes {
+            for process in processes {
+                if  Self::check_pids(&self.pids, &process) || 
+                    Self::check_application_names(&self.application_names, &process) || 
+                    Self::check_regexp(&regexp, &process) {
+                    let check_process = self.check_process(&process).await;
+                    match check_process {
+                        Ok(status) => {
+                            statuses.push(status);
+                        }
+                        Err(err) => {
+                            error!("Error checking process: {err:?}");
+                        }
+                    }
+                }
+            }
+        }   
+
         let new_status = Status::get_max_status(statuses);
         self.set_status(&new_status).await;
         Ok(())
     }    
 
-    /** 
-     * Check the application.
+    /**
+     * Check regexp.
      * 
-     * `app_name`: The application name.
+     * `regexp`: The regular expression.
+     * `process`: The process.
      * 
-     * Returns: The statuses of the checks.
-     * 
-     * # Errors
-     * - If there is an error reading the cmdlines.
-     * 
+     * Returns: The status of the check.
      */
-    async fn check_application(&self, app_name: &str) -> Result<Vec<Status>, ApplicationError> {
-        debug!("Checking application: {app_name:?}");
-        let cmdlines_result = ProcsCmdLine::read_by_application(app_name);
-        match cmdlines_result {
-            Ok(cmdlines) => { 
-                Ok(self.check_processes(app_name, &cmdlines).await)
-            },
-            Err(err) => {
-                Err(ApplicationError::new(
-                    format!("Error reading cmdlines for application: {app_name:?}, err: {err:?}").as_str(),
-                ))
+    fn check_regexp(regexp: &Option<Regex>, process: &ProcsProcess) -> bool {
+        if let Some(regexp) = regexp {
+            if let Some(name) = &process.name {
+                return regexp.is_match(name);
             }
         }
+        false
     }
 
     /**
-     * Check the processes.
+     * Check application names.
      * 
-     * `app_name`: The application name.
-     * `cmdlines`: The command lines.
+     * `application_names`: The application names.
+     * `process`: The process.
      * 
-     * Returns: The statuses of the checks.
-     * 
+     * Returns: The status of the check.
      */
-    async fn check_processes(&self, app_name: &str, cmdlines: &Vec<ProcsCmdLine>) -> Vec<Status> {
-        debug!("Checking processes: {cmdlines:?}");
-        let mut statuses = Vec::new();
-        for cmdline in cmdlines {
-            statuses.push(self.check_process(app_name, cmdline).await);
-        };
-        statuses
+    fn check_application_names(application_names: &Option<Vec<String>>, process: &ProcsProcess) -> bool {
+        if let Some(application_names) = application_names {
+            if let Some(name) = &process.name {
+                return application_names.contains(name);
+            }
+        }
+        false
+    }
+
+    /**
+     * Check if pid is in the pids to monitor.
+     * 
+     * `pids`: The pids to monitor.
+     * 
+     * Returns: The status of the check.
+     */
+    fn check_pids(pids: &Option<Vec<u32>>, process: &ProcsProcess) -> bool {
+        if let Some(pids) = pids {
+            if let Some(pid) = process.pid {
+                return pids.contains(&pid);
+            }
+        }
+        false
     }
 
     /**
      * Check the process.
      * 
-     * `app_name`: The application name.
-     * `cmdline`: The command line.
+     * `process`: The process.
      *  
      * Returns: The status of the check.
      */
-    async fn check_process(&self, app_name: &str, cmdline: &ProcsCmdLine) -> Status {
-        debug!("Checking process: {cmdline:?}");
-        let statm = ProcsStatm::get_statm(cmdline.pid);
+    async fn check_process(&self, process: &ProcsProcess) -> Result<Status, ApplicationError> {
+        debug!("Checking process: {process:?}");
+        let Some(pid) = process.pid else { return Ok(Status::Ok) };
+        let name = process.name.clone().unwrap_or("Unknown".to_string());
+        let statm = ProcsStatm::get_statm(pid);
         if let Ok(statm) = statm {
-            self.store_statm_values(app_name, cmdline, &statm).await;
-            self.check_max(&statm)
+            self.store_statm_values(pid, &name, &statm).await;
+            Ok(self.check_max(&statm))
         } else {
-            info!("Error getting statm for process, this could because the process no longer exist: {cmdline:?}");
-            Status::Ok
+            info!("Error getting statm for process, this could because the process no longer exist: {process:?}");
+            Ok(Status::Ok)
         }
     }
 
@@ -214,35 +260,35 @@ impl ProcessMonitor {
     /**
      * Store the statm values.
      * 
+     * `pid`: The process id.
      * `app_name`: The application name.
-     * `cmdline`: The command line.
      * `statm`: The statm values.
      */
-    async fn store_statm_values(&self, app_name: &str, cmdline: &ProcsCmdLine, statm: &ProcsStatm) {
+    async fn store_statm_values(&self, pid: u32, app_name: &str, statm: &ProcsStatm) {
         if self.store_current_statm {
-            self.store_current_statm_values(app_name, cmdline, statm).await;
+            self.store_current_statm_values(pid, app_name, statm).await;
         }
     }
 
     /**
      * Store the current statm values.
      * 
+     * `pid`: The process id.
      * `app_name`: The application name.
-     * `cmdline`: The command line.
      * `statm`: The statm values.
      * 
      * Returns: The result of storing the statm values.
      * 
      */
-    async fn store_current_statm_values(&self, app_name: &str, cmdline: &ProcsCmdLine, statm: &ProcsStatm) {
-        if let Some(database_service) = &*self.database_service {
-            let store_result: Result<(), ApplicationError> = database_service.store_statm_values(app_name, &cmdline.pid, statm).await;
+    async fn store_current_statm_values(&self, pid: u32, app_name: &str, statm: &ProcsStatm) {
+        if let Some(database_service) = self.database_service.as_ref() {
+            let store_result: Result<(), ApplicationError> = database_service.store_statm_values(app_name, &pid, statm).await;
             match store_result {
                 Ok(()) => {
-                    info!("Stored statm values for process: {cmdline:?}");
+                    debug!("Stored statm values for process: {pid:?}");
                 }
                 Err(err) => {
-                    error!("Error storing statm values for process: {cmdline:?}, err: {err:?}");
+                    error!("Error storing statm values for process: {pid:?}, err: {err:?}");
                 }
             }
         }
@@ -302,7 +348,9 @@ mod test {
         let mut process_monitor = ProcessMonitor::new(
             "test_monitor",
             &None,
-            &vec!["test_app".to_string()],
+            Some(vec!["test_app".to_string()]),
+            Some(vec![100u32]),
+            Some("test".to_string()),
             Some(100),
             &Arc::new(Mutex::new(HashMap::new())),
             &Arc::new(None),
@@ -318,7 +366,9 @@ mod test {
         let mut process_monitor = ProcessMonitor::new(
             "test_monitor",
             &None,
-            &vec!["test_app".to_string()],
+            Some(vec!["test_app".to_string()].clone()),
+            Some(vec![100u32]),
+            Some("test".to_string()),
             Some(100),
             &Arc::new(Mutex::new(HashMap::new())),
             &Arc::new(None),
@@ -334,8 +384,10 @@ mod test {
         let mut process_monitor = ProcessMonitor::new(
             "systemd monitor",
             &None,
-            &vec!["/sbin/init".to_string()],
-            Some(0),
+            Some(vec!["systemd".to_string()]),
+            None,
+            None,
+            Some(1000),
             &Arc::new(Mutex::new(HashMap::new())),
             &Arc::new(None),
             &DatabaseStoreLevel::None,
@@ -351,7 +403,9 @@ mod test {
         let mut process_monitor = ProcessMonitor::new(
             "systemd monitor",
             &None,
-            &vec!["/sbin/init".to_string()],
+            Some(vec!["/sbin/init".to_string()]),
+            None,
+            None,
             Some(100000000),
             &Arc::new(Mutex::new(HashMap::new())),
             &Arc::new(None),

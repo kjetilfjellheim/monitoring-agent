@@ -83,7 +83,13 @@ pub enum MonitorType {
     Process {
         /// Aplication names to monitor.
         #[serde(rename = "applicationNames")]
-        application_names: Vec<String>,
+        application_names: Option<Vec<String>>,
+        /// Pids to monitor.
+        #[serde(rename = "pids")] 
+        pids: Option<Vec<u32>>,
+        /// Regexp on name.
+        #[serde(rename = "regexp")] 
+        regexp: Option<String>,        
         /// The maximum memory usage.
         #[serde(skip_serializing_if = "Option::is_none", rename = "maxMemUsage")]
         max_mem_usage: Option<u32>,        
@@ -175,7 +181,9 @@ pub struct MonitoringConfig {
     /// The list of monitors.
     #[serde(rename = "monitors")]
     pub monitors: Vec<Monitor>,
-
+    /// Cleanup configuration.
+    #[serde(rename = "cleanupConfig")]
+    pub cleanup_config: Option<CleanupConfig>,
 
 }
 
@@ -223,6 +231,16 @@ impl MonitoringConfig {
             )),
         }
     }
+}
+
+/**
+ * Cleanup configuration.
+ */
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+pub struct CleanupConfig {
+    /// Hours to keep information in the database.
+    #[serde(rename = "removeFromDbAfter", default = "default_none")]
+    pub max_time_stored_db: Option<u32>,
 }
 
 /**
@@ -403,11 +421,17 @@ fn default_max_lifetime() -> u32 {
     300
 }
 
+/** 
+ * Default tokio stack size.
+ */
 fn default_tokio_stack_size() -> usize {
     debug!("Using default tokio stack size");
     2 * 1024
 }
 
+/** 
+ * Default tokio threads.
+ */
 fn default_tokio_threads() -> usize {
     debug!("Using default tokio threads");
     4
@@ -628,7 +652,9 @@ mod tests {
         assert_eq!(
             monitor,
             MonitorType::Process { 
-                application_names: vec!["app1".to_string(), "app2".to_string()],
+                application_names: Some(vec!["app1".to_string(), "app2".to_string()]),
+                pids: None,
+                regexp: None,
                 max_mem_usage: Some(100),
                 store_values: true,
                 
