@@ -76,3 +76,31 @@ impl DbCleanupJob {
         }
     }
 }
+
+mod test {
+    #[cfg(test)]
+    use super::*;
+
+    #[test]
+    fn test_new() {
+        let db_service = Arc::new(None);
+        let db_cleanup_job = DbCleanupJob::new(&db_service, 24);
+        assert_eq!(db_cleanup_job.max_time_stored_db, 24);
+    }
+
+    #[test]
+    fn test_get_db_cleanup_job() {
+        let db_service = Arc::new(None);
+        let mut db_cleanup_job = DbCleanupJob::new(&db_service, 24);
+        let job = db_cleanup_job.get_db_cleanup_job();
+        assert!(job.is_ok());
+    }
+
+    #[test]
+    fn test_delete_if_no_db_configured() {
+        let db_service = Arc::new(None);
+        let db_cleanup_job = DbCleanupJob::new(&db_service, 24);
+        let result = db_cleanup_job.delete();
+        assert!(result.is_err());
+    }
+}
