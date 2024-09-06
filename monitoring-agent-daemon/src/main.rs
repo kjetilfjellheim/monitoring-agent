@@ -6,11 +6,10 @@ use std::fs::File;
 use std::io::Read;
 use std::str::FromStr;
 use std::sync::Arc;
-use std::vec;
 
 use clap::Parser;
 use common::configuration::{DatabaseConfig, MonitoringConfig, ServerConfig};
-use common::{ApplicationError, MonitorType};
+use common::ApplicationError;
 use daemonize::Daemonize;
 use log::{debug, error, info};
 use actix_web::{web, App, HttpServer};
@@ -39,18 +38,18 @@ fn main() -> Result<(), std::io::Error> {
     /*
      * Parse command line arguments.
      */
-    let args: ApplicationArguments = ApplicationArguments::parse();
+    let args: Arc<ApplicationArguments> = Arc::new(ApplicationArguments::parse());
     /*
      * Initialize logging.
      */
-    setup_logging(args.logfile.as_str(), &args.stdout_errorlevel, &args.file_errorlevel).map_err(|err| {
+    setup_logging(args.logfile.as_str(), args.stdout_errorlevel.as_str(), args.file_errorlevel.as_str()).map_err(|err| {
         error!("Error setting up logging: {:?}", err);
         std::io::Error::new(std::io::ErrorKind::Other, format!("Error setting up logging: {err:?}"))
     })?;
     /*
      * Load configuration.
      */
-    let monitoring_config = match MonitoringConfig::new(&args.config) {
+    let monitoring_config = match MonitoringConfig::new(args.config.as_str()) {
         Ok(monitoring_config) => {
             info!("Configuration loaded!");
             Ok(monitoring_config)
@@ -60,6 +59,8 @@ fn main() -> Result<(), std::io::Error> {
             Err(std::io::Error::new(std::io::ErrorKind::Other, "Error loading configuration"))
         }
     }?;
+
+    let monitoring_config = Arc::new(monitoring_config);
 
     let runtime = Builder::new_multi_thread()
         .worker_threads(monitoring_config.tokio_threads)
@@ -76,18 +77,19 @@ fn main() -> Result<(), std::io::Error> {
         }        
     }
  }
-/**
+
+ /**
  * Initialize the application.
  */
-async fn initialize(args: ApplicationArguments, monitoring_config: MonitoringConfig) -> Result<(), std::io::Error> {    
+async fn initialize(args: Arc<ApplicationArguments>, monitoring_config: Arc<MonitoringConfig>) -> Result<(), std::io::Error> {    
     /*
      * Start the application.
      */
     if args.daemon {
-        start_daemon_application( &monitoring_config, &args).await?;
+        start_daemon_application( monitoring_config, args).await?;
         Ok(())
     } else {
-        start_application(&monitoring_config, &args).await?;
+        start_application(monitoring_config, args).await?;
         Ok(())
     }
     } 
@@ -101,11 +103,11 @@ async fn initialize(args: ApplicationArguments, monitoring_config: MonitoringCon
  * Returns the result of starting the application.
  * 
  */
-async fn start_application(monitoring_config: &MonitoringConfig, args: &ApplicationArguments) -> Result<(), std::io::Error> {
+async fn start_application(monitoring_config: Arc<MonitoringConfig>, args: Arc<ApplicationArguments>) -> Result<(), std::io::Error> {
     /*
      * Initialize database service.
      */
-    let database_service = init_database(monitoring_config).await;    
+    let database_service = init_database(monitoring_config.clone()).await;    
     /*
      * Initialize monitoring service.
      */
@@ -113,18 +115,18 @@ async fn start_application(monitoring_config: &MonitoringConfig, args: &Applicat
     /*
      * Start the scheduling service.
      */
-    init_scheduling(monitoring_config, args, &monitoring_service, &database_service);
+    init_scheduling(&monitoring_config, args.clone(), &monitoring_service, &database_service);
     /*
      * If this is a test, return.
      */
     if args.test {
         return Ok(());
     }
-    let monitered_application_names = get_applications(monitoring_config);
+    
     /*
      * Initialize the HTTP server.
      */
-    init_http_server(monitoring_config, monitoring_service, database_service, monitered_application_names).await
+    init_http_server(monitoring_config, monitoring_service, database_service).await
 }
 
 /**
@@ -135,7 +137,7 @@ async fn start_application(monitoring_config: &MonitoringConfig, args: &Applicat
  * Returns the database service.
  * 
  */
-async fn init_database(monitoring_config: &MonitoringConfig) -> Arc<Option<DbService>> {
+async fn init_database(monitoring_config: Arc<MonitoringConfig>) -> Arc<Option<DbService>> {
     let database_config = monitoring_config.database.clone();
     let database_service: Arc<Option<DbService>> = if let Some(database_config) = database_config {
         Arc::new(initialize_database(&database_config, &monitoring_config.server).await)
@@ -155,15 +157,12 @@ async fn init_database(monitoring_config: &MonitoringConfig) -> Arc<Option<DbSer
  * `database_service`: The database service.
  * 
  */
-fn init_scheduling(monitoring_config: &MonitoringConfig, args: &ApplicationArguments, monitoring_service: &MonitoringService, database_service: &Arc<Option<DbService>>) {
-    let cloned_monitoring_config = monitoring_config.clone();
-    let cloned_args = args.clone();
+fn init_scheduling(monitoring_config: &Arc<MonitoringConfig>, args: Arc<ApplicationArguments>, monitoring_service: &MonitoringService, database_service: &Arc<Option<DbService>>) {
     let monitor_statuses = monitoring_service.get_status();
     let server_name = monitoring_config.server.name.clone();
-    let cloned_database_service = database_service.clone();
+    let mut scheduling_service = SchedulingService::new(&server_name, monitoring_config, &monitor_statuses, database_service);
     tokio::spawn(async move {
-        let mut scheduling_service = SchedulingService::new(&server_name, &cloned_monitoring_config, &monitor_statuses, &cloned_database_service);
-        match scheduling_service.start(cloned_args.test).await {
+        match scheduling_service.start(args.test).await {
             Ok(()) => {
                 info!("Scheduling service started!");
             }
@@ -180,11 +179,10 @@ fn init_scheduling(monitoring_config: &MonitoringConfig, args: &ApplicationArgum
  * `monitoring_config`: The monitoring configuration.
  * `monitoring_service`: The monitoring service.
  * `database_service`: The database service.
- * `monitered_application_names`: The monitored application names.
  * 
  * Returns the result of initializing the HTTP server.
  */
-async fn init_http_server(monitoring_config: &MonitoringConfig, monitoring_service: MonitoringService, database_service: Arc<Option<DbService>>, monitered_application_names: Vec<String>) -> Result<(), std::io::Error> {
+async fn init_http_server(monitoring_config: Arc<MonitoringConfig>, monitoring_service: MonitoringService, database_service: Arc<Option<DbService>>) -> Result<(), std::io::Error> {
     /*
      * Start the HTTP server.
      */
@@ -194,7 +192,7 @@ async fn init_http_server(monitoring_config: &MonitoringConfig, monitoring_servi
     info!("Starting HTTP server on {}:{}", ip, port);
     let http_server = HttpServer::new(move || {
         App::new()
-            .app_data(web::Data::new(StateApi::new(monitoring_service.clone(), database_service.clone(), cloned_monitoring_config.server.clone(), &monitered_application_names)))
+            .app_data(web::Data::new(StateApi::new(monitoring_service.clone(), database_service.clone(), cloned_monitoring_config.server.clone())))
             .service(api::get_current_meminfo)   
             .service(api::get_historical_meminfo)
             .service(api::get_current_cpuinfo)   
@@ -224,33 +222,6 @@ async fn init_http_server(monitoring_config: &MonitoringConfig, monitoring_servi
     };
     http_server.run()
     .await
-}
-
-/**
- * Get applications that are being monitored.
- * 
- * `monitoring_config`: The monitoring configuration.
- * 
- * Returns the applications.
- * 
- */
-fn get_applications(monitoring_config: &MonitoringConfig) -> Vec<String> {
-    monitoring_config
-        .monitors
-        .iter()
-        .flat_map(|monitor| match monitor.details.clone() {
-            MonitorType::Process { application_names, max_mem_usage: _, store_values } => {
-                if store_values {
-                    application_names.clone()
-                } else {
-                    vec![]
-                }
-            }
-            _ => {
-                vec![]
-            }
-        })
-        .collect()
 }
 
 /** 
@@ -305,19 +276,19 @@ async fn initialize_database(database_config: &DatabaseConfig, server_config: &S
  * 
  * Returns the result of starting the daemon application.
  */
-async fn start_daemon_application(monitoring_config: &MonitoringConfig, args: &ApplicationArguments) -> Result<(), std::io::Error> {
+async fn start_daemon_application(monitoring_config: Arc<MonitoringConfig>, args: Arc<ApplicationArguments>) -> Result<(), std::io::Error> {
+    let test = args.test;
+    let pidfile = args.pidfile.clone();
     /*
      * Create daemonize object.
      */
-    let cloned_monitoring_config = monitoring_config.clone();
-    let cloned_args = args.clone();    
     let daemonize = Daemonize::new()
-        .pid_file(&args.pidfile)
+        .pid_file(pidfile)
         .chown_pid_file(true)
         .umask(770)        
         .privileged_action(move || {
             async move {                               
-                let result = start_application(&cloned_monitoring_config.clone(), &cloned_args.clone()).await;
+                let result = start_application(monitoring_config.clone(), args.clone()).await;
                 match result {
                     Ok(()) => {
                         info!("Daemon started!");
@@ -331,7 +302,7 @@ async fn start_daemon_application(monitoring_config: &MonitoringConfig, args: &A
     /*
      * If this is a test, return.
      */
-    if args.test {
+    if test {
         debug!("Test mode, returning!");
         return Ok(());
     }
@@ -434,7 +405,7 @@ mod test {
 
     #[tokio::test]
     async fn test_main_normal() -> Result<(), std::io::Error> {
-        let args = ApplicationArguments {
+        let args = Arc::new(ApplicationArguments {
             config: "./resources/test/test_full_configuration.json".to_string(),
             daemon: false,
             test: true,
@@ -442,15 +413,15 @@ mod test {
             stdout_errorlevel: "info".to_string(),
             pidfile: String::new(),
             logfile: "/tmp/monitoring-agent.log".to_string(),
-        };
-        let monitoring_config = MonitoringConfig::new(&args.config).unwrap();
-        start_application(&monitoring_config, &args).await?;
+        });
+        let monitoring_config = Arc::new(MonitoringConfig::new(&args.config).unwrap());
+        start_application(monitoring_config, args).await?;
         Ok(())
     }
 
     #[tokio::test]
     async fn test_main_daemon() -> Result<(), std::io::Error> {
-        let args = ApplicationArguments {
+        let args = Arc::new(ApplicationArguments {
             config: "./resources/test/test_full_configuration.json".to_string(),
             daemon: true,
             test: true,
@@ -458,15 +429,15 @@ mod test {
             stdout_errorlevel: "info".to_string(),            
             pidfile: String::new(),
             logfile: "/tmp/monitoring-agent.log".to_string(),
-        };
-        let monitoring_config = MonitoringConfig::new(&args.config).unwrap();
-        start_application(&monitoring_config, &args).await?;
+        });
+        let monitoring_config = Arc::new(MonitoringConfig::new(&args.config).unwrap());
+        start_application(monitoring_config, args).await?;
         Ok(())
     }
 
     #[tokio::test]
     async fn test_normal_application() {
-        let args = ApplicationArguments {
+        let args = Arc::new(ApplicationArguments {
             config: "./resources/test/test_full_configuration.json".to_string(),
             daemon: false,
             test: true,
@@ -474,15 +445,15 @@ mod test {
             stdout_errorlevel: "info".to_string(),
             pidfile: String::new(),
             logfile: "/tmp/monitoring-agent.log".to_string(),
-        };
-        let monitoring_config = MonitoringConfig::new(&args.config).unwrap();
-        let result = super::start_application(&monitoring_config, &args).await;
+        });
+        let monitoring_config = Arc::new(MonitoringConfig::new(&args.config).unwrap());
+        let result = start_application(monitoring_config, args).await;
         assert!(result.is_ok());
     }
 
     #[tokio::test]
     async fn test_daemonize_application() {
-        let args = ApplicationArguments {
+        let args = Arc::new(ApplicationArguments {
             config: "./resources/test/test_full_configuration.json".to_string(),
             daemon: true,
             test: true,
@@ -490,9 +461,9 @@ mod test {
             stdout_errorlevel: "info".to_string(),
             pidfile: "/tmp/monitoring-agent.pid".to_string(),
             logfile: "/tmp/monitoring-agent.log".to_string(),
-        };
-        let monitoring_config = MonitoringConfig::new(&args.config).unwrap();
-        let result = super::start_daemon_application(&monitoring_config, &args).await;
+        });
+        let monitoring_config = Arc::new(MonitoringConfig::new(&args.config).unwrap());
+        let result = start_daemon_application(monitoring_config, args).await;
         assert!(result.is_ok());
     }
 }
