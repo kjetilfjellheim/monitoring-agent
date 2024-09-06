@@ -10,6 +10,7 @@ mod monitors;
 mod monitoringservice;
 mod schedulingservice;
 mod databaseservice;
+mod jobs;
 
 pub use monitoringservice::MonitoringService;
 pub use schedulingservice::SchedulingService;
