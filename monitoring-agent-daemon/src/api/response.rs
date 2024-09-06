@@ -296,7 +296,7 @@ impl ProcessResponse {
      * Returns a new `ProcessResponse`.
      * 
      */
-    pub fn from_process(proc: &ProcsProcess, monitered_application_names: &[String]) -> ProcessResponse {
+    pub fn from_process(proc: &ProcsProcess) -> ProcessResponse {
         ProcessResponse::new(
             proc.pid,
             proc.parent_pid,
@@ -305,30 +305,12 @@ impl ProcessResponse {
             ProcessStateResponse::from_state(&proc.state),
             proc.threads,
             proc.groups.clone(),
-            Self::is_monitored(&proc.name, monitered_application_names),
+            false, // Temporarily set to false
             proc.gid.clone(),
             proc.uid.clone(),
         )
     }
-
-    /**
-     * Check if the process is monitored.
-     * 
-     * `name`: The name of the process.
-     * `monitered_application_names`: The names of the monitored applications.
-     * 
-     * Returns true if the process is monitored, false otherwise.
-     * 
-     */
-    fn is_monitored(name: &Option<String>, monitered_application_names: &[String]) -> bool {  
-        match name {
-            Some(name) => { 
-                monitered_application_names.contains(name)
-            },
-            None => false
-        }
-    }
-
+    
    /** 
     * Create a new `ProcessResponse` from a `ProcsProcess`.
     * 
@@ -337,9 +319,10 @@ impl ProcessResponse {
     * Returns a new `ProcessResponse`.
     * 
     */
-    pub fn from_processes(proc: &[ProcsProcess], monitered_application_names: &[String]) -> Vec<ProcessResponse> {
-        proc.iter().map(|process| ProcessResponse::from_process(process, monitered_application_names)).collect()
+    pub fn from_processes(proc: &[ProcsProcess]) -> Vec<ProcessResponse> {
+        proc.iter().map(ProcessResponse::from_process).collect()
     }
+
 }
 
 /**
@@ -1107,7 +1090,7 @@ mod test {
             uid: Some(Vec::new()),
             gid: Some(Vec::new()),
         };
-        let process_response = ProcessResponse::from_process(&procs_process, &Vec::new());
+        let process_response = ProcessResponse::from_process(&procs_process);
         assert_eq!(process_response.pid, Some(1));
         assert_eq!(process_response.parent_pid, Some(2));
         assert_eq!(process_response.name, Some("name".to_string()));
@@ -1146,7 +1129,7 @@ mod test {
             gid: Some(Vec::new()),
             
         }];
-        let process_response = ProcessResponse::from_processes(&procs_process, &Vec::new());
+        let process_response = ProcessResponse::from_processes(&procs_process);
         assert_eq!(process_response[0].pid, Some(1));
         assert_eq!(process_response[0].parent_pid, Some(2));
         assert_eq!(process_response[0].name, Some("name".to_string()));
