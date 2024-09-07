@@ -56,11 +56,7 @@ impl MonitorStatus {
      */
     pub fn set_status(&mut self, status: &Status) {
         match status {
-            Status::Error { message } => {
-                self.last_error_time = Some(chrono::Utc::now());
-                self.last_error = Some(message.clone());
-            }
-            Status::Warn { message } => {
+            Status::Error { message } | Status::Warn { message } => {
                 self.last_error_time = Some(chrono::Utc::now());
                 self.last_error = Some(message.clone());
             }
