@@ -56,7 +56,7 @@ impl MonitorStatus {
      */
     pub fn set_status(&mut self, status: &Status) {
         match status {
-            Status::Error { message } => {
+            Status::Error { message } | Status::Warn { message } => {
                 self.last_error_time = Some(chrono::Utc::now());
                 self.last_error = Some(message.clone());
             }
@@ -78,6 +78,7 @@ impl MonitorStatus {
  * - Error: The monitor has encountered an error. The error message is stored in the message field
  *
  */
+#[warn(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
 pub enum Status {
     /// The monitor is working correctly.
@@ -86,6 +87,9 @@ pub enum Status {
     Unknown,
     /// The monitor has encountered an error. The error message is stored in the message field.
     Error { message: String },
+    /// The monitor has encountered a warning. The warning message is stored in the message field.
+    #[allow(dead_code)]
+    Warn { message: String },
 }
 
 impl Status {
