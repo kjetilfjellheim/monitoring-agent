@@ -78,6 +78,7 @@ impl MonitorStatus {
  * - Error: The monitor has encountered an error. The error message is stored in the message field
  *
  */
+#[warn(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
 pub enum Status {
     /// The monitor is working correctly.
@@ -87,6 +88,7 @@ pub enum Status {
     /// The monitor has encountered an error. The error message is stored in the message field.
     Error { message: String },
     /// The monitor has encountered a warning. The warning message is stored in the message field.
+    #[allow(dead_code)]
     Warn { message: String },
 }
 
