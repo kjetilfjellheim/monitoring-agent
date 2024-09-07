@@ -470,6 +470,8 @@ pub enum MonitorStatusResponse {
     Unknown,
     /// The monitor has an error.
     Error,
+    /// The monitor has a warning.    
+    Warn,
 }
 
 impl MonitorStatusResponse {
@@ -486,6 +488,7 @@ impl MonitorStatusResponse {
             Status::Ok => MonitorStatusResponse::Ok,
             Status::Unknown => MonitorStatusResponse::Unknown,
             Status::Error { message: _ } => MonitorStatusResponse::Error,
+            Status::Warn { message: _ } => MonitorStatusResponse::Warn,
         }
     }
 }

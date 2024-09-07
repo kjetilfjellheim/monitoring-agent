@@ -132,7 +132,7 @@ impl TcpMonitor {
             }
             Err(err) => {
                 info!("Monitor status error: {} - {}", &self.name, err);
-                self.set_status(&Status::Error {
+                self.set_status(&Status::Warn {
                     message: format!(
                         "Error connecting to {}:{} with error: {err}",
                         &self.host, &self.port,

@@ -123,6 +123,7 @@ impl DbService {
     fn get_status_db_repr(status: &Status) -> String {
         match &status {
             Status::Error { message: _ } => "ERROR".to_string(),
+            Status::Warn { message: _ } => "WARN".to_string(),
             Status::Ok => "OK".to_string(),
             Status::Unknown => "UNKNOWN".to_string(),
         }

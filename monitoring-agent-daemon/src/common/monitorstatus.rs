@@ -60,6 +60,10 @@ impl MonitorStatus {
                 self.last_error_time = Some(chrono::Utc::now());
                 self.last_error = Some(message.clone());
             }
+            Status::Warn { message } => {
+                self.last_error_time = Some(chrono::Utc::now());
+                self.last_error = Some(message.clone());
+            }
             Status::Ok => {
                 self.last_successful_time = Some(chrono::Utc::now());
             }
@@ -86,6 +90,8 @@ pub enum Status {
     Unknown,
     /// The monitor has encountered an error. The error message is stored in the message field.
     Error { message: String },
+    /// The monitor has encountered a warning. The warning message is stored in the message field.
+    Warn { message: String },
 }
 
 impl Status {
