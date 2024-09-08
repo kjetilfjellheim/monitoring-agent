@@ -184,6 +184,9 @@ pub struct MonitoringConfig {
     /// Cleanup configuration.
     #[serde(rename = "cleanupConfig")]
     pub cleanup_config: Option<CleanupConfig>,
+    /// Notification configuration.
+    #[serde(rename = "notificationConfig")]    
+    pub notification_config: Option<NotificationConfig>,
 
 }
 
@@ -332,6 +335,32 @@ pub struct DatabaseConfig {
 }
 
 /**
+ * Notification configuration.
+ */
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+pub struct NotificationConfig {
+    /// The url of the smtp server.
+    #[serde(rename = "url")]
+    pub url: String,
+    /// The recipients.
+    #[serde(rename = "recipients")]
+    pub recipients: Vec<String>,
+    /// From.
+    #[serde(rename = "from")]
+    pub from: String,
+    /// Reply to email.
+    #[serde(rename = "replyTo")]
+    pub reply_to: String,  
+    /// Notification check interval.  
+    #[serde(rename = "schedule", default = "default_notify_schedule")]
+    pub schedule: String,
+    /// Resend errors after minutes
+    #[serde(rename = "resendAfter", default = "default_resend_after")]
+    pub resend_after: i64,
+
+}
+
+/**
  * Default server configuration.
  * 
  * result: The default server configuration.
@@ -435,6 +464,18 @@ fn default_tokio_stack_size() -> usize {
 fn default_tokio_threads() -> usize {
     debug!("Using default tokio threads");
     4
+}
+/**
+ * Send notifications evry.
+ */
+fn default_notify_schedule() -> String {
+    debug!("Using default notify schedule");
+    "0 */5 * * * *".to_string()
+}
+
+fn default_resend_after() -> i64 {
+    debug!("Using default resend after");
+    120
 }
 
 #[cfg(test)]

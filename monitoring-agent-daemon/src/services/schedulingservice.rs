@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::{Arc, Mutex}, time::Duration};
 use log::info;
 use tokio_cron_scheduler::{Job, JobScheduler};
 
-use crate::common::{configuration::MonitoringConfig, ApplicationError, MonitorStatus};
+use crate::{common::{configuration::MonitoringConfig, ApplicationError, MonitorStatus}, services::jobs::NotificationJob};
 use crate::services::{DbService, jobs::DbCleanupJob};
 use super::monitors::{CommandMonitor, HttpMonitor, LoadAvgMonitor, MeminfoMonitor, SystemctlMonitor, TcpMonitor, DatabaseMonitor, ProcessMonitor};
 
@@ -101,7 +101,7 @@ impl SchedulingService {
         }
 
         /*
-         * Create a cleanup jobs.
+         * Create a cleanup job.
          */
         let cleanup_config = self.monitoring_config.cleanup_config.clone();
         if let Some(cleanup_config) = cleanup_config {
@@ -112,6 +112,15 @@ impl SchedulingService {
                 self.add_job(&scheduler, job).await?;
             }
         }
+        /*
+         * Create a notification job.
+         */
+        let notification_config = self.monitoring_config.notification_config.clone();
+        if let Some(notification_config) = notification_config {
+            let mut notification = NotificationJob::new(&self.status, &notification_config.url, notification_config.recipients, notification_config.from.as_str(), notification_config.reply_to.as_str(), notification_config.resend_after, &notification_config.schedule)?;
+            let job = notification.get_notification_job()?;
+            self.add_job(&scheduler, job).await?;
+        }        
         /*
          * Start the scheduler.
          */
