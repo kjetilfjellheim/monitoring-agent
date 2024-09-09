@@ -5,7 +5,7 @@ use tokio_cron_scheduler::{Job, JobScheduler};
 
 use crate::{common::{configuration::MonitoringConfig, ApplicationError, MonitorStatus}, services::jobs::NotificationJob};
 use crate::services::{DbService, jobs::DbCleanupJob};
-use super::monitors::{CommandMonitor, HttpMonitor, LoadAvgMonitor, MeminfoMonitor, SystemctlMonitor, TcpMonitor, DatabaseMonitor, ProcessMonitor};
+use super::monitors::{CertificateMonitor, CommandMonitor, DatabaseMonitor, HttpMonitor, LoadAvgMonitor, MeminfoMonitor, ProcessMonitor, SystemctlMonitor, TcpMonitor};
 
 /**
  * Scheduling Service.
@@ -152,6 +152,7 @@ impl SchedulingService {
      *
      * throws: `ApplicationError`: If the job fails to be added.
      */
+    #[allow(clippy::too_many_lines)]
     async fn create_and_add_job(
         &mut self,
         monitor: &crate::common::Monitor,
@@ -244,6 +245,21 @@ impl SchedulingService {
             } => {
                 let mut process_monitor = ProcessMonitor::new(&monitor.name, &monitor.description, application_names, pids, regexp, max_mem_usage, &self.status, &self.database_service.clone(), &monitor.store, store_values);
                 let job = process_monitor.get_process_monitor_job(monitor.schedule.as_str())?;
+                self.add_job(scheduler, job).await
+            },
+            crate::common::MonitorType::Certificate { certificates, threshold_days_warn, threshold_days_error 
+            } => {
+                let mut certificate_monitor = CertificateMonitor::new(
+                    &monitor.name,
+                    &monitor.description,
+                    &self.status,
+                    certificates,
+                    threshold_days_warn,
+                    threshold_days_error,
+                    &self.database_service.clone(),
+                    &monitor.store,
+                );
+                let job = certificate_monitor.get_certificate_job(monitor.schedule.as_str())?;
                 self.add_job(scheduler, job).await
             },
         }?;   

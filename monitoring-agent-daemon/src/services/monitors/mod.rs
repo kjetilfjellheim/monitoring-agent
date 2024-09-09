@@ -10,6 +10,7 @@
  * `systemctlmonitor`: Monitor that checks the status of a systemd service.
  * `databasemonitor`: Monitor that checks the status of a database service.
  * `processmonitor`: Monitor that checks the status of a process.
+ * `certificatemonitor`: Monitor that checks the status of a certificate.
  */
 mod common;
 mod commandmonitor;
@@ -20,6 +21,7 @@ mod meminfomonitor;
 mod systemctlmonitor;
 mod databasemonitor;
 mod processmonitor;
+mod certificatemonitor;
 
 pub use common::Monitor;
 pub use commandmonitor::CommandMonitor;
@@ -30,3 +32,4 @@ pub use meminfomonitor::MeminfoMonitor;
 pub use systemctlmonitor::SystemctlMonitor;
 pub use databasemonitor::DatabaseMonitor;
 pub use processmonitor::ProcessMonitor;
+pub use certificatemonitor::CertificateMonitor;

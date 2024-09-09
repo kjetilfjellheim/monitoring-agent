@@ -96,6 +96,15 @@ pub enum MonitorType {
         /// Store vales in database        
         #[serde(rename = "storeValues", default = "default_as_false")]
         store_values: bool,         
+    },
+    Certificate {
+        /// The certificate to monitor.
+        #[serde(rename = "certificates")]
+        certificates: Vec<String>,
+        #[serde(rename = "thresholdDaysWarn", default = "default_threshold_days_warn")]
+        threshold_days_warn: u32,
+        #[serde(rename = "thresholdDaysError", default = "default_threshold_days_error")]
+        threshold_days_error: u32,
     }
 }
 
@@ -473,9 +482,28 @@ fn default_notify_schedule() -> String {
     "0 */5 * * * *".to_string()
 }
 
+/**
+ * Default resend error after set hours.
+ */
 fn default_resend_after() -> i64 {
     debug!("Using default resend after");
     120
+}
+
+/**
+ * Default threshold days warn.
+ */
+fn default_threshold_days_warn() -> u32 {
+    debug!("Using default threshold days warn");
+    30
+}
+
+/**
+ * Default threshold days error.
+ */
+fn default_threshold_days_error() -> u32 {
+    debug!("Using default threshold days error");
+    14
 }
 
 #[cfg(test)]
