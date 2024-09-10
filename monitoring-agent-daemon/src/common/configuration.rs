@@ -58,6 +58,12 @@ pub enum MonitorType {
         threshold_5min: Option<f32>,
         #[serde(skip_serializing_if = "Option::is_none", rename = "threshold15min")]
         threshold_15min: Option<f32>,
+        #[serde(rename = "threshold1minLevel", default = "default_threshold_level")]
+        threshold_1min_level: ThresholdLevel,
+        #[serde(rename = "threshold5minLevel", default = "default_threshold_level")]
+        threshold_5min_level: ThresholdLevel,
+        #[serde(rename = "threshold15minLevel", default = "default_threshold_level")]
+        threshold_15min_level: ThresholdLevel,        
         #[serde(rename = "storeValues", default = "default_as_false")]
         store_values: bool,    
     },  
@@ -109,6 +115,15 @@ pub enum MonitorType {
         #[serde(rename = "thresholdDaysError", default = "default_threshold_days_error")]
         threshold_days_error: u32,
     }
+}
+
+/**
+ * Threshold level.
+ */
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Copy)]
+pub enum ThresholdLevel {
+    Warn,
+    Error,
 }
 
 /**
@@ -393,6 +408,10 @@ fn default_server() -> ServerConfig {
     }
 }
 
+fn default_threshold_level() -> ThresholdLevel {
+    ThresholdLevel::Error
+}
+
 /**
  * Default server workers.
  * 
@@ -663,6 +682,9 @@ mod tests {
                 threshold_1min: Some(1.0),
                 threshold_5min: Some(2.0),
                 threshold_15min: Some(3.0),
+                threshold_1min_level: ThresholdLevel::Error,
+                threshold_5min_level: ThresholdLevel::Error,
+                threshold_15min_level: ThresholdLevel::Error,
                 store_values: true,               
             }
         );

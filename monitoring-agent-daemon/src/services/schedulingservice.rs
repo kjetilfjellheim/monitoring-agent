@@ -210,9 +210,12 @@ impl SchedulingService {
                 threshold_1min,
                 threshold_5min,
                 threshold_15min,
+                threshold_1min_level,
+                threshold_5min_level,
+                threshold_15min_level,
                 store_values,
             } => {               
-                let mut loadavg_monitor = LoadAvgMonitor::new(&monitor.name, &monitor.description, threshold_1min, threshold_5min, threshold_15min, &self.status, &self.database_service.clone(), &monitor.store, store_values);
+                let mut loadavg_monitor = LoadAvgMonitor::new(&monitor.name, &monitor.description, threshold_1min, threshold_5min, threshold_15min, threshold_1min_level, threshold_5min_level, threshold_15min_level, &self.status, &self.database_service.clone(), &monitor.store, store_values);
                 let job = loadavg_monitor.get_loadavg_monitor_job(monitor.schedule.as_str())?;
                 self.add_job(scheduler, job).await
             },
@@ -313,7 +316,7 @@ mod test {
 
     use std::sync::Arc;
 
-    use crate::common::configuration::DatabaseStoreLevel;
+    use crate::common::configuration::{DatabaseStoreLevel, ThresholdLevel};
 
     use super::*;
 
@@ -514,6 +517,9 @@ mod test {
                 threshold_1min: Some(0.0),
                 threshold_5min: Some(0.0),
                 threshold_15min: Some(0.0),
+                threshold_1min_level: ThresholdLevel::Warn,
+                threshold_5min_level: ThresholdLevel::Warn,
+                threshold_15min_level: ThresholdLevel::Warn,
                 store_values: false,
             },
         }, &JobScheduler::new().await.unwrap()).await;
