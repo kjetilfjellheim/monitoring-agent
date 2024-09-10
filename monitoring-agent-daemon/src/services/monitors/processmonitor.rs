@@ -255,7 +255,7 @@ impl ProcessMonitor {
      */
     fn check_max(&self, statm: &ProcsStatm) -> Status {        
         let Some(resident) = statm.resident else { return Status::Ok };   
-        let Some(pagesize) = statm.pagesize else { return Status::Ok };
+        let Some(pagesize) = statm.pagesize else { return Status::Ok };        
         let resident = u64::from(resident);
         let pagesize = u64::from(pagesize);           
         if let Some(threshold_mem_error) = self.threshold_mem_error {            
@@ -265,7 +265,7 @@ impl ProcessMonitor {
         } 
         if let Some(threshold_mem_warn) = self.threshold_mem_warn {         
             if (resident * pagesize) > threshold_mem_warn {
-                return Status::Warn { message: format!("Process memory usage is over the error limit: {:?} > {threshold_mem_warn:?}", (resident * pagesize))};
+                return Status::Warn { message: format!("Process memory usage is over the warn limit: {:?} > {threshold_mem_warn:?}", (resident * pagesize))};
             }
         }         
         Status::Ok
