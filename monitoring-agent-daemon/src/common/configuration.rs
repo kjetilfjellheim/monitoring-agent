@@ -89,10 +89,13 @@ pub enum MonitorType {
         pids: Option<Vec<u32>>,
         /// Regexp on name.
         #[serde(rename = "regexp")] 
-        regexp: Option<String>,        
-        /// The maximum memory usage.
-        #[serde(skip_serializing_if = "Option::is_none", rename = "maxMemUsage")]
-        max_mem_usage: Option<u32>,        
+        regexp: Option<String>,     
+        /// The maximum memory before warn.
+        #[serde(skip_serializing_if = "Option::is_none", rename = "thresholdMemWarn")]
+        threshold_mem_warn: Option<u64>,                 
+        /// The maximum memory before error.
+        #[serde(skip_serializing_if = "Option::is_none", rename = "thresholdMemError")]
+        threshold_mem_error: Option<u64>,        
         /// Store vales in database        
         #[serde(rename = "storeValues", default = "default_as_false")]
         store_values: bool,         
@@ -724,7 +727,8 @@ mod tests {
                 application_names: Some(vec!["app1".to_string(), "app2".to_string()]),
                 pids: None,
                 regexp: None,
-                max_mem_usage: Some(100),
+                threshold_mem_error: Some(100),
+                threshold_mem_warn: Some(100),                
                 store_values: true,
                 
             }

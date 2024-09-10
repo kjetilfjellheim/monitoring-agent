@@ -16,7 +16,8 @@ use super::Monitor;
  * `application_names`: The application names to monitor.
  * `pids`: The process ids to monitor.
  * `regexp`: The regular expression.
- * `max_mem_usage`: The max memory usage.
+ * `threshold_mem_error`: The max memory usage.
+ * `threshold_mem_warn`: The warn memory usage.
  * `status`: The status of the monitor.
  * `database_service`: The database service.
  * `database_store_level`: The database store level.
@@ -32,9 +33,11 @@ pub struct ProcessMonitor {
     /// Pids to monitor.
     pids: Option<Vec<u32>>,
     /// regexp.
-    regexp: Option<String>,    
-    /// The max memory usage.
-    max_mem_usage: Option<u32>,
+    regexp: Option<String>,
+    /// The error threshold.
+    threshold_mem_error: Option<u64>,        
+    /// The warn threshold.
+    threshold_mem_warn: Option<u64>,
     /// The status of the monitor.
     status: Arc<Mutex<HashMap<String, MonitorStatus>>>,    
     /// The database service
@@ -53,7 +56,8 @@ impl ProcessMonitor {
      * `application_names`: The application names to monitor.
      * `pids`: The process ids to monitor.
      * `regexp`: The regular expression. 
-     * `max_mem_usage`: The max memory usage.
+     * `threshold_mem_warn`: The warn threshold.
+     * `threshold_mem_error`: The error threshold.
      * `status`: The status of the monitor.
      * `database_service`: The database service.
      * `database_store_level`: The database store level.
@@ -68,7 +72,8 @@ impl ProcessMonitor {
         application_names: Option<Vec<String>>,
         pids: Option<Vec<u32>>,
         regexp: Option<String>,
-        max_mem_usage: Option<u32>,
+        threshold_mem_warn: Option<u64>,
+        threshold_mem_error: Option<u64>,
         status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
         database_service: &Arc<Option<DbService>>,
         database_store_level: &DatabaseStoreLevel,
@@ -89,7 +94,8 @@ impl ProcessMonitor {
             application_names,
             pids,
             regexp,
-            max_mem_usage,
+            threshold_mem_warn,
+            threshold_mem_error,
             status: status.clone(),
             database_service: database_service.clone(),
             database_store_level: database_store_level.clone(),
@@ -250,10 +256,18 @@ impl ProcessMonitor {
     fn check_max(&self, statm: &ProcsStatm) -> Status {        
         let Some(resident) = statm.resident else { return Status::Ok };   
         let Some(pagesize) = statm.pagesize else { return Status::Ok };
-        let Some(max_mem_usage) = self.max_mem_usage else { return Status::Ok };    
-        if (resident * pagesize) > max_mem_usage {
-            return Status::Error { message: format!("Process memory usage is over the limit: {:?} > {max_mem_usage:?}", (resident * pagesize))};
-        }
+        let resident = u64::from(resident);
+        let pagesize = u64::from(pagesize);           
+        if let Some(threshold_mem_error) = self.threshold_mem_error {            
+            if (resident * pagesize) > threshold_mem_error {
+                return Status::Error { message: format!("Process memory usage is over the error limit: {:?} > {threshold_mem_error:?}", (resident * pagesize))};
+            }
+        } 
+        if let Some(threshold_mem_warn) = self.threshold_mem_warn {         
+            if (resident * pagesize) > threshold_mem_warn {
+                return Status::Warn { message: format!("Process memory usage is over the error limit: {:?} > {threshold_mem_warn:?}", (resident * pagesize))};
+            }
+        }         
         Status::Ok
     }
     
@@ -352,6 +366,7 @@ mod test {
             Some(vec![100u32]),
             Some("test".to_string()),
             Some(100),
+            Some(100),
             &Arc::new(Mutex::new(HashMap::new())),
             &Arc::new(None),
             &DatabaseStoreLevel::None,
@@ -369,6 +384,7 @@ mod test {
             Some(vec!["test_app".to_string()].clone()),
             Some(vec![100u32]),
             Some("test".to_string()),
+            Some(50),
             Some(100),
             &Arc::new(Mutex::new(HashMap::new())),
             &Arc::new(None),
@@ -387,6 +403,7 @@ mod test {
             Some(vec!["systemd".to_string()]),
             None,
             None,
+            Some(500),
             Some(1000),
             &Arc::new(Mutex::new(HashMap::new())),
             &Arc::new(None),
@@ -406,6 +423,7 @@ mod test {
             Some(vec!["/sbin/init".to_string()]),
             None,
             None,
+            Some(500),
             Some(100000000),
             &Arc::new(Mutex::new(HashMap::new())),
             &Arc::new(None),
