@@ -171,6 +171,9 @@ impl SchedulingService {
             },
             crate::common::MonitorType::LoadAvg { threshold_1min, threshold_5min, threshold_15min, store_values, } => {               
                 self.create_and_schedule_loadavg_monitor(monitor, threshold_1min, threshold_5min, threshold_15min, store_values, scheduler).await?
+                threshold_1min_level,
+                threshold_5min_level,
+                threshold_15min_level,
             },
             crate::common::MonitorType::Mem {max_percentage_mem, max_percentage_swap, store_values } => {
                 self.create_and_schedule_memory_monitor(monitor, max_percentage_mem, max_percentage_swap, store_values, scheduler).await?
@@ -479,7 +482,7 @@ mod test {
 
     use std::sync::Arc;
 
-    use crate::common::configuration::DatabaseStoreLevel;
+    use crate::common::configuration::{DatabaseStoreLevel, ThresholdLevel};
 
     use super::*;
 
@@ -679,6 +682,9 @@ mod test {
                 threshold_1min: Some(0.0),
                 threshold_5min: Some(0.0),
                 threshold_15min: Some(0.0),
+                threshold_1min_level: ThresholdLevel::Warn,
+                threshold_5min_level: ThresholdLevel::Warn,
+                threshold_15min_level: ThresholdLevel::Warn,
                 store_values: false,
             },
         }, &JobScheduler::new().await.unwrap()).await;
