@@ -1,10 +1,8 @@
-use std::{collections::HashMap, sync::{Arc, Mutex}};
-
 use log::{debug, error, info};
 use monitoring_agent_lib::proc::ProcsLoadavg;
 use tokio_cron_scheduler::Job;
 
-use crate::{common::{configuration::{DatabaseStoreLevel, ThresholdLevel}, ApplicationError, MonitorStatus, Status}, DbService};
+use crate::common::{configuration::{DatabaseStoreLevel, ThresholdLevel}, ApplicationError, DatabaseServiceType, MonitorStatus, MonitorStatusType, Status};
 
 use super::Monitor;
 /**
@@ -51,9 +49,9 @@ pub struct LoadAvgMonitor {
     /// The threshold for the 15 minute load average.
     pub threshold_15min_level: ThresholdLevel,    
     /// The status of the monitor.
-    pub status: Arc<Mutex<HashMap<String, MonitorStatus>>>,
+    pub status: MonitorStatusType,
     /// The database service.
-    database_service: Arc<Option<DbService>>,
+    database_service: DatabaseServiceType,
     /// The database store level.
     database_store_level: DatabaseStoreLevel,
     /// The current load average.
@@ -91,8 +89,8 @@ impl LoadAvgMonitor {
         threshold_1min_level: ThresholdLevel,
         threshold_5min_level: ThresholdLevel,
         threshold_15min_level: ThresholdLevel,
-        status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
-        database_service: &Arc<Option<DbService>>,
+        status: &MonitorStatusType,
+        database_service: &DatabaseServiceType,
         database_store_level: &DatabaseStoreLevel,
         store_current_loadavg: bool,
     ) -> LoadAvgMonitor {
@@ -267,14 +265,11 @@ impl LoadAvgMonitor {
      * throws: `ApplicationError`: If the job fails to be created.
      * 
      */
-    #[allow(clippy::too_many_arguments)]
-    #[allow(clippy::similar_names)]    
     pub fn get_loadavg_monitor_job(
-        &mut self,
+        loadavg_monitor: Self,
         schedule: &str,
     ) -> Result<Job, ApplicationError> {
-        info!("Creating Loadavg monitor: {}", &self.name);
-        let loadavg_monitor = self.clone();       
+        info!("Creating Loadavg monitor: {}", &loadavg_monitor.name);
         let job_result = Job::new_async(schedule, move |_uuid, _locked| {                
             let mut loadavg_monitor = loadavg_monitor.clone();
             Box::pin(async move {
@@ -347,7 +342,7 @@ impl super::Monitor for LoadAvgMonitor {
      *
      * Returns: The status of the monitor.
      */
-    fn get_status(&self) -> Arc<Mutex<HashMap<String, MonitorStatus>>> {
+    fn get_status(&self) -> MonitorStatusType {
         self.status.clone()
     }
 
@@ -356,7 +351,7 @@ impl super::Monitor for LoadAvgMonitor {
      *
      * Returns: The database service.
      */
-    fn get_database_service(&self) -> Arc<Option<DbService>> {
+    fn get_database_service(&self) -> DatabaseServiceType {
         self.database_service.clone()
     }
 
@@ -374,7 +369,7 @@ impl super::Monitor for LoadAvgMonitor {
 #[cfg(test)]
 mod test {
     use std::{collections::HashMap, sync::{Arc, Mutex}};
-    use crate::{common::{configuration::{DatabaseStoreLevel, ThresholdLevel}, MonitorStatus}, services::monitors::LoadAvgMonitor};
+    use crate::{common::{configuration::{DatabaseStoreLevel, ThresholdLevel}, MonitorStatusType}, services::monitors::LoadAvgMonitor};
 
     use super::Monitor;
 
@@ -566,9 +561,9 @@ mod test {
 
     #[test]
     fn test_get_loadavg_monitor_job() {
-        let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
+        let status: MonitorStatusType =
             Arc::new(Mutex::new(HashMap::new()));
-        let mut monitor = LoadAvgMonitor::new(
+        let monitor = LoadAvgMonitor::new(
             "test",
             &None,
             Some(1.0),
@@ -582,7 +577,7 @@ mod test {
             &DatabaseStoreLevel::None,
             false,    
         );
-        let job = monitor.get_loadavg_monitor_job("0 0 * * * *");
+        let job = LoadAvgMonitor::get_loadavg_monitor_job(monitor, "0 0 * * * *");
         assert!(job.is_ok());
     }   
 }

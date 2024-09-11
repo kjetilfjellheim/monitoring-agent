@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 use log::error;
 use monitoring_agent_lib::proc::{ProcStat, ProcsCpuinfo, ProcsLoadavg, ProcsMeminfo, ProcsProcess, ProcsStatm};
 
-use crate::common::{ApplicationError, MonitorStatus};
+use crate::common::{ApplicationError, MonitorStatus, MonitorStatusType};
 
 /**
  * Monitoring Service.
@@ -20,7 +20,7 @@ use crate::common::{ApplicationError, MonitorStatus};
 #[derive(Clone)]
 pub struct MonitoringService {
     /// The status of the monitors.
-    status: Arc<Mutex<HashMap<String, MonitorStatus>>>
+    status: MonitorStatusType
 }
 
 impl MonitoringService {
@@ -155,7 +155,7 @@ impl MonitoringService {
      * 
      * result: The result of getting the status.
      */
-    pub fn get_status(&self) -> Arc<Mutex<HashMap<String, MonitorStatus>>> {
+    pub fn get_status(&self) -> MonitorStatusType {
         self.status.clone()
     }
 

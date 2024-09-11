@@ -1,11 +1,9 @@
-use std::{collections::HashMap, sync::{Arc, Mutex}};
-
 use log::{debug, error, info};
 use monitoring_agent_lib::proc::{ProcsProcess, ProcsStatm};
 use tokio_cron_scheduler::Job;
 use regex::Regex;
 
-use crate::{common::{configuration::DatabaseStoreLevel, ApplicationError, MonitorStatus, Status}, services::DbService};
+use crate::common::{configuration::DatabaseStoreLevel, ApplicationError, DatabaseServiceType, MonitorStatus, MonitorStatusType, Status};
 use super::Monitor;
 
 /**
@@ -39,9 +37,9 @@ pub struct ProcessMonitor {
     /// The warn threshold.
     threshold_mem_warn: Option<u64>,
     /// The status of the monitor.
-    status: Arc<Mutex<HashMap<String, MonitorStatus>>>,    
+    status: MonitorStatusType,    
     /// The database service
-    database_service: Arc<Option<DbService>>,
+    database_service: DatabaseServiceType,
     /// The database store level.
     database_store_level: DatabaseStoreLevel,
     /// The current statm.
@@ -74,8 +72,8 @@ impl ProcessMonitor {
         regexp: Option<String>,
         threshold_mem_warn: Option<u64>,
         threshold_mem_error: Option<u64>,
-        status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
-        database_service: &Arc<Option<DbService>>,
+        status: &MonitorStatusType,
+        database_service: &DatabaseServiceType,
         database_store_level: &DatabaseStoreLevel,
         store_current_statm: bool
     ) -> ProcessMonitor {
@@ -109,15 +107,16 @@ impl ProcessMonitor {
      * `schedule`: The schedule for the job.
      */
     pub fn get_process_monitor_job(
-        &mut self,
+        process_monitor: Self,
         schedule: &str,
     ) -> Result<Job, ApplicationError> {
-        info!("Creating Process monitor: {}", &self.name);
-        let process_monitor = self.clone();
+        info!("Creating Process monitor: {}", &process_monitor.name);
         let job_result = Job::new_async(schedule, move |_uuid, _locked| {
-            let process_monitor = process_monitor.clone();
-            Box::pin(async move {
-                let _ = process_monitor.clone().check().await.map_err(|err| error!("Error checking process monitor: {err:?}"));
+            Box::pin({
+                let mut process_monitor = process_monitor.clone();
+                async move {                
+                    let _ = process_monitor.check().await.map_err(|err| error!("Error checking process monitor: {err:?}"));
+                }
             })              
         });        
         match job_result {
@@ -328,7 +327,7 @@ impl super::Monitor for ProcessMonitor {
      *
      * Returns: The status of the monitor.
      */
-    fn get_status(&self) -> Arc<Mutex<HashMap<String, MonitorStatus>>> {
+    fn get_status(&self) -> MonitorStatusType {
         self.status.clone()
     }
 
@@ -337,7 +336,7 @@ impl super::Monitor for ProcessMonitor {
      *
      * Returns: The database service.
      */
-    fn get_database_service(&self) -> Arc<Option<DbService>> {
+    fn get_database_service(&self) -> DatabaseServiceType {
         self.database_service.clone()
     }
 
@@ -359,7 +358,7 @@ mod test {
 
     #[test]
     fn test_get_monitor_job() {
-        let mut process_monitor = ProcessMonitor::new(
+        let process_monitor = ProcessMonitor::new(
             "test_monitor",
             &None,
             Some(vec!["test_app".to_string()]),
@@ -367,12 +366,12 @@ mod test {
             Some("test".to_string()),
             Some(100),
             Some(100),
-            &Arc::new(Mutex::new(HashMap::new())),
-            &Arc::new(None),
+            &std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
+            &std::sync::Arc::new(None),
             &DatabaseStoreLevel::None,
             false
         );
-        let job_result = process_monitor.get_process_monitor_job("* * * * * *");
+        let job_result = ProcessMonitor::get_process_monitor_job(process_monitor, "* * * * * *");
         assert!(job_result.is_ok());
     }
 
@@ -386,8 +385,8 @@ mod test {
             Some("test".to_string()),
             Some(50),
             Some(100),
-            &Arc::new(Mutex::new(HashMap::new())),
-            &Arc::new(None),
+            &std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
+            &std::sync::Arc::new(None),
             &DatabaseStoreLevel::None,
             false
         );
@@ -405,8 +404,8 @@ mod test {
             None,
             Some(500),
             Some(1000),
-            &Arc::new(Mutex::new(HashMap::new())),
-            &Arc::new(None),
+            &std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
+            &std::sync::Arc::new(None),
             &DatabaseStoreLevel::None,
             false
         );
@@ -425,8 +424,8 @@ mod test {
             None,
             Some(500),
             Some(100000000),
-            &Arc::new(Mutex::new(HashMap::new())),
-            &Arc::new(None),
+            &std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
+            &std::sync::Arc::new(None),
             &DatabaseStoreLevel::None,
             false
         );

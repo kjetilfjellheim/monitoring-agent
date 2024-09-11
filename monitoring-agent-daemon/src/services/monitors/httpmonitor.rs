@@ -1,7 +1,5 @@
 use std::collections::HashMap;
 use std::fs;
-use std::sync::Arc;
-use std::sync::Mutex;
 use std::time::Duration;
 
 use log::info;
@@ -13,10 +11,11 @@ use tokio_cron_scheduler::Job;
 
 use crate::common::configuration::DatabaseStoreLevel;
 use crate::common::ApplicationError;
-use crate::common::{MonitorStatus, Status};
+use crate::common::DatabaseServiceType;
 use crate::common::HttpMethod;
+use crate::common::MonitorStatusType;
+use crate::common::{MonitorStatus, Status};
 use crate::services::monitors::Monitor;
-use crate::services::DbService;
 
 /**
  * HTTP Monitor.
@@ -34,7 +33,7 @@ use crate::services::DbService;
 #[derive(Debug, Clone)]
 pub struct HttpMonitor {
     /// The name of the monitor.
-    pub name: String,   
+    pub name: String,
     /// The URL to monitor.
     pub url: String,
     /// The HTTP method to use.
@@ -46,11 +45,11 @@ pub struct HttpMonitor {
     /// The HTTP client.
     client: reqwest::Client,
     /// The status of the monitor.
-    pub status: Arc<Mutex<HashMap<String, MonitorStatus>>>,
+    pub status: MonitorStatusType,
     /// The database service.
-    database_service: Arc<Option<DbService>>,
+    database_service: DatabaseServiceType,
     /// The database store level.
-    database_store_level: DatabaseStoreLevel,         
+    database_store_level: DatabaseStoreLevel,
 }
 
 impl HttpMonitor {
@@ -70,7 +69,7 @@ impl HttpMonitor {
      * `identity_password`: The password for the identity.
      * `status`: The status of the monitor.
      * `database_service`: The database service.
-     * 
+     *
      * Returns: A new HTTP monitor.
      *
      */
@@ -88,8 +87,8 @@ impl HttpMonitor {
         root_certificate: Option<String>,
         identity: Option<String>,
         identity_password: Option<String>,
-        status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
-        database_service: &Arc<Option<DbService>>,
+        status: &MonitorStatusType,
+        database_service: &DatabaseServiceType,
         database_store_level: &DatabaseStoreLevel,
     ) -> Result<HttpMonitor, ApplicationError> {
         debug!("Creating HTTP monitor: {}", &name);
@@ -142,7 +141,10 @@ impl HttpMonitor {
         let monitor_lock = status.lock();
         match monitor_lock {
             Ok(mut lock) => {
-                lock.insert(name.to_string(), MonitorStatus::new(name, description, Status::Unknown));
+                lock.insert(
+                    name.to_string(),
+                    MonitorStatus::new(name, description, Status::Unknown),
+                );
             }
             Err(err) => {
                 error!("Error creating HTTP monitor: {:?}", err);
@@ -261,13 +263,15 @@ impl HttpMonitor {
                             &self.url,
                             response.status()
                         ),
-                    }).await;
+                    })
+                    .await;
                 }
             }
             Err(err) => {
                 self.set_status(&Status::Error {
                     message: format!("Error connecting to {} with error: {err}", &self.url),
-                }).await;
+                })
+                .await;
             }
         }
     }
@@ -365,19 +369,20 @@ impl HttpMonitor {
      * throws: `ApplicationError`: If the job fails to be created.
      */
     pub fn get_http_monitor_job(
-        &mut self,
-        schedule: &str,        
+        http_monitor: Self,
+        schedule: &str,
     ) -> Result<Job, ApplicationError> {
-        info!("Creating http monitor: {}", &self.name);
-        let http_monitor = self.clone();
+        info!("Creating http monitor: {}", &http_monitor.name);
         let job_result = Job::new_async(schedule, move |_uuid, _locked| {
-            let mut http_monitor = http_monitor.clone();
-            Box::pin(async move {
-                let _ = http_monitor.check().await.map_err(|err| {
-                    error!("Error checking monitor: {:?}", err);
-                });
+            Box::pin({
+                let mut http_monitor = http_monitor.clone();
+                async move {
+                    let _ = http_monitor.check().await.map_err(|err| {
+                        error!("Error checking monitor: {:?}", err);
+                    });
+                }
             })
-        });        
+        });
         match job_result {
             Ok(job) => Ok(job),
             Err(err) => Err(ApplicationError::new(
@@ -427,8 +432,7 @@ impl HttpMonitor {
         self.check_response_and_set_status(req_response).await;
         debug!("Monitor checked: {}", &self.name);
         Ok(())
-    }    
-
+    }
 }
 
 /**
@@ -449,7 +453,7 @@ impl super::Monitor for HttpMonitor {
      *
      * Returns: The status of the monitor.
      */
-    fn get_status(&self) -> Arc<Mutex<HashMap<String, MonitorStatus>>> {
+    fn get_status(&self) -> MonitorStatusType {
         self.status.clone()
     }
 
@@ -458,7 +462,7 @@ impl super::Monitor for HttpMonitor {
      *
      * Returns: The database service.
      */
-    fn get_database_service(&self) -> Arc<Option<DbService>> {
+    fn get_database_service(&self) -> DatabaseServiceType {
         self.database_service.clone()
     }
 
@@ -469,8 +473,7 @@ impl super::Monitor for HttpMonitor {
      */
     fn get_database_store_level(&self) -> DatabaseStoreLevel {
         self.database_store_level.clone()
-    }    
-     
+    }
 }
 
 #[cfg(test)]
@@ -489,8 +492,8 @@ mod test {
      */
     #[tokio::test]
     async fn test_check_with_tls() {
-        let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
-            Arc::new(Mutex::new(HashMap::new()));
+        let status: MonitorStatusType =
+        std::sync::Arc::new(std::sync::Mutex::new(HashMap::new()));
         let mut monitor = HttpMonitor::new(
             "http://localhost:65000",
             HttpMethod::Get,
@@ -505,8 +508,8 @@ mod test {
             Some("./resources/test/client_cert/client.p12".to_string()),
             Some("test".to_string()),
             &status,
-            &Arc::new(None),
-            &DatabaseStoreLevel::None
+            &std::sync::Arc::new(None),
+            &DatabaseStoreLevel::None,
         )
         .unwrap();
         monitor.check().await.unwrap();
@@ -534,8 +537,8 @@ mod test {
      */
     #[tokio::test]
     async fn test_set_status() {
-        let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
-            Arc::new(Mutex::new(HashMap::new()));
+        let status: MonitorStatusType =
+        std::sync::Arc::new(std::sync::Mutex::new(HashMap::new()));
         let mut monitor = HttpMonitor::new(
             "https://www.google.com",
             HttpMethod::Get,
@@ -550,8 +553,8 @@ mod test {
             None,
             None,
             &status,
-            &Arc::new(None),
-            &DatabaseStoreLevel::None
+            &std::sync::Arc::new(None),
+            &DatabaseStoreLevel::None,
         )
         .unwrap();
         monitor.set_status(&Status::Ok).await;
@@ -563,9 +566,9 @@ mod test {
 
     #[test]
     fn test_get_http_monitor_job() {
-        let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
-            Arc::new(Mutex::new(HashMap::new()));
-        let mut monitor = HttpMonitor::new(
+        let status: MonitorStatusType =
+        std::sync::Arc::new(std::sync::Mutex::new(HashMap::new()));
+        let monitor = HttpMonitor::new(
             "https://www.google.com",
             HttpMethod::Get,
             &None,
@@ -579,10 +582,11 @@ mod test {
             None,
             None,
             &status,
-            &Arc::new(None),
-            &DatabaseStoreLevel::None
-        ).unwrap();
-        let job = monitor.get_http_monitor_job("0 0 * * * *");
+            &std::sync::Arc::new(None),
+            &DatabaseStoreLevel::None,
+        )
+        .unwrap();
+        let job = HttpMonitor::get_http_monitor_job(monitor, "0 0 * * * *");
         assert!(job.is_ok());
     }
 }

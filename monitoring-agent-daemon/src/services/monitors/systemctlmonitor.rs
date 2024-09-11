@@ -1,9 +1,9 @@
-use std::{collections::{HashMap, HashSet}, sync::{Arc, Mutex}};
+use std::collections::HashSet;
 
 use log::{debug, error, info};
 use tokio_cron_scheduler::Job;
 
-use crate::{common::{configuration::DatabaseStoreLevel, ApplicationError, MonitorStatus, Status}, services::DbService};
+use crate::common::{configuration::DatabaseStoreLevel, ApplicationError, DatabaseServiceType, MonitorStatus, MonitorStatusType, Status};
 
 use super::Monitor;
 
@@ -27,9 +27,9 @@ pub struct SystemctlMonitor {
     /// The name of the monitor.
     pub name: String,   
     /// The status of the monitor.
-    pub status: Arc<Mutex<HashMap<String, MonitorStatus>>>,
+    pub status: MonitorStatusType,
     /// The database service.
-    database_service: Arc<Option<DbService>>,
+    database_service: DatabaseServiceType,
     /// The database store level.
     database_store_level: DatabaseStoreLevel,
     /// The services to monitor.
@@ -50,8 +50,8 @@ impl SystemctlMonitor {
     pub fn new(
         name: &str,
         description: &Option<String>,
-        status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
-        database_service: &Arc<Option<DbService>>,
+        status: &MonitorStatusType,
+        database_service: &DatabaseServiceType,
         database_store_level: &DatabaseStoreLevel,
         active: Vec<String>,
     ) -> SystemctlMonitor {
@@ -77,18 +77,20 @@ impl SystemctlMonitor {
     /**
      * Get systemctl job.
      *
+     * `systemctl_monitor`: The systemctl monitor.
      * `schedule`: The schedule for the job.
      */
     pub fn get_systemctl_monitor_job(
-        &mut self,
+        systemctl_monitor: Self,
         schedule: &str,
     ) -> Result<Job, ApplicationError> {
-        info!("Creating Systemctl monitor: {}", &self.name);
-        let systemctl_monitor = self.clone();
+        info!("Creating Systemctl monitor: {}", &systemctl_monitor.name);
         let job_result = Job::new_async(schedule, move |_uuid, _locked| {
-            let systemctl_monitor = systemctl_monitor.clone();
-            Box::pin(async move {
-                systemctl_monitor.clone().check().await;
+            Box::pin({
+                let mut systemctl_monitor = systemctl_monitor.clone();
+                async move {
+                    systemctl_monitor.check().await;
+                }
             })              
         });        
         match job_result {
@@ -158,7 +160,7 @@ impl super::Monitor for SystemctlMonitor {
      *
      * Returns: The status of the monitor.
      */
-    fn get_status(&self) -> Arc<Mutex<HashMap<String, MonitorStatus>>> {
+    fn get_status(&self) -> MonitorStatusType {
         self.status.clone()
     }
 
@@ -167,7 +169,7 @@ impl super::Monitor for SystemctlMonitor {
      *
      * Returns: The database service.
      */
-    fn get_database_service(&self) -> Arc<Option<DbService>> {
+    fn get_database_service(&self) -> DatabaseServiceType {
         self.database_service.clone()
     }
 
@@ -195,8 +197,8 @@ mod test {
      */
     #[tokio::test]
     async fn test_check() {
-        let status = Arc::new(Mutex::new(HashMap::new()));
-        let database_service = Arc::new(None);
+        let status = std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new()));
+        let database_service = std::sync::Arc::new(None);
         let database_store_level = DatabaseStoreLevel::None;
         let active = vec![  ];
         let systemctl_monitor = SystemctlMonitor::new(
@@ -219,8 +221,8 @@ mod test {
      */
     #[tokio::test]
     async fn test_systemctl_monitor_with_no_active() {
-        let status = Arc::new(Mutex::new(HashMap::new()));
-        let database_service = Arc::new(None);
+        let status = std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new()));
+        let database_service = std::sync::Arc::new(None);
         let database_store_level = DatabaseStoreLevel::None;
         let active = vec![ "ssh".to_string() ];
         let systemctl_monitor = SystemctlMonitor::new(
@@ -241,8 +243,8 @@ mod test {
      */
     #[tokio::test]
     async fn test_systemctl_monitor_with_uuidd_inactive() {
-        let status = Arc::new(Mutex::new(HashMap::new()));
-        let database_service = Arc::new(None);
+        let status = std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new()));
+        let database_service = std::sync::Arc::new(None);
         let database_store_level = DatabaseStoreLevel::None;
         let active = vec![ "uuidd".to_string() ];
         let systemctl_monitor = SystemctlMonitor::new(
@@ -260,17 +262,17 @@ mod test {
 
     #[test]
     fn test_get_systemctl_monitor_job() {
-        let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
-            Arc::new(Mutex::new(HashMap::new()));
-        let mut monitor = SystemctlMonitor::new(
+        let status: MonitorStatusType =
+        std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new()));
+        let monitor = SystemctlMonitor::new(
             "test",
             &None,
             &status,
-            &Arc::new(None),
+            &std::sync::Arc::new(None),
             &DatabaseStoreLevel::None,
             vec![],
         );
-        let job = monitor.get_systemctl_monitor_job("0 0 * * * *");
+        let job = SystemctlMonitor::get_systemctl_monitor_job(monitor, "0 0 * * * *");
         assert!(job.is_ok());
     }  
 

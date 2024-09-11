@@ -1,8 +1,6 @@
-use std::{collections::HashMap, sync::{Arc, Mutex}};
-
 use log::{debug, error};
 
-use crate::{common::{configuration::DatabaseStoreLevel, MonitorStatus, Status}, services::DbService};
+use crate::common::{configuration::DatabaseStoreLevel, DatabaseServiceType, MonitorStatusType, Status};
 
 pub trait Monitor {
     
@@ -18,14 +16,14 @@ pub trait Monitor {
      *
      * Returns: The status of the monitor.
      */
-    fn get_status(&self) -> Arc<Mutex<HashMap<String, MonitorStatus>>>;
+    fn get_status(&self) -> MonitorStatusType;
 
     /**
      * Get the database service.
      *
      * Returns: The database service.
      */
-    fn get_database_service(&self) -> Arc<Option<DbService>>;
+    fn get_database_service(&self) -> DatabaseServiceType;
 
     /**
      * Get the database store level.
@@ -109,7 +107,7 @@ mod test {
     fn test_monitorstatus_new() {
         let name = "test_monitor";
         let status = Status::Ok;
-        let monitorstatus = MonitorStatus::new(name, &None, status.clone());
+        let monitorstatus = crate::common::MonitorStatus::new(name, &None, status.clone());
         assert_eq!(monitorstatus.name, name);
         assert_eq!(monitorstatus.status, status);
         assert_eq!(monitorstatus.last_successful_time, None);
@@ -121,7 +119,7 @@ mod test {
     fn test_monitorstatus_set_status() {
         let name = "test_monitor";
         let status = Status::Ok;
-        let mut monitorstatus = MonitorStatus::new(name, &None, status.clone());
+        let mut monitorstatus = crate::common::MonitorStatus::new(name, &None, status.clone());
         monitorstatus.set_status(&status);
         assert_eq!(monitorstatus.status, status);
         assert!(monitorstatus.last_successful_time.is_some());

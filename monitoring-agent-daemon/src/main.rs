@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use clap::Parser;
 use common::configuration::{DatabaseConfig, MonitoringConfig, ServerConfig};
-use common::ApplicationError;
+use common::{ApplicationError, DatabaseServiceType};
 use daemonize::Daemonize;
 use log::{debug, error, info};
 use actix_web::{web, App, HttpServer};
@@ -140,9 +140,9 @@ async fn start_application(monitoring_config: Arc<MonitoringConfig>, args: Arc<A
  * Returns the database service.
  * 
  */
-async fn init_database(monitoring_config: Arc<MonitoringConfig>) -> Arc<Option<DbService>> {
+async fn init_database(monitoring_config: Arc<MonitoringConfig>) -> DatabaseServiceType {
     let database_config = monitoring_config.database.clone();
-    let database_service: Arc<Option<DbService>> = if let Some(database_config) = database_config {
+    let database_service: DatabaseServiceType = if let Some(database_config) = database_config {
         Arc::new(initialize_database(&database_config, &monitoring_config.server).await)
     } else {
         info!("No database configuration found!");
@@ -160,7 +160,7 @@ async fn init_database(monitoring_config: Arc<MonitoringConfig>) -> Arc<Option<D
  * `database_service`: The database service.
  * 
  */
-fn init_scheduling(monitoring_config: &Arc<MonitoringConfig>, args: Arc<ApplicationArguments>, monitoring_service: &MonitoringService, database_service: &Arc<Option<DbService>>) {
+fn init_scheduling(monitoring_config: &Arc<MonitoringConfig>, args: Arc<ApplicationArguments>, monitoring_service: &MonitoringService, database_service: &DatabaseServiceType) {
     let monitor_statuses = monitoring_service.get_status();
     let server_name = monitoring_config.server.name.clone();
     let mut scheduling_service = SchedulingService::new(&server_name, monitoring_config, &monitor_statuses, database_service);
@@ -185,7 +185,7 @@ fn init_scheduling(monitoring_config: &Arc<MonitoringConfig>, args: Arc<Applicat
  * 
  * Returns the result of initializing the HTTP server.
  */
-async fn init_http_server(monitoring_config: Arc<MonitoringConfig>, monitoring_service: MonitoringService, database_service: Arc<Option<DbService>>) -> Result<(), std::io::Error> {
+async fn init_http_server(monitoring_config: Arc<MonitoringConfig>, monitoring_service: MonitoringService, database_service: DatabaseServiceType) -> Result<(), std::io::Error> {
     /*
      * Start the HTTP server.
      */

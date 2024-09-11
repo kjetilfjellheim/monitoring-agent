@@ -1,6 +1,4 @@
-use std::sync::Arc;
-
-use crate::{common::configuration::ServerConfig, services::{DbService, MonitoringService}};
+use crate::{common::{configuration::ServerConfig, DatabaseServiceType}, services::MonitoringService};
 
 /**
  * State object for the API modules.
@@ -10,7 +8,7 @@ pub struct StateApi {
     /// Monitoring service object.
     pub monitoring_service: MonitoringService,
     /// Database service object.
-    pub database_service: Arc<Option<DbService>>,    
+    pub database_service: DatabaseServiceType,    
     /// Server configuration object.
     pub server_config: ServerConfig,
 }
@@ -26,7 +24,7 @@ impl StateApi {
      * @return `StateApi`
      * 
      */
-    pub fn new(monitoring_service: MonitoringService, database_service: Arc<Option<DbService>>, server_config: ServerConfig) -> StateApi {
+    pub fn new(monitoring_service: MonitoringService, database_service: DatabaseServiceType, server_config: ServerConfig) -> StateApi {
         StateApi {
             monitoring_service,
             database_service,

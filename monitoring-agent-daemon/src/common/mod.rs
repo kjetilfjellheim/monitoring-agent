@@ -12,9 +12,11 @@ mod monitorstatus;
 pub mod configuration;
 pub mod args;
 pub mod historical;
+pub mod types;
 
 pub use crate::common::applicationerror::ApplicationError;
 pub use crate::common::monitorstatus::{MonitorStatus, Status};
 pub use crate::common::configuration::{Monitor, MonitorType, HttpMethod, DatabaseConfig};
 pub use crate::common::args::ApplicationArguments;
 pub use crate::common::historical::{LoadavgElement, MeminfoElement, ProcessMemoryElement};
+pub use crate::common::types::{MonitorStatusType, DatabaseServiceType};
