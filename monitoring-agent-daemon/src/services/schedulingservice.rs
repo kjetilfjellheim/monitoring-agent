@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Arc, time::Duration};
 use log::info;
 use tokio_cron_scheduler::{Job, JobScheduler};
 
-use crate::{common::{configuration::MonitoringConfig, ApplicationError, DatabaseServiceType, MonitorStatusType}, services::jobs::NotificationJob};
+use crate::{common::{configuration::{MonitoringConfig, ThresholdLevel}, ApplicationError, DatabaseServiceType, MonitorStatusType}, services::jobs::NotificationJob};
 use crate::services::{DbService, jobs::DbCleanupJob};
 use super::monitors::{CertificateMonitor, CommandMonitor, DatabaseMonitor, HttpMonitor, LoadAvgMonitor, MeminfoMonitor, ProcessMonitor, SystemctlMonitor, TcpMonitor};
 
@@ -169,11 +169,8 @@ impl SchedulingService {
             crate::common::MonitorType::Command { command, args, expected, } => {
                 self.create_and_schedule_command_monitor(monitor, command, args, expected, scheduler).await?
             },
-            crate::common::MonitorType::LoadAvg { threshold_1min, threshold_5min, threshold_15min, store_values, } => {               
-                self.create_and_schedule_loadavg_monitor(monitor, threshold_1min, threshold_5min, threshold_15min, store_values, scheduler).await?
-                threshold_1min_level,
-                threshold_5min_level,
-                threshold_15min_level,
+            crate::common::MonitorType::LoadAvg { threshold_1min, threshold_5min, threshold_15min, threshold_1min_level, threshold_5min_level, threshold_15min_level, store_values, } => {               
+                self.create_and_schedule_loadavg_monitor(monitor, threshold_1min, threshold_5min, threshold_15min, threshold_1min_level, threshold_5min_level, threshold_15min_level, store_values, scheduler).await?
             },
             crate::common::MonitorType::Mem {max_percentage_mem, max_percentage_swap, store_values } => {
                 self.create_and_schedule_memory_monitor(monitor, max_percentage_mem, max_percentage_swap, store_values, scheduler).await?
@@ -339,9 +336,10 @@ impl SchedulingService {
      * - If the job fails to be added.
      * - If the job fails to be scheduled.
      */
+    #[allow(clippy::too_many_arguments)]    
     #[allow(clippy::similar_names)]
-    async fn create_and_schedule_loadavg_monitor(&mut self, monitor: &crate::common::Monitor, threshold_1min: Option<f32>, threshold_5min: Option<f32>, threshold_15min: Option<f32>, store_values: bool, scheduler: &JobScheduler) -> Result<Result<(), ApplicationError>, ApplicationError> {
-        let loadavg_monitor = LoadAvgMonitor::new(&monitor.name, &monitor.description, threshold_1min, threshold_5min, threshold_15min, &self.status, &self.database_service.clone(), &monitor.store, store_values);
+    async fn create_and_schedule_loadavg_monitor(&mut self, monitor: &crate::common::Monitor, threshold_1min: Option<f32>, threshold_5min: Option<f32>, threshold_15min: Option<f32>, threshold_1min_level: ThresholdLevel, threshold_5min_level: ThresholdLevel, threshold_15min_level: ThresholdLevel, store_values: bool, scheduler: &JobScheduler) -> Result<Result<(), ApplicationError>, ApplicationError> {
+        let loadavg_monitor = LoadAvgMonitor::new(&monitor.name, &monitor.description, threshold_1min, threshold_5min, threshold_15min, threshold_1min_level, threshold_5min_level, threshold_15min_level, &self.status, &self.database_service.clone(), &monitor.store, store_values);
         let job = LoadAvgMonitor::get_loadavg_monitor_job(loadavg_monitor, monitor.schedule.as_str())?;
         Ok(self.add_job(scheduler, job).await)
     }

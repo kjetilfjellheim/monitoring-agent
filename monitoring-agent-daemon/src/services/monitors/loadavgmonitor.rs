@@ -1,10 +1,8 @@
-use std::{collections::HashMap, sync::{Arc, Mutex}};
-
 use log::{debug, error, info};
 use monitoring_agent_lib::proc::ProcsLoadavg;
 use tokio_cron_scheduler::Job;
 
-use crate::{common::{configuration::{DatabaseStoreLevel, ThresholdLevel}, ApplicationError, MonitorStatus, Status}, DbService};
+use crate::common::{configuration::{DatabaseStoreLevel, ThresholdLevel}, ApplicationError, DatabaseServiceType, MonitorStatus, MonitorStatusType, Status};
 
 use super::Monitor;
 /**
@@ -371,7 +369,7 @@ impl super::Monitor for LoadAvgMonitor {
 #[cfg(test)]
 mod test {
     use std::{collections::HashMap, sync::{Arc, Mutex}};
-    use crate::{common::{configuration::DatabaseStoreLevel, MonitorStatusType}, services::monitors::LoadAvgMonitor};
+    use crate::{common::{configuration::{DatabaseStoreLevel, ThresholdLevel}, MonitorStatusType}, services::monitors::LoadAvgMonitor};
 
     use super::Monitor;
 
