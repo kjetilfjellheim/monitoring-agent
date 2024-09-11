@@ -1,13 +1,9 @@
 use log::info;
 use log::{debug, error};
 use tokio_cron_scheduler::Job;
-use std::collections::HashMap;
-use std::sync::Arc;
-use std::sync::Mutex;
 
 use crate::common::configuration::DatabaseStoreLevel;
-use crate::common::{ApplicationError, MonitorStatus, Status};
-use crate::services::DbService;
+use crate::common::{ApplicationError, DatabaseServiceType, MonitorStatus, MonitorStatusType, Status};
 
 use super::Monitor;
 
@@ -33,9 +29,9 @@ pub struct TcpMonitor {
     /// The port of the host monitor.
     pub port: u16,
     /// The status of the monitor.
-    pub status: Arc<Mutex<HashMap<String, MonitorStatus>>>,
+    pub status: MonitorStatusType,
     /// The database service.
-    database_service: Arc<Option<DbService>>,
+    database_service: DatabaseServiceType,
     /// The database store level.
     database_store_level: DatabaseStoreLevel,
 }
@@ -55,8 +51,8 @@ impl TcpMonitor {
         port: u16,
         name: &str,
         description: &Option<String>,
-        status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
-        database_service: &Arc<Option<DbService>>,
+        status: &MonitorStatusType,
+        database_service: &DatabaseServiceType,
         database_store_level: &DatabaseStoreLevel,
     ) -> TcpMonitor {
         debug!("Creating TCP monitor: {}", &name);
@@ -90,26 +86,25 @@ impl TcpMonitor {
         let _ = tcp_stream.shutdown(std::net::Shutdown::Both).map_err(|err| error!("Error closing connection: {:?}", err));
     }
 
-        /**
+    /**
      * Get a TCP monitor job.
      *
+     * `tcp_monitor`: The TCP monitor.
      * `schedule`: The schedule.
-     * `name`: The name of the monitor.
-     * `host`: The host to monitor.
-     * `port`: The port to monitor.
      *
      * `result`: The result of getting the TCP monitor job.
      */
     pub fn get_tcp_monitor_job(
-        &mut self,
+        tcp_monitor: Self,
         schedule: &str,
     ) -> Result<Job, ApplicationError> {
-        info!("Creating Tcp monitor: {}", &self.name);
-        let tcp_monitor = self.clone();
+        info!("Creating Tcp monitor: {}", tcp_monitor.name);
         let job_result = Job::new_async(schedule, move |_uuid, _locked| {
-            let tcp_monitor = tcp_monitor.clone();
-            Box::pin(async move {
-                TcpMonitor::run_scheduled(tcp_monitor.clone()).await;
+            Box::pin({
+                let mut tcp_monitor = tcp_monitor.clone();
+                async move {
+                    tcp_monitor.check().await;
+                }
             })              
         });        
         match job_result {
@@ -142,15 +137,6 @@ impl TcpMonitor {
         }
     }    
 
-    /**
-     * Run the monitor.
-     * 
-     * `tcp_monitor`: The TCP monitor.
-     */
-    async fn run_scheduled(mut tcp_monitor: TcpMonitor) {
-        tcp_monitor.check().await;
-    }
-
 }
 
 /**
@@ -171,7 +157,7 @@ impl super::Monitor for TcpMonitor {
      *
      * Returns: The status of the monitor.
      */
-    fn get_status(&self) -> Arc<Mutex<HashMap<String, MonitorStatus>>> {
+    fn get_status(&self) -> MonitorStatusType {
         self.status.clone()
     }
 
@@ -180,7 +166,7 @@ impl super::Monitor for TcpMonitor {
      *
      * Returns: The database service.
      */
-    fn get_database_service(&self) -> Arc<Option<DbService>> {
+    fn get_database_service(&self) -> DatabaseServiceType {
         self.database_service.clone()
     }
 
@@ -208,8 +194,8 @@ mod test {
     #[ignore = "This keeps failing during build actions in Github, temporarily disabled."]
     #[tokio::test]
     async fn test_check_port_139() {
-        let status = Arc::new(Mutex::new(HashMap::new()));
-        let mut monitor = TcpMonitor::new("localhost", 139, "localhost", &None, &status, &Arc::new(None), &DatabaseStoreLevel::None);
+        let status = std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new()));
+        let mut monitor = TcpMonitor::new("localhost", 139, "localhost", &None, &status, &std::sync::Arc::new(None), &DatabaseStoreLevel::None);
         monitor.check().await;
         assert_eq!(
             status.lock().unwrap().get("localhost").unwrap().status,
@@ -222,9 +208,9 @@ mod test {
      */
     #[tokio::test]
     async fn test_check_port_65000() {
-        let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
-            Arc::new(Mutex::new(HashMap::new()));
-        let mut monitor = TcpMonitor::new("localhost", 65000, "localhost", &None, &status, &Arc::new(None), &DatabaseStoreLevel::None);
+        let status: MonitorStatusType =
+            std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new()));
+        let mut monitor = TcpMonitor::new("localhost", 65000, "localhost", &None, &status, &std::sync::Arc::new(None), &DatabaseStoreLevel::None);
         monitor.check().await;
         assert_eq!(status.lock().unwrap().get("localhost").unwrap().status, Status::Error { message: "Error connecting to localhost:65000 with error: Connection refused (os error 111)".to_string() });
     }
@@ -234,9 +220,9 @@ mod test {
      */
     #[tokio::test]
     async fn test_set_status() {
-        let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
-            Arc::new(Mutex::new(HashMap::new()));
-        let mut monitor = TcpMonitor::new("localhost", 65000, "localhost", &None, &status, &Arc::new(None), &DatabaseStoreLevel::None);
+        let status: MonitorStatusType =
+            std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new()));
+        let mut monitor = TcpMonitor::new("localhost", 65000, "localhost", &None, &status, &std::sync::Arc::new(None), &DatabaseStoreLevel::None);
         monitor.set_status(&Status::Ok).await;
         assert_eq!(
             status.lock().unwrap().get("localhost").unwrap().status,
@@ -246,18 +232,18 @@ mod test {
 
     #[test]
     fn test_get_tcp_monitor_job() {
-        let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
-            Arc::new(Mutex::new(HashMap::new()));
-        let mut monitor = TcpMonitor::new(
+        let status: MonitorStatusType =
+            std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new()));
+        let monitor = TcpMonitor::new(
             "localhost",
             65000,
             "localhost",
             &None,
             &status,
-            &Arc::new(None),
+            &std::sync::Arc::new(None),
             &DatabaseStoreLevel::None,
         );
-        let job = monitor.get_tcp_monitor_job("0 0 * * * *");
+        let job = TcpMonitor::get_tcp_monitor_job(monitor, "0 0 * * * *");
         assert!(job.is_ok());
     }      
 }

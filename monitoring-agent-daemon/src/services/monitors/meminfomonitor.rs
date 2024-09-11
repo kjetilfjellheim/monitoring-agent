@@ -1,10 +1,8 @@
-use std::{collections::HashMap, sync::{Arc, Mutex}};
-
 use log::{debug, error, info};
 use monitoring_agent_lib::proc::ProcsMeminfo;
 use tokio_cron_scheduler::Job;
 
-use crate::{common::{configuration::DatabaseStoreLevel, ApplicationError, MonitorStatus, Status}, DbService};
+use crate::common::{configuration::DatabaseStoreLevel, ApplicationError, DatabaseServiceType, MonitorStatus, MonitorStatusType, Status};
 
 use super::Monitor;
 
@@ -31,9 +29,9 @@ pub struct MeminfoMonitor {
     /// Minimum free percentage swap memory.
     pub max_percentage_swap: Option<f64>,
     /// The status of the monitor.
-    pub status: Arc<Mutex<HashMap<String, MonitorStatus>>>,    
+    pub status: MonitorStatusType,    
     /// The database service
-    database_service: Arc<Option<DbService>>,
+    database_service: DatabaseServiceType,
     /// The database store level.
     database_store_level: DatabaseStoreLevel,
     /// The current load average.
@@ -63,8 +61,8 @@ impl MeminfoMonitor {
         description: &Option<String>,
         max_percentage_mem: Option<f64>,
         max_percentage_swap: Option<f64>,
-        status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
-        database_service: &Arc<Option<DbService>>,
+        status: &MonitorStatusType,
+        database_service: &DatabaseServiceType,
         database_store_level: &DatabaseStoreLevel,
         store_current_meminfo: bool,
     ) -> MeminfoMonitor {
@@ -175,18 +173,15 @@ impl MeminfoMonitor {
      * Returns: The meminfo monitor job.
      * 
      */
-    #[allow(clippy::too_many_arguments)]
-    #[allow(clippy::similar_names)]    
     pub fn get_meminfo_monitor_job(
-        &mut self,
+        memory_monitor: Self,
         schedule: &str,
     ) -> Result<Job, ApplicationError> {
-        info!("Creating meminfo monitor: {}", &self.name);
-        let meminfo_monitor = self.clone();       
+        info!("Creating meminfo monitor: {}", &memory_monitor.name);
         let job_result = Job::new_async(schedule, move |_uuid, _locked| {                
-            let mut meminfo_monitor = meminfo_monitor.clone();
+            let mut memory_monitor = memory_monitor.clone();
             Box::pin(async move {
-                meminfo_monitor.check().await;
+                memory_monitor.check().await;
             })  
         });        
         match job_result {
@@ -234,7 +229,7 @@ impl super::Monitor for MeminfoMonitor {
      *
      * Returns: The status of the monitor.
      */
-    fn get_status(&self) -> Arc<Mutex<HashMap<String, MonitorStatus>>> {
+    fn get_status(&self) -> MonitorStatusType {
         self.status.clone()
     }
 
@@ -243,7 +238,7 @@ impl super::Monitor for MeminfoMonitor {
      *
      * Returns: The database service.
      */
-    fn get_database_service(&self) -> Arc<Option<DbService>> {
+    fn get_database_service(&self) -> DatabaseServiceType {
         self.database_service.clone()
     }
 
@@ -262,7 +257,7 @@ impl super::Monitor for MeminfoMonitor {
 mod test {
     use std::{collections::HashMap, sync::{Arc, Mutex}};
 
-    use crate::{common::MonitorStatus, services::monitors::MeminfoMonitor};
+    use crate::{common::MonitorStatusType, services::monitors::MeminfoMonitor};
 
     use super::Monitor;
 
@@ -357,9 +352,9 @@ mod test {
 
     #[test]
     fn test_get_meminfo_monitor_job() {
-        let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
+        let status: MonitorStatusType =
             Arc::new(Mutex::new(HashMap::new()));
-        let mut monitor = MeminfoMonitor::new(
+        let monitor = MeminfoMonitor::new(
             "test",
             &None,
             Some(100.0),
@@ -369,7 +364,7 @@ mod test {
             &super::DatabaseStoreLevel::None,
             false,
         );
-        let job = monitor.get_meminfo_monitor_job("0 0 * * * *");
+        let job = MeminfoMonitor::get_meminfo_monitor_job(monitor ,"0 0 * * * *");
         assert!(job.is_ok());
     }  
 }

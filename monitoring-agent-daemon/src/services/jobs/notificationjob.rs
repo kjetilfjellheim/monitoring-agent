@@ -1,26 +1,31 @@
 use chrono::{DateTime, Utc};
 use lettre::{message::Mailbox, Message, SmtpTransport, Transport};
-use std::{
-    collections::HashMap,
-    sync::{Arc, Mutex},
-};
+use std::collections::HashMap;
 use tokio_cron_scheduler::Job;
 use tracing::error;
 
-use crate::common::{ApplicationError, MonitorStatus, Status};
+use crate::common::{ApplicationError, MonitorStatus, MonitorStatusType, Status};
 
 /**
  * The notification job.
  */
 #[derive(Debug, Clone)]
 pub struct NotificationJob {
-    status: Arc<Mutex<HashMap<String, MonitorStatus>>>,
+    /// Monitor status
+    status: MonitorStatusType,
+    /// Map of all the already notified errors.
     already_notified: HashMap<String, DateTime<Utc>>,
+    /// The email recipients.
     recipients: Vec<String>,
+    /// The email transport.
     transport: SmtpTransport,
+    /// The from email.
     from: Mailbox,
+    /// The reply to email.
     reply_to: Mailbox,
+    /// After how many minutes to resend the notification when an error occurs.
     resend_after: i64,
+    /// The notify schedule.
     notify_schedule: String,
 }
 
@@ -39,7 +44,7 @@ impl NotificationJob {
      * Returns a new `NotificationJob`.
      */
     pub fn new(
-        status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
+        status: &MonitorStatusType,
         url: &str,
         recipients: Vec<String>,
         from: &str,
@@ -182,6 +187,8 @@ impl NotificationJob {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::{Arc, Mutex};
+
     use super::*;
 
     #[test]
