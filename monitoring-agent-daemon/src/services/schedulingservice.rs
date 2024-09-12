@@ -172,8 +172,8 @@ impl SchedulingService {
             crate::common::MonitorType::LoadAvg { threshold_1min, threshold_5min, threshold_15min, threshold_1min_level, threshold_5min_level, threshold_15min_level, store_values, } => {               
                 self.create_and_schedule_loadavg_monitor(monitor, threshold_1min, threshold_5min, threshold_15min, threshold_1min_level, threshold_5min_level, threshold_15min_level, store_values, scheduler).await?
             },
-            crate::common::MonitorType::Mem {max_percentage_mem, max_percentage_swap, store_values } => {
-                self.create_and_schedule_memory_monitor(monitor, max_percentage_mem, max_percentage_swap, store_values, scheduler).await?
+            crate::common::MonitorType::Mem {error_percentage_used_mem, error_percentage_used_swap, warn_percentage_used_mem, warn_percentage_used_swap, store_values } => {
+                self.create_and_schedule_memory_monitor(monitor, error_percentage_used_mem, error_percentage_used_swap, warn_percentage_used_mem, warn_percentage_used_swap, store_values, scheduler).await?
             },
             crate::common::MonitorType::Systemctl { active 
             } => {
@@ -301,8 +301,10 @@ impl SchedulingService {
      * Create and schedule a memory use monitor.
      * 
      * `monitor`: The monitor configuration.
-     * `max_percentage_mem`: The maximum percentage of memory.
-     * `max_percentage_swap`: The maximum percentage of swap.
+     * `error_percentage_used_mem`: The maximum percentage of memory.
+     * `error_percentage_used_swap`: The maximum percentage of swap.
+     * `warn_percentage_used_mem`: The warn percentage of memory.
+     * `warn_percentage_used_swap`: The warn percentage of swap.
      * `store_values`: Store the values.
      * `scheduler`: The job scheduler.
      * 
@@ -313,8 +315,9 @@ impl SchedulingService {
      * - If the job fails to be added.
      * - If the job fails to be scheduled.
      */
-    async fn create_and_schedule_memory_monitor(&mut self, monitor: &crate::common::Monitor, max_percentage_mem: Option<f64>, max_percentage_swap: Option<f64>, store_values: bool, scheduler: &JobScheduler) -> Result<Result<(), ApplicationError>, ApplicationError> {
-        let meminfo_monitor = MeminfoMonitor::new(&monitor.name, &monitor.description, max_percentage_mem, max_percentage_swap, &self.status, &self.database_service.clone(), &monitor.store, store_values);
+    #[allow(clippy::too_many_arguments)]
+    async fn create_and_schedule_memory_monitor(&mut self, monitor: &crate::common::Monitor, error_percentage_used_mem: Option<f64>, error_percentage_used_swap: Option<f64>, warn_percentage_used_mem: Option<f64>, warn_percentage_used_swap: Option<f64>, store_values: bool, scheduler: &JobScheduler) -> Result<Result<(), ApplicationError>, ApplicationError> {
+        let meminfo_monitor = MeminfoMonitor::new(&monitor.name, &monitor.description, error_percentage_used_mem, error_percentage_used_swap, warn_percentage_used_mem, warn_percentage_used_swap, &self.status, &self.database_service.clone(), &monitor.store, store_values);
         let job = MeminfoMonitor::get_meminfo_monitor_job(meminfo_monitor, monitor.schedule.as_str())?;
         Ok(self.add_job(scheduler, job).await)
     }
@@ -699,8 +702,10 @@ mod test {
             schedule: "* * * * * *".to_string(),
             store: DatabaseStoreLevel::None,
             details: crate::common::MonitorType::Mem {
-                max_percentage_mem: Some(0.0),
-                max_percentage_swap: Some(0.0),
+                error_percentage_used_mem: Some(0.0),
+                error_percentage_used_swap: Some(0.0),
+                warn_percentage_used_mem: Some(0.0),
+                warn_percentage_used_swap: Some(0.0),                
                 store_values: false,
             },
         }, &JobScheduler::new().await.unwrap()).await;
