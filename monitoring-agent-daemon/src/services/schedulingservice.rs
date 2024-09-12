@@ -159,12 +159,12 @@ impl SchedulingService {
     ) -> Result<(), ApplicationError> {
         let monitor_type = monitor.details.clone();
         match monitor_type {
-            crate::common::MonitorType::Tcp { host, port } => {
-                self.create_and_schedule_tcp_monitor(host, port, monitor, scheduler).await?
+            crate::common::MonitorType::Tcp { host, port, retry } => {
+                self.create_and_schedule_tcp_monitor(host, port, retry, monitor, scheduler).await?
             },
             crate::common::MonitorType::Http { url, method, body, headers, use_builtin_root_certs, accept_invalid_certs,
-                tls_info, root_certificate, identity, identity_password, } => { 
-                self.create_and_schedule_http_monitor(url, method, body, headers, monitor, use_builtin_root_certs, accept_invalid_certs, tls_info, root_certificate, identity, identity_password, scheduler).await?
+                tls_info, root_certificate, identity, identity_password, retry} => { 
+                self.create_and_schedule_http_monitor(url, method, body, headers, monitor, use_builtin_root_certs, accept_invalid_certs, tls_info, root_certificate, identity, identity_password, retry, scheduler).await?
             },
             crate::common::MonitorType::Command { command, args, expected, } => {
                 self.create_and_schedule_command_monitor(monitor, command, args, expected, scheduler).await?
@@ -393,7 +393,7 @@ impl SchedulingService {
      * - If the job fails to be scheduled.
      */
     #[allow(clippy::too_many_arguments)]
-    async fn create_and_schedule_http_monitor(&mut self, url: String, method: crate::common::HttpMethod, body: Option<String>, headers: Option<HashMap<String, String>>, monitor: &crate::common::Monitor, use_builtin_root_certs: bool, accept_invalid_certs: bool, tls_info: bool, root_certificate: Option<String>, identity: Option<String>, identity_password: Option<String>, scheduler: &JobScheduler) -> Result<Result<(), ApplicationError>, ApplicationError> {
+    async fn create_and_schedule_http_monitor(&mut self, url: String, method: crate::common::HttpMethod, body: Option<String>, headers: Option<HashMap<String, String>>, monitor: &crate::common::Monitor, use_builtin_root_certs: bool, accept_invalid_certs: bool, tls_info: bool, root_certificate: Option<String>, identity: Option<String>, identity_password: Option<String>, retry: Option<u16>, scheduler: &JobScheduler) -> Result<Result<(), ApplicationError>, ApplicationError> {
         let http_monitor = HttpMonitor::new(
             url.as_str(),
             method,
@@ -407,6 +407,7 @@ impl SchedulingService {
             root_certificate,
             identity,
             identity_password,
+            retry,
             &self.status,
             &self.database_service.clone(),
             &monitor.store,
@@ -430,8 +431,8 @@ impl SchedulingService {
      * - If the job fails to be added.
      * - If the job fails to be scheduled.
      */
-    async fn create_and_schedule_tcp_monitor(&self, host: String, port: u16, monitor: &crate::common::Monitor, scheduler: &JobScheduler) -> Result<Result<(), ApplicationError>, ApplicationError> {
-        let tcp_monitor = TcpMonitor::new(host.as_str(), port, &monitor.name, &monitor.description, &self.status.clone(), &self.database_service.clone(), &monitor.store);
+    async fn create_and_schedule_tcp_monitor(&self, host: String, port: u16, retry: Option<u16>, monitor: &crate::common::Monitor, scheduler: &JobScheduler) -> Result<Result<(), ApplicationError>, ApplicationError> {
+        let tcp_monitor = TcpMonitor::new(host.as_str(), port, retry, &monitor.name, &monitor.description, &self.status.clone(), &self.database_service.clone(), &monitor.store);
         let job = TcpMonitor::get_tcp_monitor_job(tcp_monitor, monitor.schedule.as_str())?;
         Ok(self.add_job(scheduler, job).await)
     }
@@ -606,6 +607,7 @@ mod test {
             details: crate::common::MonitorType::Tcp {
                 host: "localhost".to_string(),
                 port: 80,
+                retry: None,
             },
         }, &JobScheduler::new().await.unwrap()).await;
         assert!(res.is_ok())
@@ -631,6 +633,7 @@ mod test {
                 root_certificate: None,
                 identity: None,
                 identity_password: None,
+                retry: None
             },
         }, &JobScheduler::new().await.unwrap()).await;
         assert!(res.is_ok())
