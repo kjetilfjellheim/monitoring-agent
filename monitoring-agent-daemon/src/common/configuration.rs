@@ -23,6 +23,8 @@ pub enum MonitorType {
     Tcp {
         host: String,
         port: u16,
+        #[serde(skip_serializing_if = "Option::is_none", rename = "retry", default = "default_none")]
+        retry: Option<u16>
     },
     Http {
         url: String,
@@ -43,6 +45,8 @@ pub enum MonitorType {
         identity: Option<String>,
         #[serde(skip_serializing, rename = "identityPassword")]
         identity_password: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none", rename = "retry", default = "default_none")]
+        retry: Option<u16>
     },
     Command {
         command: String,
@@ -551,7 +555,8 @@ mod tests {
             monitor,
             MonitorType::Tcp {
                 host: "192.168.1.1".to_string(),
-                port: 8080
+                port: 8080,
+                retry: None
             }
         );
         assert_eq!(&8080, &monitoring.server.clone().port);
@@ -581,7 +586,8 @@ mod tests {
                 tls_info: false,
                 root_certificate: None,
                 identity: None,
-                identity_password: None
+                identity_password: None,
+                retry: None
             }
         );
         assert_eq!(&65000, &monitoring.server.clone().port);

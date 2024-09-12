@@ -5,7 +5,7 @@ use std::time::Duration;
 use log::info;
 use log::{debug, error};
 use reqwest::header::HeaderMap;
-use reqwest::Certificate;
+use reqwest::{Certificate, RequestBuilder};
 use reqwest::Identity;
 use tokio_cron_scheduler::Job;
 
@@ -42,6 +42,8 @@ pub struct HttpMonitor {
     pub body: Option<String>,
     /// The headers of the request.
     pub headers: Option<HashMap<String, String>>,
+    /// Number of retries if error occurs.
+    pub retry: Option<u16>,
     /// The HTTP client.
     client: reqwest::Client,
     /// The status of the monitor.
@@ -87,6 +89,7 @@ impl HttpMonitor {
         root_certificate: Option<String>,
         identity: Option<String>,
         identity_password: Option<String>,
+        retry: Option<u16>,
         status: &MonitorStatusType,
         database_service: &DatabaseServiceType,
         database_store_level: &DatabaseStoreLevel,
@@ -160,6 +163,7 @@ impl HttpMonitor {
             method,
             body: body.clone(),
             headers: headers.clone(),
+            retry,
             status: status.clone(),
             client,
             database_service: database_service.clone(),
@@ -245,37 +249,27 @@ impl HttpMonitor {
      * Check the response and set the status of the monitor.
      *
      * `response`: The response from the request.
-     *
+     * 
+     * Returns: The result of checking the response and setting the status.
+     * 
      */
-    async fn check_response_and_set_status(
-        &mut self,
-        response: Result<reqwest::Response, reqwest::Error>,
-    ) {
+    fn check_response_and_set_status(&mut self, response: Result<reqwest::Response, reqwest::Error> ) -> Result<(), ApplicationError> {
         match response {
             Ok(response) => {
                 if response.status().is_success() {
-                    self.set_status(&Status::Ok).await;
-                } else {
-                    info!("Monitor status error: {} - {:?}", &self.name, response);
-                    self.set_status(&Status::Error {
-                        message: format!(
-                            "Error connecting to {} with status code: {}",
-                            &self.url,
-                            response.status()
-                        ),
-                    })
-                    .await;
+                    Ok(())
+                } else {                    
+                    Err(ApplicationError::new(&format!(
+                        "Error checking monitor: {} ", response.status()
+                    )))                   
                 }
             }
             Err(err) => {
-                self.set_status(&Status::Error {
-                    message: format!("Error connecting to {} with error: {err}", &self.url),
-                })
-                .await;
+                Err(ApplicationError::new(&format!("Error connecting to {} with error: {err}", &self.url)))
             }
         }
     }
-
+    
     /**
      * Get identity.
      *
@@ -396,6 +390,60 @@ impl HttpMonitor {
      */
     async fn check(&mut self) -> Result<(), ApplicationError> {
         debug!("Checking monitor: {}", &self.name);
+        let status = self.connect().await?;
+        self.set_status(&status).await;    
+        Ok(())   
+    }  
+
+    /**
+     * Check the monitor.
+     */
+    async fn connect(&mut self) -> Result<Status, ApplicationError> {
+        debug!("Checking monitor: {}", &self.name);
+        /*
+         * Build the request.
+         */
+        let request = self.build_request()?;
+        /*
+         * Send request.
+         */
+        let req_response = request.send().await;
+
+        let mut current_err = match self.check_response_and_set_status(req_response) {
+            Ok(()) => {
+                return Ok(Status::Ok);
+            },
+            Err(err) => {
+                err.message 
+            },
+        };    
+
+        if let Some(retry) = self.retry {
+            for index in 1..=retry {
+                /*
+                * Build the request.
+                */
+                let request = self.build_request()?;
+                let req_response = request.send().await;
+                match self.check_response_and_set_status(req_response) {
+                    Ok(()) => {
+                        return Ok(Status::Warn { message: format!("Success after retries {index}. Previous err: {current_err:?}") });
+                    },
+                    Err(err) => {
+                        current_err = format!("Error after {index} retries. Error: {err:?}");
+                    },
+                };
+            }            
+        }                    
+        Ok(Status::Error { message: current_err })
+    }
+
+    /**
+     * Build the request.
+     * 
+     * Returns: The request builder.
+     */
+    fn build_request(&self) -> Result<RequestBuilder, ApplicationError> {
         /*
          * Set http method.
          */
@@ -421,18 +469,9 @@ impl HttpMonitor {
         /*
          * Set timeout.
          */
-        let request_builder = request_builder.timeout(Duration::from_secs(5));
-        /*
-         * Send request.
-         */
-        let req_response = request_builder.send().await;
-        /*
-         * Check response and set status in the monitor.
-         */
-        self.check_response_and_set_status(req_response).await;
-        debug!("Monitor checked: {}", &self.name);
-        Ok(())
+        Ok(request_builder.timeout(Duration::from_secs(5)))
     }
+
 }
 
 /**
@@ -507,13 +546,14 @@ mod test {
             Some("./resources/test/server_cert/server.cer".to_string()),
             Some("./resources/test/client_cert/client.p12".to_string()),
             Some("test".to_string()),
+            Some(1),
             &status,
             &std::sync::Arc::new(None),
             &DatabaseStoreLevel::None,
         )
         .unwrap();
         monitor.check().await.unwrap();
-        assert_eq!(status.lock().unwrap().get("localhost").unwrap().status, Status::Error { message: "Error connecting to http://localhost:65000 with error: error sending request for url (http://localhost:65000/)".to_string() });
+        assert_eq!(status.lock().unwrap().get("localhost").unwrap().status, Status::Error { message: "Error after 1 retries. Error: ApplicationError { message: \"Error connecting to http://localhost:65000 with error: error sending request for url (http://localhost:65000/)\" }".to_string() });
     }
 
     /**
@@ -552,6 +592,7 @@ mod test {
             None,
             None,
             None,
+            None,
             &status,
             &std::sync::Arc::new(None),
             &DatabaseStoreLevel::None,
@@ -578,6 +619,7 @@ mod test {
             true,
             true,
             false,
+            None,
             None,
             None,
             None,
