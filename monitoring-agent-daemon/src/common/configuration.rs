@@ -68,10 +68,14 @@ pub enum MonitorType {
         store_values: bool,    
     },  
     Mem {
-        #[serde(skip_serializing_if = "Option::is_none", rename = "maxPercentageMemUsed")]
-        max_percentage_mem: Option<f64>,
-        #[serde(skip_serializing_if = "Option::is_none", rename = "maxPercentageSwapUsed")]
-        max_percentage_swap: Option<f64>,        
+        #[serde(skip_serializing_if = "Option::is_none", rename = "errorPercentageMemUsed")]
+        error_percentage_used_mem: Option<f64>,
+        #[serde(skip_serializing_if = "Option::is_none", rename = "errorPercentageSwapUsed")]
+        error_percentage_used_swap: Option<f64>,   
+        #[serde(skip_serializing_if = "Option::is_none", rename = "warnPercentageMemUsed")]
+        warn_percentage_used_mem: Option<f64>,
+        #[serde(skip_serializing_if = "Option::is_none", rename = "warnPercentageSwapUsed")]
+        warn_percentage_used_swap: Option<f64>,                       
         #[serde(rename = "storeValues", default = "default_as_false")]
         store_values: bool,    
     },   
@@ -705,8 +709,10 @@ mod tests {
         assert_eq!(
             monitor,
             MonitorType::Mem {
-                max_percentage_mem: Some(70.0),
-                max_percentage_swap: Some(80.0),
+                error_percentage_used_mem: Some(80.0),
+                error_percentage_used_swap: Some(70.0),
+                warn_percentage_used_mem: Some(60.0),
+                warn_percentage_used_swap: Some(50.0),
                 store_values: true,                            
             }
         );
