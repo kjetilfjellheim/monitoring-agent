@@ -1,10 +1,8 @@
-use std::{collections::HashMap, sync::{Arc, Mutex}};
-
 use log::{debug, error, info};
 use monitoring_agent_lib::proc::ProcsMeminfo;
 use tokio_cron_scheduler::Job;
 
-use crate::{common::{configuration::DatabaseStoreLevel, ApplicationError, MonitorStatus, Status}, DbService};
+use crate::common::{configuration::DatabaseStoreLevel, ApplicationError, DatabaseServiceType, MonitorStatus, MonitorStatusType, Status};
 
 use super::Monitor;
 
@@ -27,13 +25,17 @@ pub struct MeminfoMonitor {
     /// The name of the monitor.
     pub name: String,   
     /// Minimum free percentage memory.
-    pub max_percentage_mem: Option<f64>,
+    pub error_percentage_used_mem: Option<f64>,
     /// Minimum free percentage swap memory.
-    pub max_percentage_swap: Option<f64>,
+    pub error_percentage_used_swap: Option<f64>,
+    /// Warn free percentage memory.
+    pub warn_percentage_used_mem: Option<f64>,
+    /// Warn free percentage swap memory.
+    pub warn_percentage_used_swap: Option<f64>,    
     /// The status of the monitor.
-    pub status: Arc<Mutex<HashMap<String, MonitorStatus>>>,    
+    pub status: MonitorStatusType,    
     /// The database service
-    database_service: Arc<Option<DbService>>,
+    database_service: DatabaseServiceType,
     /// The database store level.
     database_store_level: DatabaseStoreLevel,
     /// The current load average.
@@ -46,8 +48,10 @@ impl MeminfoMonitor {
      * Create a new `MeminfoMonitor`.
      * 
      * `name`: The name of the monitor.
-     * `max_percentage_mem`: The maximum percentage memory.
-     * `max_percentage_swap`: The maximum percentage swap.
+     * `error_percentage_used_mem`: The maximum percentage memory.
+     * `error_percentage_used_swap`: The maximum percentage swap.
+     * `warn_percentage_used_mem`: The warn percentage memory.
+     * `warn_percentage_used_swap`: The warn percentage swap. 
      * `status`: The status of the monitor.
      * `database_service`: The database service.
      * `database_store_level`: The database store level.
@@ -61,10 +65,12 @@ impl MeminfoMonitor {
     pub fn new(
         name: &str,
         description: &Option<String>,
-        max_percentage_mem: Option<f64>,
-        max_percentage_swap: Option<f64>,
-        status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
-        database_service: &Arc<Option<DbService>>,
+        error_percentage_used_mem: Option<f64>,
+        error_percentage_used_swap: Option<f64>,
+        warn_percentage_used_mem: Option<f64>,
+        warn_percentage_used_swap: Option<f64>,        
+        status: &MonitorStatusType,
+        database_service: &DatabaseServiceType,
         database_store_level: &DatabaseStoreLevel,
         store_current_meminfo: bool,
     ) -> MeminfoMonitor {
@@ -81,8 +87,10 @@ impl MeminfoMonitor {
 
         MeminfoMonitor {
             name: name.to_string(),
-            max_percentage_mem,
-            max_percentage_swap,
+            error_percentage_used_mem,
+            error_percentage_used_swap,
+            warn_percentage_used_mem,
+            warn_percentage_used_swap,
             status: status.clone(),
             database_service: database_service.clone(),
             database_store_level: database_store_level.clone(),
@@ -101,39 +109,48 @@ impl MeminfoMonitor {
         let percentage_mem_used = ProcsMeminfo::get_percent_used(meminfo.memfree, meminfo.memtotal);
         let percentage_swap_used = ProcsMeminfo::get_percent_used(meminfo.swapfree, meminfo.swaptotal);
 
-        let free_percentage_mem_status = MeminfoMonitor::check_meminfo_values(self.max_percentage_mem, percentage_mem_used);
-        let free_percentage_swap_status = MeminfoMonitor::check_meminfo_values(self.max_percentage_swap, percentage_swap_used);
+        let free_percentage_mem_status = MeminfoMonitor::check_meminfo_values(self.error_percentage_used_mem, self.warn_percentage_used_mem, percentage_mem_used);
+        let free_percentage_swap_status = MeminfoMonitor::check_meminfo_values(self.error_percentage_used_swap, self.warn_percentage_used_swap, percentage_swap_used);
         
         if free_percentage_mem_status != Status::Ok || free_percentage_swap_status != Status::Ok{
             self.set_status(&Status::Error {
                 message: format!(
-                    "Meminfo check failed: mem: {free_percentage_mem_status:?}, swap: {free_percentage_swap_status:?}"
+                    "Memory check failed: {free_percentage_mem_status:?}, swap: {free_percentage_swap_status:?}"
                 ),
             }).await;
-        } else {
-            self.set_status(&Status::Ok).await;
-        }
+            return;
+        }         
+        self.set_status(&Status::Ok).await;        
     }
 
     /**
-     * Check the load average values.
+     * Check the memory values.
      * 
-     * `max`: The max load average.
+     * `error`: The error threshold.
+     * `warn`: The warning threshold menory use.
      * `current`: The current load average.
      * 
      * Returns: The status of the check.
      * 
      */
-    fn check_meminfo_values(max: Option<f64>, current: Option<f64>) -> Status {
+    fn check_meminfo_values(error: Option<f64>, warn: Option<f64>, current: Option<f64>) -> Status {
         let Some(current) = current else { return Status::Ok };
-        let Some(max) = max else { return Status::Ok };
-            
-        if current > max {
-            return Status::Error {
-                message: format!(
-                    "Memory use {current:0.3}% is more than {max:0.3}%"
-                ),
-            };
+        if let Some(error) = error {    
+            if current > error {
+                return Status::Error {
+                    message: format!(
+                        "Error memory use {current:0.2}% is more than {error:0.2}%"
+                    ),
+                };
+            }
+        } else if let Some(warn) = warn {
+            if current > warn {
+                return Status::Warn {
+                    message: format!(
+                        "Warning memory use {current:0.2}% is more than {warn:0.2}%"
+                    ),
+                };
+            }            
         }
         Status::Ok       
     }
@@ -175,18 +192,15 @@ impl MeminfoMonitor {
      * Returns: The meminfo monitor job.
      * 
      */
-    #[allow(clippy::too_many_arguments)]
-    #[allow(clippy::similar_names)]    
     pub fn get_meminfo_monitor_job(
-        &mut self,
+        memory_monitor: Self,
         schedule: &str,
     ) -> Result<Job, ApplicationError> {
-        info!("Creating meminfo monitor: {}", &self.name);
-        let meminfo_monitor = self.clone();       
+        info!("Creating meminfo monitor: {}", &memory_monitor.name);
         let job_result = Job::new_async(schedule, move |_uuid, _locked| {                
-            let mut meminfo_monitor = meminfo_monitor.clone();
+            let mut memory_monitor = memory_monitor.clone();
             Box::pin(async move {
-                meminfo_monitor.check().await;
+                memory_monitor.check().await;
             })  
         });        
         match job_result {
@@ -234,7 +248,7 @@ impl super::Monitor for MeminfoMonitor {
      *
      * Returns: The status of the monitor.
      */
-    fn get_status(&self) -> Arc<Mutex<HashMap<String, MonitorStatus>>> {
+    fn get_status(&self) -> MonitorStatusType {
         self.status.clone()
     }
 
@@ -243,7 +257,7 @@ impl super::Monitor for MeminfoMonitor {
      *
      * Returns: The database service.
      */
-    fn get_database_service(&self) -> Arc<Option<DbService>> {
+    fn get_database_service(&self) -> DatabaseServiceType {
         self.database_service.clone()
     }
 
@@ -262,7 +276,7 @@ impl super::Monitor for MeminfoMonitor {
 mod test {
     use std::{collections::HashMap, sync::{Arc, Mutex}};
 
-    use crate::{common::MonitorStatus, services::monitors::MeminfoMonitor};
+    use crate::{common::MonitorStatusType, services::monitors::MeminfoMonitor};
 
     use super::Monitor;
 
@@ -273,6 +287,8 @@ mod test {
             &None,
             Some(100.0),
             Some(100.0),
+            Some(90.0),
+            Some(90.0),            
             &Arc::new(Mutex::new(HashMap::new())),
             &Arc::new(None),
             &super::DatabaseStoreLevel::None,
@@ -298,6 +314,8 @@ mod test {
             &None,
             Some(80.0),
             Some(80.0),
+            Some(60.0),
+            Some(60.0),            
             &Arc::new(Mutex::new(HashMap::new())),
             &Arc::new(None),
             &super::DatabaseStoreLevel::None,
@@ -334,6 +352,8 @@ mod test {
             &None,
             Some(70.0),
             Some(15.0),
+            Some(60.0),
+            Some(10.0),            
             &Arc::new(Mutex::new(HashMap::new())),
             &Arc::new(None),
             &super::DatabaseStoreLevel::None,
@@ -352,24 +372,26 @@ mod test {
 
         let status = monitor.get_status();
         let status = status.lock().unwrap();
-        assert_eq!(status.get("test").unwrap().status, super::Status::Error { message: "Meminfo check failed: mem: Error { message: \"Memory use 75.000% is more than 70.000%\" }, swap: Error { message: \"Memory use 50.000% is more than 15.000%\" }".to_string() });
+        assert_eq!(status.get("test").unwrap().status, super::Status::Error { message: "Memory check failed: Error { message: \"Error memory use 75.00% is more than 70.00%\" }, swap: Error { message: \"Error memory use 50.00% is more than 15.00%\" }".to_string() });
     }
 
     #[test]
     fn test_get_meminfo_monitor_job() {
-        let status: Arc<Mutex<HashMap<String, MonitorStatus>>> =
+        let status: MonitorStatusType =
             Arc::new(Mutex::new(HashMap::new()));
-        let mut monitor = MeminfoMonitor::new(
+        let monitor = MeminfoMonitor::new(
             "test",
             &None,
             Some(100.0),
             Some(100.0),
+            Some(100.0),
+            Some(100.0),            
             &status,
             &Arc::new(None),
             &super::DatabaseStoreLevel::None,
             false,
         );
-        let job = monitor.get_meminfo_monitor_job("0 0 * * * *");
+        let job = MeminfoMonitor::get_meminfo_monitor_job(monitor ,"0 0 * * * *");
         assert!(job.is_ok());
     }  
 }

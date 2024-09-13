@@ -10,7 +10,8 @@
             "details": {
                 "type": "process",
                 "applicationNames": ["app1", "app2"],
-                "maxMemUsage": 100,
+                "thresholdMemWarn": 100,
+                "thresholdMemError": 100,
                 "storeValues": true
             }
         }

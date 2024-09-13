@@ -9,8 +9,10 @@
             "schedule": "0 0 0 0 0 0 0",
             "details": {
                 "type": "mem",
-                "maxPercentageMemUsed": 70.0,
-                "maxPercentageSwapUsed": 80.0,
+                "errorPercentageMemUsed": 80.0,
+                "errorPercentageSwapUsed": 70.0,
+                "warnPercentageMemUsed": 60.0,
+                "warnPercentageSwapUsed": 50.0,
                 "storeValues": true
             }
         }

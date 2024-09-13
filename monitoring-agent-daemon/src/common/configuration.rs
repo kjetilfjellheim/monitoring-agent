@@ -23,6 +23,8 @@ pub enum MonitorType {
     Tcp {
         host: String,
         port: u16,
+        #[serde(skip_serializing_if = "Option::is_none", rename = "retry", default = "default_none")]
+        retry: Option<u16>
     },
     Http {
         url: String,
@@ -43,6 +45,8 @@ pub enum MonitorType {
         identity: Option<String>,
         #[serde(skip_serializing, rename = "identityPassword")]
         identity_password: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none", rename = "retry", default = "default_none")]
+        retry: Option<u16>
     },
     Command {
         command: String,
@@ -58,14 +62,24 @@ pub enum MonitorType {
         threshold_5min: Option<f32>,
         #[serde(skip_serializing_if = "Option::is_none", rename = "threshold15min")]
         threshold_15min: Option<f32>,
+        #[serde(rename = "threshold1minLevel", default = "default_threshold_level")]
+        threshold_1min_level: ThresholdLevel,
+        #[serde(rename = "threshold5minLevel", default = "default_threshold_level")]
+        threshold_5min_level: ThresholdLevel,
+        #[serde(rename = "threshold15minLevel", default = "default_threshold_level")]
+        threshold_15min_level: ThresholdLevel,        
         #[serde(rename = "storeValues", default = "default_as_false")]
         store_values: bool,    
     },  
     Mem {
-        #[serde(skip_serializing_if = "Option::is_none", rename = "maxPercentageMemUsed")]
-        max_percentage_mem: Option<f64>,
-        #[serde(skip_serializing_if = "Option::is_none", rename = "maxPercentageSwapUsed")]
-        max_percentage_swap: Option<f64>,        
+        #[serde(skip_serializing_if = "Option::is_none", rename = "errorPercentageMemUsed")]
+        error_percentage_used_mem: Option<f64>,
+        #[serde(skip_serializing_if = "Option::is_none", rename = "errorPercentageSwapUsed")]
+        error_percentage_used_swap: Option<f64>,   
+        #[serde(skip_serializing_if = "Option::is_none", rename = "warnPercentageMemUsed")]
+        warn_percentage_used_mem: Option<f64>,
+        #[serde(skip_serializing_if = "Option::is_none", rename = "warnPercentageSwapUsed")]
+        warn_percentage_used_swap: Option<f64>,                       
         #[serde(rename = "storeValues", default = "default_as_false")]
         store_values: bool,    
     },   
@@ -89,14 +103,35 @@ pub enum MonitorType {
         pids: Option<Vec<u32>>,
         /// Regexp on name.
         #[serde(rename = "regexp")] 
-        regexp: Option<String>,        
-        /// The maximum memory usage.
-        #[serde(skip_serializing_if = "Option::is_none", rename = "maxMemUsage")]
-        max_mem_usage: Option<u32>,        
+        regexp: Option<String>,     
+        /// The maximum memory before warn.
+        #[serde(skip_serializing_if = "Option::is_none", rename = "thresholdMemWarn")]
+        threshold_mem_warn: Option<u64>,                 
+        /// The maximum memory before error.
+        #[serde(skip_serializing_if = "Option::is_none", rename = "thresholdMemError")]
+        threshold_mem_error: Option<u64>,        
         /// Store vales in database        
         #[serde(rename = "storeValues", default = "default_as_false")]
         store_values: bool,         
+    },
+    Certificate {
+        /// The certificate to monitor.
+        #[serde(rename = "certificates")]
+        certificates: Vec<String>,
+        #[serde(rename = "thresholdDaysWarn", default = "default_threshold_days_warn")]
+        threshold_days_warn: u32,
+        #[serde(rename = "thresholdDaysError", default = "default_threshold_days_error")]
+        threshold_days_error: u32,
     }
+}
+
+/**
+ * Threshold level.
+ */
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Copy)]
+pub enum ThresholdLevel {
+    Warn,
+    Error,
 }
 
 /**
@@ -184,6 +219,9 @@ pub struct MonitoringConfig {
     /// Cleanup configuration.
     #[serde(rename = "cleanupConfig")]
     pub cleanup_config: Option<CleanupConfig>,
+    /// Notification configuration.
+    #[serde(rename = "notificationConfig")]    
+    pub notification_config: Option<NotificationConfig>,
 
 }
 
@@ -332,6 +370,32 @@ pub struct DatabaseConfig {
 }
 
 /**
+ * Notification configuration.
+ */
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+pub struct NotificationConfig {
+    /// The url of the smtp server.
+    #[serde(rename = "url")]
+    pub url: String,
+    /// The recipients.
+    #[serde(rename = "recipients")]
+    pub recipients: Vec<String>,
+    /// From.
+    #[serde(rename = "from")]
+    pub from: String,
+    /// Reply to email.
+    #[serde(rename = "replyTo")]
+    pub reply_to: String,  
+    /// Notification check interval.  
+    #[serde(rename = "schedule", default = "default_notify_schedule")]
+    pub schedule: String,
+    /// Resend errors after minutes
+    #[serde(rename = "resendAfter", default = "default_resend_after")]
+    pub resend_after: i64,
+
+}
+
+/**
  * Default server configuration.
  * 
  * result: The default server configuration.
@@ -350,6 +414,10 @@ fn default_server() -> ServerConfig {
         tls_config: default_none(),
         workers: default_server_workers()
     }
+}
+
+fn default_threshold_level() -> ThresholdLevel {
+    ThresholdLevel::Error
 }
 
 /**
@@ -436,6 +504,37 @@ fn default_tokio_threads() -> usize {
     debug!("Using default tokio threads");
     4
 }
+/**
+ * Send notifications evry.
+ */
+fn default_notify_schedule() -> String {
+    debug!("Using default notify schedule");
+    "0 */5 * * * *".to_string()
+}
+
+/**
+ * Default resend error after set hours.
+ */
+fn default_resend_after() -> i64 {
+    debug!("Using default resend after");
+    120
+}
+
+/**
+ * Default threshold days warn.
+ */
+fn default_threshold_days_warn() -> u32 {
+    debug!("Using default threshold days warn");
+    30
+}
+
+/**
+ * Default threshold days error.
+ */
+fn default_threshold_days_error() -> u32 {
+    debug!("Using default threshold days error");
+    14
+}
 
 #[cfg(test)]
 mod tests {
@@ -456,7 +555,8 @@ mod tests {
             monitor,
             MonitorType::Tcp {
                 host: "192.168.1.1".to_string(),
-                port: 8080
+                port: 8080,
+                retry: None
             }
         );
         assert_eq!(&8080, &monitoring.server.clone().port);
@@ -486,7 +586,8 @@ mod tests {
                 tls_info: false,
                 root_certificate: None,
                 identity: None,
-                identity_password: None
+                identity_password: None,
+                retry: None
             }
         );
         assert_eq!(&65000, &monitoring.server.clone().port);
@@ -591,6 +692,9 @@ mod tests {
                 threshold_1min: Some(1.0),
                 threshold_5min: Some(2.0),
                 threshold_15min: Some(3.0),
+                threshold_1min_level: ThresholdLevel::Error,
+                threshold_5min_level: ThresholdLevel::Error,
+                threshold_15min_level: ThresholdLevel::Error,
                 store_values: true,               
             }
         );
@@ -611,8 +715,10 @@ mod tests {
         assert_eq!(
             monitor,
             MonitorType::Mem {
-                max_percentage_mem: Some(70.0),
-                max_percentage_swap: Some(80.0),
+                error_percentage_used_mem: Some(80.0),
+                error_percentage_used_swap: Some(70.0),
+                warn_percentage_used_mem: Some(60.0),
+                warn_percentage_used_swap: Some(50.0),
                 store_values: true,                            
             }
         );
@@ -655,7 +761,8 @@ mod tests {
                 application_names: Some(vec!["app1".to_string(), "app2".to_string()]),
                 pids: None,
                 regexp: None,
-                max_mem_usage: Some(100),
+                threshold_mem_error: Some(100),
+                threshold_mem_warn: Some(100),                
                 store_values: true,
                 
             }

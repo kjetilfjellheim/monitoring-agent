@@ -1,11 +1,9 @@
-use std::{collections::HashMap, sync::{Arc, Mutex}};
-
 use log::{debug, error, info};
 use monitoring_agent_lib::proc::{ProcsProcess, ProcsStatm};
 use tokio_cron_scheduler::Job;
 use regex::Regex;
 
-use crate::{common::{configuration::DatabaseStoreLevel, ApplicationError, MonitorStatus, Status}, services::DbService};
+use crate::common::{configuration::DatabaseStoreLevel, ApplicationError, DatabaseServiceType, MonitorStatus, MonitorStatusType, Status};
 use super::Monitor;
 
 /**
@@ -16,7 +14,8 @@ use super::Monitor;
  * `application_names`: The application names to monitor.
  * `pids`: The process ids to monitor.
  * `regexp`: The regular expression.
- * `max_mem_usage`: The max memory usage.
+ * `threshold_mem_error`: The max memory usage.
+ * `threshold_mem_warn`: The warn memory usage.
  * `status`: The status of the monitor.
  * `database_service`: The database service.
  * `database_store_level`: The database store level.
@@ -32,13 +31,15 @@ pub struct ProcessMonitor {
     /// Pids to monitor.
     pids: Option<Vec<u32>>,
     /// regexp.
-    regexp: Option<String>,    
-    /// The max memory usage.
-    max_mem_usage: Option<u32>,
+    regexp: Option<String>,
+    /// The error threshold.
+    threshold_mem_error: Option<u64>,        
+    /// The warn threshold.
+    threshold_mem_warn: Option<u64>,
     /// The status of the monitor.
-    status: Arc<Mutex<HashMap<String, MonitorStatus>>>,    
+    status: MonitorStatusType,    
     /// The database service
-    database_service: Arc<Option<DbService>>,
+    database_service: DatabaseServiceType,
     /// The database store level.
     database_store_level: DatabaseStoreLevel,
     /// The current statm.
@@ -53,7 +54,8 @@ impl ProcessMonitor {
      * `application_names`: The application names to monitor.
      * `pids`: The process ids to monitor.
      * `regexp`: The regular expression. 
-     * `max_mem_usage`: The max memory usage.
+     * `threshold_mem_warn`: The warn threshold.
+     * `threshold_mem_error`: The error threshold.
      * `status`: The status of the monitor.
      * `database_service`: The database service.
      * `database_store_level`: The database store level.
@@ -68,9 +70,10 @@ impl ProcessMonitor {
         application_names: Option<Vec<String>>,
         pids: Option<Vec<u32>>,
         regexp: Option<String>,
-        max_mem_usage: Option<u32>,
-        status: &Arc<Mutex<HashMap<String, MonitorStatus>>>,
-        database_service: &Arc<Option<DbService>>,
+        threshold_mem_warn: Option<u64>,
+        threshold_mem_error: Option<u64>,
+        status: &MonitorStatusType,
+        database_service: &DatabaseServiceType,
         database_store_level: &DatabaseStoreLevel,
         store_current_statm: bool
     ) -> ProcessMonitor {
@@ -89,7 +92,8 @@ impl ProcessMonitor {
             application_names,
             pids,
             regexp,
-            max_mem_usage,
+            threshold_mem_warn,
+            threshold_mem_error,
             status: status.clone(),
             database_service: database_service.clone(),
             database_store_level: database_store_level.clone(),
@@ -103,15 +107,16 @@ impl ProcessMonitor {
      * `schedule`: The schedule for the job.
      */
     pub fn get_process_monitor_job(
-        &mut self,
+        process_monitor: Self,
         schedule: &str,
     ) -> Result<Job, ApplicationError> {
-        info!("Creating Process monitor: {}", &self.name);
-        let process_monitor = self.clone();
+        info!("Creating Process monitor: {}", &process_monitor.name);
         let job_result = Job::new_async(schedule, move |_uuid, _locked| {
-            let process_monitor = process_monitor.clone();
-            Box::pin(async move {
-                let _ = process_monitor.clone().check().await.map_err(|err| error!("Error checking process monitor: {err:?}"));
+            Box::pin({
+                let mut process_monitor = process_monitor.clone();
+                async move {                
+                    let _ = process_monitor.check().await.map_err(|err| error!("Error checking process monitor: {err:?}"));
+                }
             })              
         });        
         match job_result {
@@ -249,11 +254,19 @@ impl ProcessMonitor {
      */
     fn check_max(&self, statm: &ProcsStatm) -> Status {        
         let Some(resident) = statm.resident else { return Status::Ok };   
-        let Some(pagesize) = statm.pagesize else { return Status::Ok };
-        let Some(max_mem_usage) = self.max_mem_usage else { return Status::Ok };    
-        if (resident * pagesize) > max_mem_usage {
-            return Status::Error { message: format!("Process memory usage is over the limit: {:?} > {max_mem_usage:?}", (resident * pagesize))};
-        }
+        let Some(pagesize) = statm.pagesize else { return Status::Ok };        
+        let resident = u64::from(resident);
+        let pagesize = u64::from(pagesize);           
+        if let Some(threshold_mem_error) = self.threshold_mem_error {            
+            if (resident * pagesize) > threshold_mem_error {
+                return Status::Error { message: format!("Process memory usage is over the error limit: {:?} > {threshold_mem_error:?}", (resident * pagesize))};
+            }
+        } 
+        if let Some(threshold_mem_warn) = self.threshold_mem_warn {         
+            if (resident * pagesize) > threshold_mem_warn {
+                return Status::Warn { message: format!("Process memory usage is over the warn limit: {:?} > {threshold_mem_warn:?}", (resident * pagesize))};
+            }
+        }         
         Status::Ok
     }
     
@@ -314,7 +327,7 @@ impl super::Monitor for ProcessMonitor {
      *
      * Returns: The status of the monitor.
      */
-    fn get_status(&self) -> Arc<Mutex<HashMap<String, MonitorStatus>>> {
+    fn get_status(&self) -> MonitorStatusType {
         self.status.clone()
     }
 
@@ -323,7 +336,7 @@ impl super::Monitor for ProcessMonitor {
      *
      * Returns: The database service.
      */
-    fn get_database_service(&self) -> Arc<Option<DbService>> {
+    fn get_database_service(&self) -> DatabaseServiceType {
         self.database_service.clone()
     }
 
@@ -345,19 +358,20 @@ mod test {
 
     #[test]
     fn test_get_monitor_job() {
-        let mut process_monitor = ProcessMonitor::new(
+        let process_monitor = ProcessMonitor::new(
             "test_monitor",
             &None,
             Some(vec!["test_app".to_string()]),
             Some(vec![100u32]),
             Some("test".to_string()),
             Some(100),
-            &Arc::new(Mutex::new(HashMap::new())),
-            &Arc::new(None),
+            Some(100),
+            &std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
+            &std::sync::Arc::new(None),
             &DatabaseStoreLevel::None,
             false
         );
-        let job_result = process_monitor.get_process_monitor_job("* * * * * *");
+        let job_result = ProcessMonitor::get_process_monitor_job(process_monitor, "* * * * * *");
         assert!(job_result.is_ok());
     }
 
@@ -369,9 +383,10 @@ mod test {
             Some(vec!["test_app".to_string()].clone()),
             Some(vec![100u32]),
             Some("test".to_string()),
+            Some(50),
             Some(100),
-            &Arc::new(Mutex::new(HashMap::new())),
-            &Arc::new(None),
+            &std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
+            &std::sync::Arc::new(None),
             &DatabaseStoreLevel::None,
             false
         );
@@ -387,9 +402,10 @@ mod test {
             Some(vec!["systemd".to_string()]),
             None,
             None,
+            Some(500),
             Some(1000),
-            &Arc::new(Mutex::new(HashMap::new())),
-            &Arc::new(None),
+            &std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
+            &std::sync::Arc::new(None),
             &DatabaseStoreLevel::None,
             false
         );
@@ -406,9 +422,10 @@ mod test {
             Some(vec!["/sbin/init".to_string()]),
             None,
             None,
+            Some(500),
             Some(100000000),
-            &Arc::new(Mutex::new(HashMap::new())),
-            &Arc::new(None),
+            &std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
+            &std::sync::Arc::new(None),
             &DatabaseStoreLevel::None,
             false
         );

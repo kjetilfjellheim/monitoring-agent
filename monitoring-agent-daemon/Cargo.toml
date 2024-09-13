@@ -1,6 +1,6 @@
 [package]
 name = "monitoring-agent-daemon"
-version = "0.0.24"
+version = "0.0.25"
 edition = "2021"
 description = "A monitoring agent that can be used to monitor the health of a system."
 license = "Apache 2.0"
@@ -36,6 +36,8 @@ tracing-subscriber = "0.3.18"                                                   
 tracing-log = "0.2.0"                                                                   # For logging.
 openssl = "0.10.66"                                                                     # For handling openssl.
 regex = "1.10.6"                                                                        # For regular expressions.
+lettre = "0.11.8"                                                                       # For sending emails.                         
+lettre_email = "0.9.4"                                                                  # For sending emails.   
 
 [package.metadata.deb]
 maintainer = "Kjetil Fjellheim <kjetil@forgottendonkey.net>"
