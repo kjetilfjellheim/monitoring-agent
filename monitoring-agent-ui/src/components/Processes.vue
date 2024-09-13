@@ -90,7 +90,7 @@ export default {
         <div class="collapse navbar-collapse">
             <ul class="navbar-nav mr-auto mt-2 mt-lg-0">
                 <li class="nav-item">
-                    <button class="btn btn-info small toolbar-item" @click="this.refreshProcesses()"><FontAwesomeIcon :icon="faRefresh" />&nbsp;Refresh</button>
+                    <button class="btn btn-info small toolbar-item" @click="refreshProcesses()"><FontAwesomeIcon :icon="faRefresh" />&nbsp;Refresh</button>
                 </li>                
             </ul>
         </div>
