@@ -227,8 +227,6 @@ impl LoadAvgMonitor {
      * Check and store the current load average.
      * 
      * `loadavg`: The current load average.
-     * 
-     * 
      */
     async fn check_store_current_loadavg(&self, loadavg: &ProcsLoadavg) {
         if self.store_current_loadavg {
@@ -580,4 +578,113 @@ mod test {
         let job = LoadAvgMonitor::get_loadavg_monitor_job(monitor, "0 0 * * * *");
         assert!(job.is_ok());
     }   
+
+    #[test]
+    fn test_check_max_status() {
+        let mut max = 0;
+        let status = super::Status::Error { message: "Error".to_string() };
+        super::LoadAvgMonitor::check_max_status(&status, &mut max);
+        assert_eq!(max, 2);
+
+        let mut max = 0;
+        let status = super::Status::Warn { message: "Warn".to_string() };
+        super::LoadAvgMonitor::check_max_status(&status, &mut max);
+        assert_eq!(max, 1);
+
+        let mut max = 0;
+        let status = super::Status::Ok;
+        super::LoadAvgMonitor::check_max_status(&status, &mut max);
+        assert_eq!(max, 0);
+
+        let mut max = 1;
+        let status = super::Status::Error { message: "Error".to_string() };
+        super::LoadAvgMonitor::check_max_status(&status, &mut max);
+        assert_eq!(max, 2);
+
+        let mut max = 1;
+        let status = super::Status::Warn { message: "Warn".to_string() };
+        super::LoadAvgMonitor::check_max_status(&status, &mut max);
+        assert_eq!(max, 1);
+
+        let mut max = 1;
+        let status = super::Status::Ok;
+        super::LoadAvgMonitor::check_max_status(&status, &mut max);
+        assert_eq!(max, 1);  
+
+        let mut max = 2;
+        let status = super::Status::Error { message: "Error".to_string() };
+        super::LoadAvgMonitor::check_max_status(&status, &mut max);
+        assert_eq!(max, 2);
+
+        let mut max = 2;
+        let status = super::Status::Warn { message: "Warn".to_string() };
+        super::LoadAvgMonitor::check_max_status(&status, &mut max);
+        assert_eq!(max, 2);
+
+        let mut max = 2;
+        let status = super::Status::Ok;
+        super::LoadAvgMonitor::check_max_status(&status, &mut max);
+        assert_eq!(max, 2);              
+    }
+
+    #[test]
+    fn test_get_max_error() {
+        let status_1min = super::Status::Error { message: "Error".to_string() };
+        let status_5min = super::Status::Warn { message: "Warn".to_string() };
+        let status_15min = super::Status::Ok;
+        let max = super::LoadAvgMonitor::get_max_error(&status_1min, &status_5min, &status_15min);
+        assert_eq!(max, 2);
+
+        let status_1min = super::Status::Warn { message: "Warn".to_string() };
+        let status_5min = super::Status::Error { message: "Error".to_string() };
+        let status_15min = super::Status::Ok;
+        let max = super::LoadAvgMonitor::get_max_error(&status_1min, &status_5min, &status_15min);
+        assert_eq!(max, 2);
+
+        let status_1min = super::Status::Ok;
+        let status_5min = super::Status::Error { message: "Error".to_string() };
+        let status_15min = super::Status::Warn { message: "Warn".to_string() };
+        let max = super::LoadAvgMonitor::get_max_error(&status_1min, &status_5min, &status_15min);
+        assert_eq!(max, 2);
+
+        let status_1min = super::Status::Ok;
+        let status_5min = super::Status::Warn { message: "Warn".to_string() };
+        let status_15min = super::Status::Warn { message: "Error".to_string() };
+        let max = super::LoadAvgMonitor::get_max_error(&status_1min, &status_5min, &status_15min);
+        assert_eq!(max, 1);
+
+        let status_1min = super::Status::Ok;
+        let status_5min = super::Status::Ok;
+        let status_15min = super::Status::Warn { message: "Error".to_string() };
+        let max = super::LoadAvgMonitor::get_max_error(&status_1min, &status_5min, &status_15min);
+        assert_eq!(max, 1);
+
+        let status_1min = super::Status::Ok;
+        let status_5min = super::Status::Ok;
+        let status_15min = super::Status::Ok;
+        let max = super::LoadAvgMonitor::get_max_error(&status_1min, &status_5min, &status_15min);
+        assert_eq!(max, 0);        
+    }
+
+    #[test]
+    fn test_check_loadavg_values_verify() {
+        let status = super::LoadAvgMonitor::check_loadavg_values(Some(1.0), Some(1.0), ThresholdLevel::Error);
+        assert_eq!(status, super::Status::Ok);
+
+        let status = super::LoadAvgMonitor::check_loadavg_values(Some(1.0), Some(2.0), ThresholdLevel::Error);
+        assert_eq!(status, super::Status::Error { message: "Load average 2 is greater than max load average 1".to_string() });
+
+        let status: crate::common::Status = super::LoadAvgMonitor::check_loadavg_values(Some(1.0), None, ThresholdLevel::Error);
+        assert_eq!(status, super::Status::Ok);
+
+        let status = super::LoadAvgMonitor::check_loadavg_values(None, Some(1.0), ThresholdLevel::Error);
+        assert_eq!(status, super::Status::Ok);
+
+        let status = super::LoadAvgMonitor::check_loadavg_values(None, None, ThresholdLevel::Error);
+        assert_eq!(status, super::Status::Ok);
+
+        let status = super::LoadAvgMonitor::check_loadavg_values(Some(1.0), Some(2.0), ThresholdLevel::Warn);
+        assert_eq!(status, super::Status::Warn { message: "Load average 2 is greater than max load average 1".to_string() });
+
+    }
 }
