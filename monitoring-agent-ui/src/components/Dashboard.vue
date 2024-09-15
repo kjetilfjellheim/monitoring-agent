@@ -118,16 +118,18 @@ export default {
             labels.push(element.timestamp);
             values.push(element.value);
           });
-          server.loadAvgHistData.value = {
-            labels: labels,
-            datasets: [{
-              backgroundColor: 'rgba(255,0,0,1)',
-              borderColor: 'rgba(255,0,0,1)',
-              label: 'Load Average',
-              data: values,
-              fill: false
-            }]
-          };
+          if (labels !== null) {
+            server.loadAvgHistData.value = {
+              labels: labels,
+              datasets: [{
+                backgroundColor: 'rgba(255,0,0,1)',
+                borderColor: 'rgba(255,0,0,1)',
+                label: 'Load Average',
+                data: values,
+                fill: false
+              }]
+            };
+          }
         })
         .catch(error => console.error('Error:', error));
     },
@@ -194,7 +196,7 @@ export default {
     <div class="collapse navbar-collapse">
       <ul class="navbar-nav mr-auto mt-2 mt-lg-0">
         <li class="nav-item">
-          <button class="btn btn-info small toolbar-item" @click="this.refresh()">
+          <button class="btn btn-info small toolbar-item" @click="refresh()">
             <FontAwesomeIcon :icon="faRefresh" />&nbsp;Refresh
           </button>
         </li>
@@ -222,30 +224,32 @@ export default {
                         <div class="container-fluid">
                           <table>
                             <thead>
-                              <th scope="col" colspan="2" data-bs-toggle="tooltip" data-bs-placement="bottom" v-bind:title="tooltip_load_average">
-                                Load Average
-                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-info-circle" viewBox="0 0 16 16">
-                                  <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16" />
-                                  <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0" />
-                                </svg>                                
-                              </th>
-                              <th scope="col" colspan="2" data-bs-toggle="tooltip" data-bs-placement="bottom" v-bind:title="tooltip_meminfo">
-                                Memory
-                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-info-circle" viewBox="0 0 16 16">
-                                  <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16" />
-                                  <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0" />
-                                </svg>                                
-                              </th>
-                              <th scope="col" colspan="2" data-bs-toggle="tooltip" data-bs-placement="bottom" v-bind:title="tooltip_swap">
-                                Swap
-                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-info-circle" viewBox="0 0 16 16">
-                                  <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16" />
-                                  <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0" />
-                                </svg>                                                                
-                              </th>   
-                              <th scope="col" colspan="2">
-                                Cpu                                                             
-                              </th>                                                           
+                              <tr>
+                                <th scope="col" colspan="2" data-bs-toggle="tooltip" data-bs-placement="bottom" v-bind:title="tooltip_load_average">
+                                  Load Average
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-info-circle" viewBox="0 0 16 16">
+                                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16" />
+                                    <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0" />
+                                  </svg>                                
+                                </th>
+                                <th scope="col" colspan="2" data-bs-toggle="tooltip" data-bs-placement="bottom" v-bind:title="tooltip_meminfo">
+                                  Memory
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-info-circle" viewBox="0 0 16 16">
+                                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16" />
+                                    <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0" />
+                                  </svg>                                
+                                </th>
+                                <th scope="col" colspan="2" data-bs-toggle="tooltip" data-bs-placement="bottom" v-bind:title="tooltip_swap">
+                                  Swap
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-info-circle" viewBox="0 0 16 16">
+                                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16" />
+                                    <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0" />
+                                  </svg>                                                                
+                                </th>   
+                                <th scope="col" colspan="2">
+                                  Cpu                                                             
+                                </th>
+                              </tr>                                                         
                             </thead>
                             <tbody>
                               <tr>
@@ -276,7 +280,7 @@ export default {
                                 <td></td>
                                 <td></td>
                                 <td>Cores</td>
-                                <td v-if="server?.cpuinfo[0]?.cpuCores">{{ server?.cpuinfo[0]?.cpuCores }}</td>
+                                <td v-if="server?.cpuinfo?.length > 0 && server?.cpuinfo[0]?.cpuCores">{{ server?.cpuinfo[0]?.cpuCores }}</td>
                               </tr>
                             </tbody>
                           </table>
@@ -285,12 +289,12 @@ export default {
                     </div>
                   </div>                  
                   <div class="col col-sm-12 col-md-12 col-lg-12">
-                    <div class="card-body chart" v-if="server?.loadAvgHistData">
+                    <div class="card-body chart" v-if="server?.loadAvgHistData && server?.loadAvgHistData.labels?.length > 0">
                       <Line :data="server?.loadAvgHistData" :options="loadAvgHistOptions" />
                     </div>
                   </div>
                   <div class="col col-sm-12 col-md-12 col-lg-12">
-                    <div class="card-body chart" v-if="server?.loadAvgHistData">
+                    <div class="card-body chart" v-if="server?.loadAvgHistData && server?.freeMemHistData?.labels?.length > 0">
                       <Line :data="server?.freeMemHistData" :options="freeMemHistOptions" />
                     </div>
                   </div>
@@ -321,10 +325,10 @@ export default {
                           <dt class="col-sm-2 small no-margin">Number of interrupts</dt>
                           <dd class="col-sm-2 small text-truncate no-margin">{{ server?.stat?.numInterrupts }}</dd>
                         </dl>
-                        <table class="table table-">
-                          <dl class="row">
-                            <table table table-responsive>
-                              <thead>
+                        <dl class="row">
+                          <table table table-responsive>
+                            <thead>
+                              <tr>
                                 <th scope="col">Cpu</th>
                                 <th scope="col">User</th>
                                 <th scope="col">System</th>
@@ -334,23 +338,23 @@ export default {
                                 <th scope="col">Irq</th>
                                 <th scope="col">Softirq</th>
                                 <th scope="col">Steal</th>
-                              </thead>
-                              <tbody>
-                                <tr v-for="cpu in server?.stat?.cpus">
-                                  <td>{{ cpu.name }}</td>
-                                  <td>{{ cpu.user }}</td>
-                                  <td>{{ cpu.system }}</td>
-                                  <td>{{ cpu.nice }}</td>
-                                  <td>{{ cpu.idle }}</td>
-                                  <td>{{ cpu.iowait }}</td>
-                                  <td>{{ cpu.irq }}</td>
-                                  <td>{{ cpu.softirq }}</td>
-                                  <td>{{ cpu.steal }}</td>
-                                </tr>
-                              </tbody>
-                            </table>
-                          </dl>
-                        </table>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr v-for="cpu in server?.stat?.cpus">
+                                <td>{{ cpu.name }}</td>
+                                <td>{{ cpu.user }}</td>
+                                <td>{{ cpu.system }}</td>
+                                <td>{{ cpu.nice }}</td>
+                                <td>{{ cpu.idle }}</td>
+                                <td>{{ cpu.iowait }}</td>
+                                <td>{{ cpu.irq }}</td>
+                                <td>{{ cpu.softirq }}</td>
+                                <td>{{ cpu.steal }}</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </dl>
                       </div>
                     </div>
                   </div>
