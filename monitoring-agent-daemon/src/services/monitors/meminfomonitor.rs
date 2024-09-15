@@ -1,3 +1,5 @@
+use std::mem;
+
 use log::{debug, error, info};
 use monitoring_agent_lib::proc::ProcsMeminfo;
 use tokio_cron_scheduler::Job;
@@ -112,14 +114,24 @@ impl MeminfoMonitor {
         let free_percentage_mem_status = MeminfoMonitor::check_meminfo_values(self.error_percentage_used_mem, self.warn_percentage_used_mem, percentage_mem_used);
         let free_percentage_swap_status = MeminfoMonitor::check_meminfo_values(self.error_percentage_used_swap, self.warn_percentage_used_swap, percentage_swap_used);
         
-        if free_percentage_mem_status != Status::Ok || free_percentage_swap_status != Status::Ok{
+        if mem::discriminant(&free_percentage_mem_status) == mem::discriminant(&Status::Error { message: String::new()}) || 
+           mem::discriminant(&free_percentage_swap_status) == mem::discriminant(&Status::Error { message: String::new()}) {
             self.set_status(&Status::Error {
                 message: format!(
                     "Memory check failed: {free_percentage_mem_status:?}, swap: {free_percentage_swap_status:?}"
                 ),
             }).await;
             return;
-        }         
+        }
+        if mem::discriminant(&free_percentage_mem_status) == mem::discriminant(&Status::Warn { message: String::new()}) || 
+           mem::discriminant(&free_percentage_swap_status) == mem::discriminant(&Status::Warn { message: String::new()}) {
+            self.set_status(&Status::Warn {
+                message: format!(
+                    "Memory check failed: {free_percentage_mem_status:?}, swap: {free_percentage_swap_status:?}"
+                ),
+            }).await;
+            return;
+        }                 
         self.set_status(&Status::Ok).await;        
     }
 
@@ -143,7 +155,8 @@ impl MeminfoMonitor {
                     ),
                 };
             }
-        } else if let Some(warn) = warn {
+        }
+        if let Some(warn) = warn {
             if current > warn {
                 return Status::Warn {
                     message: format!(
@@ -307,7 +320,7 @@ mod test {
      * - Memory is lower on all.
      */
     #[tokio::test]
-    async fn test_check_max_meminfo() {
+    async fn test_check_ok_meminfo() {
         // Test success. Memory lower on all
         let mut monitor = super::MeminfoMonitor::new(
             "test",
@@ -336,7 +349,80 @@ mod test {
         let status = status.lock().unwrap();
         assert_eq!(status.get("test").unwrap().status, super::Status::Ok);
     }
-        
+
+    /**
+     * Test the check_max_meminfo function.
+     * 
+     * Test the following scenarios:
+     * - Memory is warning level.
+     */
+    #[tokio::test]
+    async fn test_check_warn_meminfo() {
+        // Test success. Memory lower on all
+        let mut monitor = super::MeminfoMonitor::new(
+            "test",
+            &None,
+            Some(95.0),
+            Some(95.0),
+            Some(80.0),
+            Some(80.0),            
+            &Arc::new(Mutex::new(HashMap::new())),
+            &Arc::new(None),
+            &super::DatabaseStoreLevel::None,
+            false,
+        );
+
+        let meminfo = monitoring_agent_lib::proc::ProcsMeminfo {
+            memtotal: Some(12222772),
+            memfree: Some(1356992),
+            memavailable: Some(8980516),
+            swaptotal: Some(10000),
+            swapfree: Some(5000),
+        };
+
+        monitor.check_meminfo(&meminfo).await;
+
+        let status = monitor.get_status();
+        let status = status.lock().unwrap();
+        assert_eq!(status.get("test").unwrap().status, super::Status::Warn { message: "Memory check failed: Warn { message: \"Warning memory use 88.90% is more than 80.00%\" }, swap: Ok".to_string() });
+    }        
+
+    /**
+     * Test the check_max_meminfo function.
+     * 
+     * Test the following scenarios:
+     * - Memory is error level.
+     */
+    #[tokio::test]
+    async fn test_check_error_meminfo() {
+        // Test success. Memory lower on all
+        let mut monitor = super::MeminfoMonitor::new(
+            "test",
+            &None,
+            Some(95.0),
+            Some(95.0),
+            Some(80.0),
+            Some(80.0),            
+            &Arc::new(Mutex::new(HashMap::new())),
+            &Arc::new(None),
+            &super::DatabaseStoreLevel::None,
+            false,
+        );
+
+        let meminfo = monitoring_agent_lib::proc::ProcsMeminfo {
+            memtotal: Some(12222772),
+            memfree: Some(1200),
+            memavailable: Some(8980516),
+            swaptotal: Some(10000),
+            swapfree: Some(5000),
+        };
+
+        monitor.check_meminfo(&meminfo).await;
+
+        let status = monitor.get_status();
+        let status = status.lock().unwrap();
+        assert_eq!(status.get("test").unwrap().status, super::Status::Error { message: "Memory check failed: Error { message: \"Error memory use 99.99% is more than 95.00%\" }, swap: Ok".to_string() });
+    }
 
     /**
      * Test the check_max_meminfo function.
